@@ -282,8 +282,10 @@
   <dl class="cover-meta">
     <div><dt>Version</dt><dd>1.0.0</dd></div>
     <div><dt>Stack</dt><dd>Electron · React · Redux · TypeScript</dd></div>
-    <div><dt>Build Tool</dt><dd>electron-vite · Vite 5</dd></div>
-    <div><dt>Test Runner</dt><dd>Vitest · Testing Library</dd></div>
+    <div><dt>Node.js</dt><dd>22.x (LTS) — see .nvmrc</dd></div>
+    <div><dt>Build Tool</dt><dd>electron-vite 5 · Vite 7</dd></div>
+    <div><dt>Test Runner</dt><dd>Vitest 4 · Testing Library 16</dd></div>
+    <div><dt>Styling</dt><dd>Tailwind CSS 4 · CSS-native config</dd></div>
   </dl>
 </div>
 
@@ -308,10 +310,11 @@
   <div class="toc-section"><a href="#s10"><span>10. Styling (Tailwind CSS)</span><span class="toc-num">15</span></a></div>
 
   <div class="toc-group">Quality &amp; Workflow</div>
-  <div class="toc-section"><a href="#s11"><span>11. Testing Strategy</span><span class="toc-num">16</span></a></div>
-  <div class="toc-section"><a href="#s12"><span>12. Code Generation (Plop)</span><span class="toc-num">18</span></a></div>
-  <div class="toc-section"><a href="#s13"><span>13. Build &amp; Packaging</span><span class="toc-num">19</span></a></div>
-  <div class="toc-section"><a href="#s14"><span>14. Adding a New Feature — End-to-End Workflow</span><span class="toc-num">20</span></a></div>
+  <div class="toc-section"><a href="#s11"><span>11. Testing Strategy (Unit)</span><span class="toc-num">16</span></a></div>
+  <div class="toc-section"><a href="#s15"><span>12. E2E Testing (WebdriverIO + wdio-electron-service)</span><span class="toc-num">18</span></a></div>
+  <div class="toc-section"><a href="#s12"><span>13. Code Generation (Plop)</span><span class="toc-num">20</span></a></div>
+  <div class="toc-section"><a href="#s13"><span>14. Build &amp; Packaging</span><span class="toc-num">21</span></a></div>
+  <div class="toc-section"><a href="#s14"><span>15. Adding a New Feature — End-to-End Workflow</span><span class="toc-num">22</span></a></div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════
@@ -369,9 +372,27 @@
   <span class="section-num">Section 02</span>
   <h1 class="section-title">Development Environment Setup</h1>
 
+  <h2>Prerequisites — Node.js 22</h2>
+  <p>The project requires Node.js 22 (see <code>.nvmrc</code>). Use <strong>nvm</strong> to manage versions:</p>
+  <pre><code># Install nvm (if not already installed)
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+
+# Install and activate Node 22
+nvm install 22
+nvm use 22        # or: nvm use  (reads .nvmrc automatically)
+
+# Verify
+node -v           # should print v22.x.x</code></pre>
+
+  <div class="callout">
+    <strong>Shell integration</strong>
+    If <code>nvm</code> is not found in non-interactive shells (e.g. terminal in VS Code), add the nvm initialisation block to your <code>~/.bashrc</code> or <code>~/.zshrc</code>. The <code>.nvmrc</code> file in the repo root pins the required version so <code>nvm use</code> requires no arguments.
+  </div>
+
   <h2>Initial Setup</h2>
   <pre><code>git clone &lt;repo-url&gt;
 cd electron-desktop-boilerplate
+nvm use          # switch to Node 22 via .nvmrc
 npm install</code></pre>
 
   <div class="callout warn">
@@ -395,6 +416,27 @@ npm install</code></pre>
     </tbody>
   </table>
 
+  <h2>Key Dependency Versions</h2>
+  <table>
+    <thead><tr><th>Package</th><th>Version</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><code>electron</code></td><td>^33.4.11</td><td>Chromium renderer + Node.js main</td></tr>
+      <tr><td><code>electron-vite</code></td><td>^5.0.0</td><td>Bundles Vite 7 internally; supports Vite ^5‖^6‖^7</td></tr>
+      <tr><td><code>react</code> / <code>react-dom</code></td><td>^19.2.4</td><td>React 19 — concurrent features, improved hooks</td></tr>
+      <tr><td><code>@reduxjs/toolkit</code></td><td>^2.11.2</td><td>Includes RTK Query for data-fetching</td></tr>
+      <tr><td><code>redux</code></td><td>^5.0.1</td><td>Use <code>UnknownAction</code> instead of deprecated <code>AnyAction</code></td></tr>
+      <tr><td><code>redux-saga</code></td><td>^1.3.0</td><td>Generator-based side effects</td></tr>
+      <tr><td><code>react-redux</code></td><td>^9.2.0</td><td>Hooks-first; no legacy <code>connect()</code> needed</td></tr>
+      <tr><td><code>tailwindcss</code></td><td>^4.2.2</td><td>CSS-native config — no <code>tailwind.config.js</code></td></tr>
+      <tr><td><code>typescript</code></td><td>^5.9.3</td><td>Max version for <code>@typescript-eslint@8.x</code> is &lt;6.0.0</td></tr>
+      <tr><td><code>vitest</code></td><td>^4.1.1</td><td>Requires Vite ^6‖^7‖^8</td></tr>
+      <tr><td><code>eslint</code></td><td>^9.39.4</td><td>Flat config via <code>eslint.config.mjs</code></td></tr>
+      <tr><td><code>@vitejs/plugin-react</code></td><td>^5.2.0</td><td>v6 requires Vite 8 — incompatible with electron-vite 5</td></tr>
+      <tr><td><code>wdio-electron-service</code></td><td>^9.2.1</td><td>E2E: launches Electron + exposes <code>browser.electron.*</code></td></tr>
+      <tr><td><code>@wdio/cli</code></td><td>^9.27.0</td><td>E2E: WebdriverIO test runner</td></tr>
+    </tbody>
+  </table>
+
   <h2>Hot Reload Behaviour</h2>
   <p>electron-vite gives different HMR behaviour per process:</p>
   <ul>
@@ -402,6 +444,19 @@ npm install</code></pre>
     <li><strong>Main process</strong> — rebuilds and restarts the Electron process on save.</li>
     <li><strong>Preload</strong> — rebuilds and reloads the renderer window (triggers a soft reload, not a full Electron restart).</li>
   </ul>
+
+  <h2>ESLint 9 — Flat Config</h2>
+  <p>This project uses ESLint 9's flat config format. The config lives in <code>eslint.config.mjs</code> (not <code>.eslintrc.js</code>). It defines separate rule blocks per process:</p>
+  <table>
+    <thead><tr><th>Block targets</th><th>Key config</th></tr></thead>
+    <tbody>
+      <tr><td><code>src/main/**</code></td><td><code>globals.node</code> — no DOM globals</td></tr>
+      <tr><td><code>src/preload/**</code></td><td><code>globals.node + globals.browser</code>, <code>@typescript-eslint/ban-ts-comment</code> off</td></tr>
+      <tr><td><code>src/renderer/src/**</code> (non-test)</td><td><code>globals.browser</code>, React + React Hooks rules, <code>react-hooks/immutability</code> off</td></tr>
+      <tr><td><code>src/renderer/src/tests/**</code></td><td><code>globals.browser</code> + Vitest globals (<code>describe</code>, <code>it</code>, <code>expect</code>, <code>vi</code>, …)</td></tr>
+    </tbody>
+  </table>
+  <p><code>'no-undef': 'off'</code> is set for all TypeScript files — TypeScript itself handles undefined variable detection.</p>
 
   <h2>Environment Variables</h2>
   <table>
@@ -644,6 +699,26 @@ useInjectSaga({ key: 'myFeature', saga })</code></pre>
     <strong>Pattern</strong>
     Selectors always use <code>createSelector</code> from reselect. Export one selector per state field rather than one selector for the whole slice — this ensures components only re-render when their specific field changes.
   </div>
+
+  <h2>RTK Query (Optional)</h2>
+  <p><code>@reduxjs/toolkit@2.x</code> ships RTK Query — a data-fetching and caching layer built on top of Redux. It is available in this boilerplate without any additional dependencies.</p>
+  <p>Use RTK Query when you need automatic caching, request deduplication, and invalidation for REST endpoints. Use Redux-Saga when you need complex orchestration, SSE streams, or sequential multi-step async flows.</p>
+  <pre><code>// store/apiSlice.ts
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
+import { BASE_URL } from 'utils/constants'
+
+export const appApi = createApi({
+  reducerPath: 'appApi',
+  baseQuery: fetchBaseQuery({ baseUrl: BASE_URL }),
+  endpoints: (builder) =&gt; ({
+    getStatus: builder.query&lt;AppStatus, void&gt;({
+      query: () =&gt; '/api/status'
+    })
+  })
+})
+
+export const { useGetStatusQuery } = appApi</code></pre>
+  <p>Register <code>appApi.reducer</code> in <code>store/reducers.ts</code> and <code>appApi.middleware</code> in <code>configureStore.ts</code> to activate caching.</p>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════
@@ -872,20 +947,52 @@ return (
   <span class="section-num">Section 10</span>
   <h1 class="section-title">Styling (Tailwind CSS)</h1>
 
-  <h2>Custom Theme</h2>
-  <p>The design system extends Tailwind with three custom dark-UI colours defined in <code>tailwind.config.js</code>:</p>
+  <h2>Tailwind CSS 4 — What Changed</h2>
+  <p>Tailwind CSS 4 moves all configuration from JavaScript files into CSS. There is no longer a <code>tailwind.config.js</code> or <code>postcss.config.js</code>. The Vite plugin replaces PostCSS entirely.</p>
+
   <table>
-    <thead><tr><th>Token</th><th>Hex</th><th>Usage</th></tr></thead>
+    <thead><tr><th></th><th>Tailwind 3 (old)</th><th>Tailwind 4 (current)</th></tr></thead>
     <tbody>
-      <tr><td><code>bg-dark</code></td><td>#0f1117</td><td>App background, code blocks</td></tr>
-      <tr><td><code>bg-panel</code></td><td>#1a1d27</td><td>Cards, panels, sidebars</td></tr>
-      <tr><td><code>border-app-border</code></td><td>#2a2d3a</td><td>All borders and dividers</td></tr>
+      <tr><td>Config file</td><td><code>tailwind.config.js</code></td><td>Removed — config lives in CSS</td></tr>
+      <tr><td>PostCSS</td><td><code>postcss.config.js</code> required</td><td>Removed — use <code>@tailwindcss/vite</code> plugin</td></tr>
+      <tr><td>CSS entry</td><td><code>@tailwind base/components/utilities</code></td><td><code>@import "tailwindcss"</code></td></tr>
+      <tr><td>Custom theme</td><td><code>theme.extend</code> in JS config</td><td><code>@theme {}</code> block in CSS</td></tr>
+      <tr><td>Vite integration</td><td>via postcss plugin</td><td><code>import tailwindcss from '@tailwindcss/vite'</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2>Vite Plugin Setup</h2>
+  <p>The plugin is registered in <code>electron.vite.config.ts</code> under the renderer config:</p>
+  <pre><code>import tailwindcss from '@tailwindcss/vite'
+
+renderer: {
+  plugins: [react(), tailwindcss()]
+}</code></pre>
+
+  <h2>CSS Entry File — <code>src/renderer/src/index.css</code></h2>
+  <p>The CSS file is the single source of truth for both importing Tailwind and extending the design system:</p>
+  <pre><code>@import "tailwindcss";
+
+@theme {
+  --color-dark:       #0f1117;   /* app background, code blocks */
+  --color-panel:      #1a1d27;   /* cards, panels, sidebars    */
+  --color-app-border: #2a2d3a;   /* all borders and dividers   */
+}</code></pre>
+
+  <h2>Custom Theme Tokens</h2>
+  <p>Variables defined in <code>@theme {}</code> are automatically available as Tailwind utilities:</p>
+  <table>
+    <thead><tr><th>CSS variable</th><th>Utility classes</th><th>Usage</th></tr></thead>
+    <tbody>
+      <tr><td><code>--color-dark</code></td><td><code>bg-dark</code>, <code>text-dark</code></td><td>App background, code blocks</td></tr>
+      <tr><td><code>--color-panel</code></td><td><code>bg-panel</code>, <code>text-panel</code></td><td>Cards, panels, sidebars</td></tr>
+      <tr><td><code>--color-app-border</code></td><td><code>bg-app-border</code>, <code>border-app-border</code></td><td>All borders and dividers</td></tr>
     </tbody>
   </table>
 
   <div class="callout warn">
-    <strong>Important</strong>
-    The token is named <code>app-border</code>, not <code>border</code>. Using <code>border</code> as a colour key conflicts with Tailwind's built-in border-width utilities. Always use <code>border-app-border</code> for border colour and <code>bg-app-border</code> for hover backgrounds.
+    <strong>Token naming</strong>
+    The token is named <code>app-border</code>, not <code>border</code>. Using <code>border</code> as a colour name conflicts with Tailwind's built-in border-width utilities. Always use <code>border-app-border</code> for border colour.
   </div>
 
   <h2>Layout Conventions</h2>
@@ -898,14 +1005,6 @@ return (
     <li>Monospace values: <code>font-mono text-neutral-100</code></li>
   </ul>
 
-  <h2>Adding Global Styles</h2>
-  <p>Global styles go in <code>src/renderer/src/index.css</code>. The three Tailwind directives must stay at the top:</p>
-  <pre><code>@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* custom globals below */</code></pre>
-
   <h2>Component-Level Styles</h2>
   <p>Use Tailwind utility classes directly in JSX. For conditional classes, prefer array join over template literals:</p>
   <pre><code>className={[
@@ -914,6 +1013,18 @@ return (
     ? 'border-blue-500 text-blue-400'
     : 'border-app-border text-neutral-200'
 ].join(' ')}</code></pre>
+
+  <h2>Adding More Theme Tokens</h2>
+  <p>To extend the theme, add more CSS custom properties inside the <code>@theme {}</code> block in <code>index.css</code>. No JavaScript config changes are needed:</p>
+  <pre><code>@theme {
+  --color-dark: #0f1117;
+  --color-panel: #1a1d27;
+  --color-app-border: #2a2d3a;
+
+  /* Add new tokens here */
+  --color-accent: #2563eb;
+  --font-display: 'Inter', system-ui, sans-serif;
+}</code></pre>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════
@@ -926,7 +1037,11 @@ return (
   <p>Tests live inside the feature they test — in a <code>tests/</code> subfolder within the container or component directory. This keeps tests close to the source and easy to find.</p>
 
   <h2>Test Runner &amp; Setup</h2>
-  <p>Vitest is configured in <code>vitest.config.ts</code> with <code>jsdom</code> environment and Testing Library setup. The <code>globals: true</code> setting means no explicit imports of <code>describe</code>, <code>it</code>, or <code>expect</code> are needed.</p>
+  <p><strong>Vitest 4.1.1</strong> is configured in <code>vitest.config.ts</code> with <code>jsdom</code> environment and Testing Library setup. The <code>globals: true</code> setting means no explicit imports of <code>describe</code>, <code>it</code>, or <code>expect</code> are needed in test files.</p>
+  <div class="callout">
+    <strong>ESLint + Vitest globals</strong>
+    Even though Vitest injects globals at runtime, ESLint needs them declared separately. The <code>eslint.config.mjs</code> test block manually lists <code>describe</code>, <code>it</code>, <code>expect</code>, <code>vi</code>, etc. as read-only globals so no linting errors appear in test files.
+  </div>
 
   <h2>What to Test Per File</h2>
   <table>
@@ -995,6 +1110,148 @@ render(
   <h2>Coverage</h2>
   <pre><code>npm run test:coverage</code></pre>
   <p>Coverage reports are generated by <code>@vitest/coverage-v8</code> into a <code>coverage/</code> directory. Focus coverage on reducers and saga workers — these carry the business logic. Component snapshot tests are supplementary.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     15. E2E TESTING (WebdriverIO + wdio-electron-service)
+════════════════════════════════════════════════════════════════ -->
+<div class="page" id="s15">
+  <span class="section-num">Section 12</span>
+  <h1 class="section-title">E2E Testing — WebdriverIO + wdio-electron-service</h1>
+
+  <p>Unit tests (Vitest) cover reducers, sagas, and components in isolation. E2E tests launch the actual Electron binary and drive the live UI through ChromeDriver — catching integration failures that unit tests cannot.</p>
+
+  <h2>Stack</h2>
+  <table>
+    <thead><tr><th>Package</th><th>Version</th><th>Role</th></tr></thead>
+    <tbody>
+      <tr><td><code>@wdio/cli</code></td><td>^9.27.0</td><td>Test runner CLI (<code>wdio run</code>)</td></tr>
+      <tr><td><code>wdio-electron-service</code></td><td>^9.2.1</td><td>Launches the Electron binary + exposes <code>browser.electron.*</code> API</td></tr>
+      <tr><td><code>@wdio/local-runner</code></td><td>^9.27.0</td><td>Runs tests in the local process</td></tr>
+      <tr><td><code>@wdio/mocha-framework</code></td><td>^9.27.0</td><td>Mocha <code>describe/it</code> syntax</td></tr>
+      <tr><td><code>@wdio/spec-reporter</code></td><td>^9.27.0</td><td>Human-readable terminal output</td></tr>
+      <tr><td><code>@wdio/globals</code></td><td>^9.27.0</td><td>TypeScript types for <code>browser</code>, <code>$</code>, <code>$$</code>, <code>expect</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2>How It Works</h2>
+  <div class="flow">
+    <div class="flow-box"><code>npm run build</code><br><small style="font-weight:400">electron-vite → out/</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box"><code>wdio run wdio.config.ts</code></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">wdio-electron-service<br><small style="font-weight:400">spawns Electron binary</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">ChromeDriver<br><small style="font-weight:400">controls the window</small></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">E2E specs<br><small style="font-weight:400">e2e/tests/*.test.ts</small></div>
+  </div>
+
+  <div class="callout warn">
+    <strong>Build required before E2E</strong>
+    wdio-electron-service loads <code>out/main/index.js</code> — the compiled main process. Always run <code>npm run build</code> (or <code>npm run e2e:build</code>) before running tests. Tests against stale output will pass but test the wrong code.
+  </div>
+
+  <h2>Running E2E Tests</h2>
+  <pre><code># Build the app, then run E2E (recommended — single command)
+npm run e2e:build
+
+# Run E2E against an already-built out/ directory
+npm run e2e</code></pre>
+
+  <h2>Project Structure</h2>
+  <div class="tree">
+    <span class="dir">e2e/</span><br>
+    &nbsp;&nbsp;<span class="file">tsconfig.json</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># CommonJS TypeScript config for WDIO tests</span><br>
+    &nbsp;&nbsp;<span class="dir">tests/</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="file">app.test.ts</span>&nbsp;&nbsp;&nbsp;<span class="comment"># Smoke tests — launch, DOM, context bridge, window</span><br>
+    <span class="file">wdio.config.ts</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># WebdriverIO configuration (project root)</span><br>
+  </div>
+
+  <h2>wdio.config.ts — Key Settings</h2>
+  <pre><code>import { join } from 'node:path'
+const electronPath: string = require('electron')  // path to Electron binary
+
+capabilities: [{
+  browserName: 'electron',
+  'wdio:electronServiceOptions': {
+    appBinaryPath: electronPath,              // node_modules Electron
+    appArgs: [join(process.cwd(), 'out', 'main', 'index.js')],
+  },
+  // Linux: disable Chromium sandbox in non-privileged environments
+  ...(process.platform === 'linux' &amp;&amp; {
+    'goog:chromeOptions': { args: ['--no-sandbox', '--disable-dev-shm-usage'] }
+  })
+}]</code></pre>
+
+  <h2>Included Smoke Tests (<code>e2e/tests/app.test.ts</code>)</h2>
+  <table>
+    <thead><tr><th>Suite</th><th>Test</th><th>What it checks</th></tr></thead>
+    <tbody>
+      <tr><td rowspan="3"><strong>App launch</strong></td><td>Opens the main window</td><td><code>browser.getTitle()</code> === "Electron App"</td></tr>
+      <tr><td>Renders the React root</td><td><code>#root</code> element exists in the DOM</td></tr>
+      <tr><td>React content mounted</td><td><code>#root</code> has at least one child element</td></tr>
+      <tr><td rowspan="2"><strong>Context bridge</strong></td><td>Exposes <code>window.api</code></td><td><code>typeof window.api !== 'undefined'</code></td></tr>
+      <tr><td>All api methods present</td><td>openFile, saveFile, readFile, writeFile, backend methods</td></tr>
+      <tr><td rowspan="2"><strong>Electron metadata</strong></td><td>App name accessible</td><td><code>browser.electron.app('getName')</code> is a non-empty string</td></tr>
+      <tr><td>Version is semver</td><td><code>getVersion()</code> matches <code>/^\d+\.\d+\.\d+/</code></td></tr>
+      <tr><td rowspan="2"><strong>BrowserWindow</strong></td><td>Window is visible</td><td><code>browserWindow('isVisible')</code> === true</td></tr>
+      <tr><td>Has real dimensions</td><td><code>getBounds()</code> width and height > 0</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Writing New E2E Tests</h2>
+  <p>Add <code>.test.ts</code> files anywhere under <code>e2e/tests/</code>. WDIO auto-discovers them via the <code>specs</code> glob in <code>wdio.config.ts</code>.</p>
+
+  <h4>DOM queries — <code>$</code> / <code>$$</code></h4>
+  <pre><code>// Single element
+const btn = await $('button[data-testid="start"]')
+await btn.click()
+
+// Multiple elements
+const items = await $$('.list-item')
+expect(items.length).toBe(3)</code></pre>
+
+  <h4>Electron API calls — <code>browser.electron.*</code></h4>
+  <pre><code>// App-level calls
+const name    = await browser.electron.app('getName')
+const version = await browser.electron.app('getVersion')
+
+// BrowserWindow
+const isMax   = await browser.electron.browserWindow('isMaximized')
+const bounds  = await browser.electron.browserWindow('getBounds')
+
+// Execute arbitrary code in the main process
+await browser.electron.execute((electron) =&gt; {
+  electron.BrowserWindow.getAllWindows()[0].setTitle('Test Mode')
+})</code></pre>
+
+  <h4>Renderer-side execute</h4>
+  <pre><code>// Run code inside the renderer (Chromium) context
+const storeState = await browser.execute(() =&gt; {
+  // window.__reduxStore is not exposed by default — this is illustrative
+  return document.title
+})</code></pre>
+
+  <div class="callout">
+    <strong>Test isolation</strong>
+    Each <code>describe</code> block shares the same Electron window. Use <code>beforeEach</code>/<code>afterEach</code> to reset state between tests (e.g. dispatch a Redux reset action via <code>browser.execute</code>, or navigate back to home). Do not rely on test order.
+  </div>
+
+  <h2>TypeScript in E2E Tests</h2>
+  <p><code>e2e/tsconfig.json</code> uses <code>"module": "CommonJS"</code> and <code>"moduleResolution": "node"</code> — different from the main source, which uses ESM. WDIO 9 compiles test files via <code>tsx</code> automatically; no <code>ts-node</code> is needed. The <code>@wdio/globals/types</code> type reference makes <code>browser</code>, <code>$</code>, <code>$$</code>, and <code>expect</code> available without explicit imports.</p>
+
+  <h2>CI Integration</h2>
+  <pre><code># In a GitHub Actions or CI pipeline (Linux):
+- name: Build app
+  run: npm run build
+
+- name: Run E2E tests
+  run: npm run e2e
+  env:
+    # wdio-electron-service reads this to bypass sandbox checks on CI
+    ELECTRON_DISABLE_SANDBOX: '1'</code></pre>
+  <p>For headless CI, add <code>--headless=new</code> and <code>--disable-gpu</code> to <code>goog:chromeOptions.args</code>.</p>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════
