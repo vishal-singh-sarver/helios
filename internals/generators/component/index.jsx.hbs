@@ -1,0 +1,29 @@
+{{#if memo}}
+import React, { memo } from 'react'
+{{else}}
+import React from 'react'
+{{/if}}
+{{#if wantMessages}}
+import messages from './messages'
+{{/if}}
+
+interface {{ properCase name }}Props {
+  children?: React.ReactNode
+}
+
+function {{ properCase name }}({ children }: {{ properCase name }}Props): React.JSX.Element {
+  return (
+    <div className="flex flex-col gap-2">
+      {{#if wantMessages}}
+      <span className="text-neutral-200">{messages.header}</span>
+      {{/if}}
+      {children}
+    </div>
+  )
+}
+
+{{#if memo}}
+export default memo({{ properCase name }})
+{{else}}
+export default {{ properCase name }}
+{{/if}}

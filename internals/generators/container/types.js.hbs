@@ -1,0 +1,13 @@
+// Domain types — imported by both actions.ts and reducer.ts to avoid circular deps
+
+export interface {{ properCase name }}Status {
+  // TODO: define status fields
+  version: string
+  uptime: number
+}
+
+export interface {{ properCase name }}StreamEvent {
+  type: string
+  data: unknown
+  timestamp: number
+}

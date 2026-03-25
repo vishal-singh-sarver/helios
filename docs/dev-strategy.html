@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Electron Desktop Boilerplate — Development Strategy</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.65;
+    color: #1a1a2e;
+    background: #fff;
+  }
+
+  /* ── Cover page ── */
+  .cover {
+    page-break-after: always;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 60px 72px;
+    background: linear-gradient(135deg, #0f1117 0%, #1a1d27 100%);
+    color: #fff;
+  }
+  .cover-label {
+    font-size: 9pt;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #6c8ebf;
+    margin-bottom: 24px;
+    font-weight: 600;
+  }
+  .cover h1 {
+    font-size: 34pt;
+    font-weight: 700;
+    line-height: 1.15;
+    color: #e8eaf0;
+    margin-bottom: 16px;
+  }
+  .cover h1 span { color: #5b9bd5; }
+  .cover-sub {
+    font-size: 13pt;
+    color: #9aa5b4;
+    max-width: 520px;
+    line-height: 1.5;
+    margin-bottom: 48px;
+  }
+  .cover-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 48px;
+    font-size: 9pt;
+    color: #9aa5b4;
+  }
+  .cover-meta dt { color: #6c8ebf; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+  .cover-meta dd { color: #c8d0dc; margin-top: 2px; }
+
+  /* ── Table of contents ── */
+  .toc-page {
+    page-break-after: always;
+    padding: 60px 72px;
+  }
+  .toc-page h2 { font-size: 22pt; color: #0f1117; margin-bottom: 32px; font-weight: 700; }
+  .toc-section { margin-bottom: 6px; }
+  .toc-section a {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    text-decoration: none;
+    color: #1a1a2e;
+    font-size: 10.5pt;
+    padding: 4px 0;
+    border-bottom: 1px dotted #d0d7e0;
+  }
+  .toc-section a:hover { color: #2563eb; }
+  .toc-section .toc-num { color: #6b7280; font-size: 9pt; }
+  .toc-group { margin-top: 20px; margin-bottom: 8px; font-size: 8pt; letter-spacing: 2px; text-transform: uppercase; color: #6c8ebf; font-weight: 700; }
+
+  /* ── Content pages ── */
+  .page {
+    padding: 56px 72px;
+    page-break-after: always;
+  }
+  .page:last-of-type { page-break-after: auto; }
+
+  /* ── Headings ── */
+  h1.section-title {
+    font-size: 24pt;
+    font-weight: 700;
+    color: #0f1117;
+    margin-bottom: 6px;
+    padding-bottom: 12px;
+    border-bottom: 3px solid #2563eb;
+  }
+  .section-num {
+    font-size: 9pt;
+    color: #2563eb;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 8px;
+    display: block;
+  }
+  h2 {
+    font-size: 14pt;
+    font-weight: 700;
+    color: #0f1117;
+    margin-top: 32px;
+    margin-bottom: 10px;
+  }
+  h3 {
+    font-size: 11pt;
+    font-weight: 700;
+    color: #2563eb;
+    margin-top: 22px;
+    margin-bottom: 8px;
+  }
+  h4 {
+    font-size: 10pt;
+    font-weight: 700;
+    color: #374151;
+    margin-top: 16px;
+    margin-bottom: 6px;
+  }
+
+  /* ── Body text ── */
+  p { margin-bottom: 10px; color: #374151; }
+  ul, ol { margin: 0 0 12px 20px; color: #374151; }
+  li { margin-bottom: 4px; }
+  li p { margin-bottom: 0; }
+
+  /* ── Code ── */
+  code {
+    font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+    font-size: 8.5pt;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 3px;
+    padding: 1px 5px;
+    color: #be185d;
+  }
+  pre {
+    background: #0f1117;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 12px 0 16px;
+    overflow: hidden;
+  }
+  pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    color: #e2e8f0;
+    font-size: 8pt;
+    line-height: 1.6;
+  }
+
+  /* ── Callout boxes ── */
+  .callout {
+    border-left: 4px solid #2563eb;
+    background: #eff6ff;
+    border-radius: 0 6px 6px 0;
+    padding: 12px 16px;
+    margin: 14px 0;
+    font-size: 9.5pt;
+    color: #1e40af;
+  }
+  .callout.warn {
+    border-color: #d97706;
+    background: #fffbeb;
+    color: #92400e;
+  }
+  .callout.success {
+    border-color: #059669;
+    background: #ecfdf5;
+    color: #065f46;
+  }
+  .callout strong { display: block; margin-bottom: 4px; font-size: 9pt; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* ── Tables ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0 18px;
+    font-size: 9.5pt;
+  }
+  thead th {
+    background: #0f1117;
+    color: #e2e8f0;
+    padding: 8px 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 9pt;
+  }
+  tbody tr:nth-child(even) { background: #f8fafc; }
+  tbody td {
+    padding: 7px 12px;
+    border-bottom: 1px solid #e2e8f0;
+    color: #374151;
+    vertical-align: top;
+  }
+  tbody td code { font-size: 8pt; }
+
+  /* ── File tree ── */
+  .tree {
+    background: #0f1117;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 12px 0;
+    font-family: 'Fira Code', monospace;
+    font-size: 8pt;
+    color: #9aa5b4;
+    line-height: 1.8;
+  }
+  .tree .dir { color: #5b9bd5; font-weight: 600; }
+  .tree .file { color: #c8d0dc; }
+  .tree .comment { color: #4a5568; font-style: italic; }
+
+  /* ── Badge chips ── */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 100px;
+    font-size: 8pt;
+    font-weight: 600;
+    margin-right: 4px;
+  }
+  .badge-blue { background: #dbeafe; color: #1e40af; }
+  .badge-green { background: #d1fae5; color: #065f46; }
+  .badge-yellow { background: #fef3c7; color: #92400e; }
+  .badge-red { background: #fee2e2; color: #991b1b; }
+
+  /* ── Flow diagram ── */
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 14px 0;
+    font-size: 9pt;
+  }
+  .flow-box {
+    background: #eff6ff;
+    border: 1.5px solid #bfdbfe;
+    border-radius: 6px;
+    padding: 6px 14px;
+    color: #1e40af;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .flow-arrow { color: #6b7280; font-size: 14pt; line-height: 1; }
+
+  /* ── Section divider ── */
+  .divider {
+    height: 1px;
+    background: linear-gradient(to right, #2563eb, transparent);
+    margin: 28px 0;
+  }
+
+  /* ── Print ── */
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .page { page-break-after: always; }
+    a { color: inherit; text-decoration: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     COVER
+════════════════════════════════════════════════════════════════ -->
+<div class="cover">
+  <div class="cover-label">Technical Reference &amp; Developer Guide</div>
+  <h1>Electron Desktop<br><span>Boilerplate</span></h1>
+  <p class="cover-sub">Development strategy, module architecture, and implementation guidance for building production-grade Electron desktop applications with React, Redux-Saga, TypeScript, and Tailwind CSS.</p>
+  <dl class="cover-meta">
+    <div><dt>Version</dt><dd>1.0.0</dd></div>
+    <div><dt>Stack</dt><dd>Electron · React · Redux · TypeScript</dd></div>
+    <div><dt>Build Tool</dt><dd>electron-vite · Vite 5</dd></div>
+    <div><dt>Test Runner</dt><dd>Vitest · Testing Library</dd></div>
+  </dl>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     TABLE OF CONTENTS
+════════════════════════════════════════════════════════════════ -->
+<div class="toc-page">
+  <h2>Contents</h2>
+
+  <div class="toc-group">Foundation</div>
+  <div class="toc-section"><a href="#s1"><span>1. Project Architecture Overview</span><span class="toc-num">3</span></a></div>
+  <div class="toc-section"><a href="#s2"><span>2. Development Environment Setup</span><span class="toc-num">4</span></a></div>
+  <div class="toc-section"><a href="#s3"><span>3. TypeScript Configuration</span><span class="toc-num">5</span></a></div>
+
+  <div class="toc-group">Core Modules</div>
+  <div class="toc-section"><a href="#s4"><span>4. Main Process (Electron)</span><span class="toc-num">6</span></a></div>
+  <div class="toc-section"><a href="#s5"><span>5. Preload / IPC Bridge</span><span class="toc-num">7</span></a></div>
+  <div class="toc-section"><a href="#s6"><span>6. Redux Store &amp; State Management</span><span class="toc-num">8</span></a></div>
+  <div class="toc-section"><a href="#s7"><span>7. Containers (Connected Screens)</span><span class="toc-num">10</span></a></div>
+  <div class="toc-section"><a href="#s8"><span>8. API &amp; SSE Utilities</span><span class="toc-num">12</span></a></div>
+  <div class="toc-section"><a href="#s9"><span>9. Navigation System</span><span class="toc-num">14</span></a></div>
+  <div class="toc-section"><a href="#s10"><span>10. Styling (Tailwind CSS)</span><span class="toc-num">15</span></a></div>
+
+  <div class="toc-group">Quality &amp; Workflow</div>
+  <div class="toc-section"><a href="#s11"><span>11. Testing Strategy</span><span class="toc-num">16</span></a></div>
+  <div class="toc-section"><a href="#s12"><span>12. Code Generation (Plop)</span><span class="toc-num">18</span></a></div>
+  <div class="toc-section"><a href="#s13"><span>13. Build &amp; Packaging</span><span class="toc-num">19</span></a></div>
+  <div class="toc-section"><a href="#s14"><span>14. Adding a New Feature — End-to-End Workflow</span><span class="toc-num">20</span></a></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     1. ARCHITECTURE OVERVIEW
+════════════════════════════════════════════════════════════════ -->
+<div class="page" id="s1">
+  <span class="section-num">Section 01</span>
+  <h1 class="section-title">Project Architecture Overview</h1>
+
+  <p>The boilerplate follows Electron's three-process model and maps each process to a separate TypeScript compilation unit. Each process has strict boundaries — they communicate only through defined IPC channels.</p>
+
+  <div class="flow">
+    <div class="flow-box">Main Process<br><small style="font-weight:400;color:#3b82f6">src/main/index.ts</small></div>
+    <div class="flow-arrow">⇄</div>
+    <div class="flow-box">Preload Script<br><small style="font-weight:400;color:#3b82f6">src/preload/index.ts</small></div>
+    <div class="flow-arrow">⇄</div>
+    <div class="flow-box">Renderer Process<br><small style="font-weight:400;color:#3b82f6">src/renderer/src/</small></div>
+  </div>
+
+  <h2>Process Responsibilities</h2>
+  <table>
+    <thead><tr><th>Process</th><th>Runtime</th><th>Responsibilities</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Main</strong></td><td>Node.js</td><td>Window lifecycle, IPC handler registration, file system access, native dialogs, backend process management</td></tr>
+      <tr><td><strong>Preload</strong></td><td>Renderer + Node access</td><td>Context bridge — translates IPC calls into a typed <code>window.api</code> object; enforces the security boundary</td></tr>
+      <tr><td><strong>Renderer</strong></td><td>Chromium</td><td>All UI — React, Redux state, sagas, API calls, and SSE streaming</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Renderer Architecture</h2>
+  <p>The renderer is a React application structured around Redux with dynamic injection. The key design decisions are:</p>
+  <ul>
+    <li><strong>No React Router</strong> — navigation is driven by a Redux slice (<code>navigationReducer</code>). Screens are rendered conditionally in <code>App.tsx</code>.</li>
+    <li><strong>Dynamic reducer/saga injection</strong> — each container injects its own reducer and saga on mount. This keeps the store lean and supports lazy loading.</li>
+    <li><strong>Containers vs Components</strong> — containers own state and side effects; components are pure UI.</li>
+    <li><strong>Saga for all async</strong> — HTTP requests and SSE streams are managed by sagas, never in components or thunks.</li>
+  </ul>
+
+  <div class="tree">
+    <span class="dir">src/</span><br>
+    &nbsp;&nbsp;<span class="dir">main/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Electron main process (Node.js)</span><br>
+    &nbsp;&nbsp;<span class="dir">preload/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Context bridge</span><br>
+    &nbsp;&nbsp;<span class="dir">renderer/src/</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">store/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Redux store, navigation</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">containers/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Screen-level Redux containers</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">components/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Pure UI components</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="dir">utils/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># api.ts, sse.ts, inject hooks</span><br>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     2. DEVELOPMENT ENVIRONMENT SETUP
+════════════════════════════════════════════════════════════════ -->
+<div class="page" id="s2">
+  <span class="section-num">Section 02</span>
+  <h1 class="section-title">Development Environment Setup</h1>
+
+  <h2>Initial Setup</h2>
+  <pre><code>git clone &lt;repo-url&gt;
+cd electron-desktop-boilerplate
+npm install</code></pre>
+
+  <div class="callout warn">
+    <strong>Linux — Sandbox Permissions</strong>
+    Electron requires the <code>chrome-sandbox</code> binary to be owned by root with setuid. Run once after install:<br><br>
+    <code>sudo chown root:root node_modules/electron/dist/chrome-sandbox</code><br>
+    <code>sudo chmod 4755 node_modules/electron/dist/chrome-sandbox</code><br><br>
+    If sudo is unavailable, the <code>dev</code> script includes <code>--no-sandbox</code> as a fallback. This is safe for local development only.
+  </div>
+
+  <h2>Daily Development Commands</h2>
+  <table>
+    <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td><code>npm run dev</code></td><td>Start electron-vite dev mode. Builds main + preload, starts renderer HMR dev server at <code>localhost:5173</code>, launches the Electron window.</td></tr>
+      <tr><td><code>npm test</code></td><td>Run all Vitest tests once.</td></tr>
+      <tr><td><code>npm run test:watch</code></td><td>Vitest in watch mode — re-runs on file changes.</td></tr>
+      <tr><td><code>npm run generate</code></td><td>Plop scaffolding — creates a new container or component.</td></tr>
+      <tr><td><code>npm run lint</code></td><td>ESLint across all <code>.ts/.tsx</code> files.</td></tr>
+      <tr><td><code>npm run format</code></td><td>Prettier format.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Hot Reload Behaviour</h2>
+  <p>electron-vite gives different HMR behaviour per process:</p>
+  <ul>
+    <li><strong>Renderer</strong> — full Vite HMR. Component changes reflect instantly without restarting Electron.</li>
+    <li><strong>Main process</strong> — rebuilds and restarts the Electron process on save.</li>
+    <li><strong>Preload</strong> — rebuilds and reloads the renderer window (triggers a soft reload, not a full Electron restart).</li>
+  </ul>
+
+  <h2>Environment Variables</h2>
+  <table>
+    <thead><tr><th>Variable</th><th>Used by</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>ELECTRON_RENDERER_URL</code></td><td>Main process</td><td>Set by electron-vite in dev; tells main to <code>loadURL</code> instead of <code>loadFile</code>.</td></tr>
+      <tr><td><code>window.__APP_BASE_URL__</code></td><td>Renderer</td><td>Override the backend base URL at runtime. Defaults to <code>http://localhost:8000</code>.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     3. TYPESCRIPT CONFIGURATION
+════════════════════════════════════════════════════════════════ -->
+<div class="page" id="s3">
+  <span class="section-num">Section 03</span>
+  <h1 class="section-title">TypeScript Configuration</h1>
+
+  <p>The project uses TypeScript project references — a root <code>tsconfig.json</code> that delegates to two distinct configs, one per Electron process.</p>
+
+  <table>
+    <thead><tr><th>File</th><th>Covers</th><th>Key settings</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>tsconfig.node.json</code></td>
+        <td><code>src/main/</code>, <code>src/preload/</code></td>
+        <td>No DOM lib, <code>@types/node</code>, Node-compatible module resolution</td>
+      </tr>
+      <tr>
+        <td><code>tsconfig.web.json</code></td>
+        <td><code>src/renderer/src/</code></td>
+        <td>DOM lib, <code>jsx: react-jsx</code>, path aliases, <code>vitest/globals</code> types</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Path Aliases (Renderer)</h2>
+  <p>These aliases are configured in both <code>tsconfig.web.json</code> and <code>electron.vite.config.ts</code> so they work at compile time and at bundle time:</p>
+  <table>
+    <thead><tr><th>Alias</th><th>Resolves to</th></tr></thead>
+    <tbody>
+      <tr><td><code>utils/*</code></td><td><code>src/renderer/src/utils/*</code></td></tr>
+      <tr><td><code>store/*</code></td><td><code>src/renderer/src/store/*</code></td></tr>
+      <tr><td><code>containers/*</code></td><td><code>src/renderer/src/containers/*</code></td></tr>
+      <tr><td><code>components/*</code></td><td><code>src/renderer/src/components/*</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2>Strict Mode</h2>
+  <p>Both tsconfigs enable <code>"strict": true</code>. This means:</p>
+  <ul>
+    <li><strong>Generator functions</strong> — add <code>: Generator</code> return type and cast all <code>yield</code> results explicitly: <code>(yield call(...)) as MyType</code></li>
+    <li><strong>Redux actions</strong> — use <code>UnknownAction</code> instead of the deprecated <code>AnyAction</code></li>
+    <li><strong>Immer</strong> — use the named export: <code>import { produce } from 'immer'</code></li>
+    <li><strong>Unused variables</strong> — prefix intentionally unused parameters with <code>_</code></li>
+  </ul>
+
+  <div class="callout">
+    <strong>Rule</strong>
+    Never use <code>moduleResolution: "bundler"</code> — it breaks subpath exports like <code>redux-saga/effects</code>. Keep <code>"moduleResolution": "node"</code> in <code>tsconfig.web.json</code>.
+  </div>
+
+  <h2>Global Type Declarations</h2>
+  <p><code>src/renderer/src/env.d.ts</code> declares the <code>Window</code> augmentation for <code>window.api</code>. Any new IPC methods added to the preload must be reflected here so the renderer has full type safety when calling them.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     4. MAIN PROCESS
+════════════════════════════════════════════════════════════════ -->
+<div class="page" id="s4">
+  <span class="section-num">Section 04</span>
+  <h1 class="section-title">Main Process</h1>
+
+  <p>The main process is the Node.js host for the Electron app. It owns all privileged operations: native OS dialogs, file system access, window management, and backend subprocess control.</p>
+
+  <h2>File: <code>src/main/index.ts</code></h2>
+
+  <h3>Window Creation</h3>
+  <p>The <code>createWindow()</code> function creates the <code>BrowserWindow</code> with <code>show: false</code> to prevent a white flash — the window reveals itself on <code>ready-to-show</code>. The preload path is wired here:</p>
+  <pre><code>webPreferences: {
+  preload: join(__dirname, '../preload/index.js'),
+  sandbox: false  // required for contextBridge + Node access in preload
+}</code></pre>
+
+  <h3>Dev vs Production Loading</h3>
+  <pre><code>const isDev = !app.isPackaged
+
+if (isDev &amp;&amp; process.env['ELECTRON_RENDERER_URL']) {
+  mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])  // Vite dev server
+} else {
+  mainWindow.loadFile(join(__dirname, '../renderer/index.html'))  // built file
+}</code></pre>
+
+  <h3>IPC Handler Registration</h3>
+  <p>All <code>ipcMain.handle()</code> calls must be registered <strong>before</strong> <code>app.whenReady()</code> completes, so that the renderer can call them as soon as the window loads.</p>
+
+  <table>
+    <thead><tr><th>Channel</th><th>Handler</th><th>Returns</th></tr></thead>
+    <tbody>
+      <tr><td><code>dialog:openFile</code></td><td>Opens native file picker</td><td><code>string | null</code> (path)</td></tr>
+      <tr><td><code>dialog:saveFile</code></td><td>Opens native save dialog</td><td><code>string | null</code> (path)</td></tr>
+      <tr><td><code>fs:readFile</code></td><td>Reads file contents</td><td><code>string</code></td></tr>
+      <tr><td><code>fs:writeFile</code></td><td>Writes content to file</td><td><code>void</code></td></tr>
+      <tr><td><code>backend:getStatus</code></td><td>Stub — return process state</td><td><code>{ running, pid }</code></td></tr>
+      <tr><td><code>backend:start</code></td><td>Stub — spawn backend</td><td><code>{ ok }</code></td></tr>
+      <tr><td><code>backend:stop</code></td><td>Stub — kill backend</td><td><code>{ ok }</code></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Adding a New IPC Handler</h3>
+  <p>The pattern is always the same — add in main, expose in preload, call from renderer:</p>
+  <pre><code>// 1. src/main/index.ts
+ipcMain.handle('myFeature:doSomething', async (_event, arg: string) =&gt; {
+  // privileged operation
+  return result
+})
+
+// 2. src/preload/index.ts — add to the api object
+doSomething: (arg: string): Promise&lt;Result&gt; =&gt;
+  ipcRenderer.invoke('myFeature:doSomething', arg),
+
+// 3. src/renderer/src/env.d.ts — add to Window.api type
+doSomething: (arg: string) =&gt; Promise&lt;Result&gt;
+
+// 4. Renderer usage
+const result = await window.api.doSomething('value')</code></pre>
+
+  <div class="callout warn">
+    <strong>Security Note</strong>
+    Never use <code>ipcRenderer.sendSync</code> — it blocks the renderer. Always use <code>ipcMain.handle</code> / <code>ipcRenderer.invoke</code> (async request-response). Never expose Node.js modules directly through the context bridge.
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     5. PRELOAD / IPC BRIDGE
+════════════════════════════════════════════════════════════════ -->
+<div class="page" id="s5">
+  <span class="section-num">Section 05</span>
+  <h1 class="section-title">Preload / IPC Bridge</h1>
+
+  <p>The preload script is the security boundary between the untrusted renderer and privileged main process code. It runs with access to both Node.js APIs and the DOM, but exposes only an explicitly typed surface.</p>
+
+  <h2>File: <code>src/preload/index.ts</code></h2>
+  <p>The preload builds the <code>api</code> object and exposes it via <code>contextBridge.exposeInMainWorld('api', api)</code>. After this, the renderer accesses it as <code>window.api</code>.</p>
+
+  <pre><code>const api = {
+  openFile:        (filters) =&gt; ipcRenderer.invoke('dialog:openFile', filters),
+  saveFile:        (filters, defaultPath?) =&gt; ipcRenderer.invoke('dialog:saveFile', filters, defaultPath),
+  readFile:        (filePath) =&gt; ipcRenderer.invoke('fs:readFile', filePath),
+  writeFile:       (filePath, content) =&gt; ipcRenderer.invoke('fs:writeFile', filePath, content),
+  getBackendStatus:() =&gt; ipcRenderer.invoke('backend:getStatus'),
+  startBackend:    () =&gt; ipcRenderer.invoke('backend:start'),
+  stopBackend:     () =&gt; ipcRenderer.invoke('backend:stop')
+}</code></pre>
+
+  <h2>Type Safety in the Renderer</h2>
+  <p><code>src/renderer/src/env.d.ts</code> augments the global <code>Window</code> interface. Keep this file in sync with the preload — every method in <code>api</code> must have a matching type declaration here.</p>
+
+  <pre><code>declare global {
+  interface Window {
+    api: {
+      openFile: (filters: FileFilter[]) =&gt; Promise&lt;string | null&gt;
+      // ... all methods typed
+    }
+  }
+}</code></pre>
+
+  <h2>Context Isolation</h2>
+  <p>Context isolation is enabled by default (<code>contextIsolation: true</code>). The preload handles the fallback for non-isolated contexts (legacy mode) with a <code>try/catch</code> around <code>exposeInMainWorld</code>. Do not disable context isolation in production.</p>
+
+  <h2>Development Guidance</h2>
+  <ul>
+    <li>Only wrap <code>ipcRenderer.invoke</code> calls — never pass raw <code>ipcRenderer</code> to the renderer.</li>
+    <li>Validate or sanitise arguments inside the <code>ipcMain.handle</code> handler, not in the preload.</li>
+    <li>For event-based IPC (push from main to renderer), use <code>ipcRenderer.on</code> in preload and expose a subscription function, not the raw emitter.</li>
+    <li>Keep the preload thin — it is a bridge, not a business logic layer.</li>
+  </ul>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     6. REDUX STORE & STATE MANAGEMENT
+════════════════════════════════════════════════════════════════ -->
+<div class="page" id="s6">
+  <span class="section-num">Section 06</span>
+  <h1 class="section-title">Redux Store &amp; State Management</h1>
+
+  <h2>Store Configuration — <code>store/configureStore.ts</code></h2>
+  <p>The store is enhanced with two custom capabilities:</p>
+  <ul>
+    <li><code>injectedReducers</code> — a registry of dynamically added reducers</li>
+    <li><code>injectedSagas</code> — a registry of running saga tasks</li>
+    <li><code>runSaga</code> — bound saga middleware runner</li>
+    <li><code>createReducer()</code> — rebuilds the root reducer by combining static + injected slices</li>
+  </ul>
+
+  <pre><code>export interface InjectableStore extends Store&lt;unknown, UnknownAction&gt; {
+  injectedReducers: Record&lt;string, Reducer&gt;
+  injectedSagas:    Record&lt;string, Task&gt;
+  runSaga:          SagaMiddleware['run']
+  createReducer:    () =&gt; Reducer
+}</code></pre>
+
+  <h2>Root Reducer — <code>store/reducers.ts</code></h2>
+  <p>The only statically-mounted slice is <code>navigation</code>. All feature slices (containers) are injected dynamically. The <code>RootState</code> type is derived from the reducer factory:</p>
+  <pre><code>export type RootState = ReturnType&lt;ReturnType&lt;typeof createReducer&gt;&gt;</code></pre>
+  <p>Because dynamic slices are not in the static type, always cast dynamically injected state as <code>(state as any).sliceName</code> in selectors, as shown in the container pattern.</p>
+
+  <h2>Navigation Reducer — <code>store/navigationReducer.ts</code></h2>
+  <p>Replaces React Router. Add new screen names to the <code>Screen</code> union to extend navigation:</p>
+  <pre><code>type Screen = 'home' | 'project' | 'settings'  // extend here
+
+const navigationReducer = createSlice({
+  name: 'navigation',
+  initialState: { screen: 'home' as Screen },
+  reducers: {
+    navigate: (state, action: PayloadAction&lt;Screen&gt;) =&gt; {
+      state.screen = action.payload
+    }
+  }
+})</code></pre>
+
+  <h2>Dynamic Injection Hooks</h2>
+  <p>Each container mounts its own slice on startup via two hooks:</p>
+  <pre><code>// Inside container component:
+useInjectReducer({ key: 'myFeature', reducer })
+useInjectSaga({ key: 'myFeature', saga })</code></pre>
+  <p>The hooks check if the slice is already injected (idempotent) so re-renders are safe. Sagas are started with <code>takeLatest</code> protection through the root watcher pattern, and are cancelled automatically when a new saga with the same key is injected.</p>
+
+  <h2>Redux Version Compatibility</h2>
+  <table>
+    <thead><tr><th>Old (deprecated)</th><th>Current (Redux 5)</th></tr></thead>
+    <tbody>
+      <tr><td><code>AnyAction</code></td><td><code>UnknownAction</code></td></tr>
+      <tr><td><code>import produce from 'immer'</code></td><td><code>import { produce } from 'immer'</code></td></tr>
+      <tr><td><code>createStore</code></td><td><code>configureStore</code> (Redux Toolkit) or manual store</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout success">
+    <strong>Pattern</strong>
+    Selectors always use <code>createSelector</code> from reselect. Export one selector per state field rather than one selector for the whole slice — this ensures components only re-render when their specific field changes.
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     7. CONTAINERS
+════════════════════════════════════════════════════════════════ -->
+<div class="page" id="s7">
+  <span class="section-num">Section 07</span>
+  <h1 class="section-title">Containers (Connected Screens)</h1>
+
+  <p>A container is a self-contained Redux feature unit. Every container owns its own slice of the store and all the code that manages it. The file structure is fixed by convention:</p>
+
+  <div class="tree">
+    <span class="dir">containers/FeatureName/</span><br>
+    &nbsp;&nbsp;<span class="file">types.ts</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Domain types — AppStatus, StreamEvent, etc.</span><br>
+    &nbsp;&nbsp;<span class="file">constants.ts</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Action type string constants</span><br>
+    &nbsp;&nbsp;<span class="file">actions.ts</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Action interfaces + creator functions</span><br>
+    &nbsp;&nbsp;<span class="file">reducer.ts</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Immer reducer + state shape + initialState</span><br>
+    &nbsp;&nbsp;<span class="file">saga.ts</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># REST workers + SSE workers + root watcher</span><br>
+    &nbsp;&nbsp;<span class="file">selectors.ts</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># One memoised selector per state field</span><br>
+    &nbsp;&nbsp;<span class="file">index.tsx</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># React component — useSelector + useDispatch hooks</span><br>
+    &nbsp;&nbsp;<span class="dir">tests/</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="file">actions.test.ts</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="file">reducer.test.ts</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="file">saga.test.ts</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="file">selectors.test.ts</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="file">index.test.tsx</span><br>
+  </div>
+
+  <h2>types.ts — Domain Types</h2>
+  <p>Extract shared domain types here to avoid circular imports between <code>actions.ts</code> and <code>reducer.ts</code>. Both files import from <code>types.ts</code>:</p>
+  <pre><code>export interface AppStatus { version: string; uptime: number }
+export interface StreamEvent { type: string; data: unknown; timestamp: number }</code></pre>
+
+  <h2>actions.ts — Action Creators</h2>
+  <p>Define interfaces for each action then create a union type used by the reducer:</p>
+  <pre><code>export type MyFeatureAction =
+  | FetchStatusAction
+  | FetchStatusSuccessAction
+  | FetchStatusFailureAction
+  | SseConnectAction
+  | SseEventAction
+  | SseDisconnectAction</code></pre>
+
+  <h2>reducer.ts — State &amp; Reducer</h2>
+  <p>State has two groups of fields — REST and SSE. Use Immer's <code>produce</code> (named export) for all mutations:</p>
+  <pre><code>export interface FeatureState {
+  // REST
+  status:  AppStatus | null
+  loading: boolean
+  error:   string | null
+  // SSE
+  streaming: boolean
+  streamLog: StreamEvent[]
+}</code></pre>
+
+  <h2>saga.ts — Workers and Watcher</h2>
+  <p>The saga file always contains three things: a REST worker, an SSE worker, and a root watcher:</p>
+  <pre><code>export function* fetchStatusWorker(): Generator {
+  try {
+    const data = (yield call(api.get&lt;AppStatus&gt;, '/api/status')) as AppStatus
+    yield put(actions.fetchStatusSuccess(data))
+  } catch (err) {
+    yield put(actions.fetchStatusFailure((err as Error).message))
+  }
+}
+
+export default function* featureSaga(): Generator {
+  yield takeLatest(FETCH_STATUS, fetchStatusWorker)
+  yield takeLatest(SSE_CONNECT, sseWorker)
+}</code></pre>
+  <p>Export workers (not just the default watcher) so tests can step through them directly.</p>
+
+  <h2>index.tsx — The Component</h2>
+  <p>Components use hooks only — never the <code>connect()</code> HOC:</p>
+  <pre><code>export function MyFeature(): React.JSX.Element {
+  useInjectReducer({ key: 'myFeature', reducer })
+  useInjectSaga({ key: 'myFeature', saga })
+
+  const dispatch = useDispatch()
+  const status   = useSelector(selectStatus)
+  const loading  = useSelector(selectLoading)
+
+  useEffect(() =&gt; { dispatch(actions.fetchStatus()) }, [dispatch])
+  // ...
+}</code></pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     8. API & SSE UTILITIES
+════════════════════════════════════════════════════════════════ -->
+<div class="page" id="s8">
+  <span class="section-num">Section 08</span>
+  <h1 class="section-title">API &amp; SSE Utilities</h1>
+
+  <h2>utils/constants.ts — Base URL</h2>
+  <pre><code>export const BASE_URL =
+  (window as any).__APP_BASE_URL__ ?? 'http://localhost:8000'</code></pre>
+  <p>Override at runtime by setting <code>window.__APP_BASE_URL__</code> before the app loads — useful for staging environments or when the backend port is dynamic.</p>
+
+  <h2>utils/api.ts — HTTP Client</h2>
+  <p>A thin wrapper around <code>fetch</code> that prepends <code>BASE_URL</code>, sets JSON headers, and throws a typed <code>ApiError</code> on non-2xx responses:</p>
+
+  <pre><code>export class ApiError extends Error {
+  constructor(public readonly status: number, message: string) {
+    super(message)
+  }
+}
+
+export const api = {
+  get:    &lt;T&gt;(path: string) =&gt; request&lt;T&gt;('GET', path),
+  post:   &lt;T&gt;(path: string, body?: unknown) =&gt; request&lt;T&gt;('POST', path, body),
+  put:    &lt;T&gt;(path: string, body?: unknown) =&gt; request&lt;T&gt;('PUT', path, body),
+  patch:  &lt;T&gt;(path: string, body?: unknown) =&gt; request&lt;T&gt;('PATCH', path, body),
+  delete: &lt;T&gt;(path: string) =&gt; request&lt;T&gt;('DELETE', path)
+}</code></pre>
+
+  <h3>Calling from a Saga</h3>
+  <pre><code>const result = (yield call(api.get&lt;MyType&gt;, '/api/resource')) as MyType</code></pre>
+  <p>The generic type parameter is erased at runtime — it only provides IDE autocomplete and type checking. The saga cast <code>as MyType</code> tells TypeScript what to expect from the <code>yield</code>.</p>
+
+  <h3>Error Handling</h3>
+  <p>Catch <code>ApiError</code> in the saga's <code>catch</code> block to differentiate HTTP errors from network errors:</p>
+  <pre><code>} catch (err) {
+  if (err instanceof ApiError &amp;&amp; err.status === 401) {
+    yield put(actions.sessionExpired())
+  } else {
+    yield put(actions.fetchStatusFailure((err as Error).message))
+  }
+}</code></pre>
+
+  <div class="divider"></div>
+
+  <h2>utils/sse.ts — SSE Channel Factory</h2>
+  <p>Converts a browser <code>EventSource</code> into a Redux-Saga <code>EventChannel</code>. This bridges the push-based SSE model into the pull-based saga model.</p>
+
+  <pre><code>export function createSseChannel&lt;T = unknown&gt;(
+  path: string,
+  namedEvents: string[] = []
+): EventChannel&lt;SseMessage&lt;T&gt;&gt; {
+  return eventChannel((emit) =&gt; {
+    const source = new EventSource(BASE_URL + path)
+    source.onmessage = (e) =&gt; emit({ type: 'message', data: JSON.parse(e.data) })
+    source.onerror = () =&gt; emit(END)
+    namedEvents.forEach((name) =&gt; {
+      source.addEventListener(name, (e: any) =&gt;
+        emit({ type: name, data: JSON.parse(e.data) })
+      )
+    })
+    return () =&gt; source.close()  // cleanup on channel close
+  })
+}</code></pre>
+
+  <h3>SSE Worker Pattern in Sagas</h3>
+  <pre><code>function* sseWorker(): Generator {
+  const channel = (yield call(createSseChannel, '/api/events')) as EventChannel&lt;SseMessage&gt;
+  try {
+    while (true) {
+      const result = (yield race({
+        msg:  take(channel),
+        stop: take(SSE_DISCONNECT)
+      })) as { msg?: SseMessage; stop?: unknown }
+
+      if (result.stop) break
+      if (result.msg) yield put(actions.sseEvent({ ...result.msg, timestamp: Date.now() }))
+    }
+  } finally {
+    channel.close()               // close EventSource
+    yield put(actions.sseDisconnect())  // sync Redux state
+  }
+}</code></pre>
+
+  <h3>Named SSE Events</h3>
+  <p>If the server sends custom event types (e.g. <code>event: progress</code>), pass them to the channel factory:</p>
+  <pre><code>const channel = yield call(createSseChannel, '/api/events', ['progress', 'error'])</code></pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     9. NAVIGATION SYSTEM
+════════════════════════════════════════════════════════════════ -->
+<div class="page" id="s9">
+  <span class="section-num">Section 09</span>
+  <h1 class="section-title">Navigation System</h1>
+
+  <p>Navigation is managed entirely through Redux — no React Router. This simplifies the architecture for a desktop app where deep linking and browser history are irrelevant.</p>
+
+  <h2>Adding a New Screen</h2>
+
+  <h4>Step 1 — Extend the Screen type in <code>store/navigationReducer.ts</code></h4>
+  <pre><code>type Screen = 'home' | 'project' | 'settings'  // add 'settings'</code></pre>
+
+  <h4>Step 2 — Render the screen in <code>App.tsx</code></h4>
+  <pre><code>const screen = useSelector((state: RootState) =&gt; state.navigation.screen)
+
+return (
+  &lt;div className="flex flex-col h-screen bg-dark"&gt;
+    {screen === 'home'     &amp;&amp; &lt;HomePage /&gt;}
+    {screen === 'project'  &amp;&amp; &lt;ProjectPage /&gt;}
+    {screen === 'settings' &amp;&amp; &lt;SettingsPage /&gt;}
+  &lt;/div&gt;
+)</code></pre>
+
+  <h4>Step 3 — Navigate from any component</h4>
+  <pre><code>const dispatch = useDispatch()
+// ...
+&lt;button onClick={() =&gt; dispatch(navigate('settings'))}&gt;
+  Open Settings
+&lt;/button&gt;</code></pre>
+
+  <h2>Passing State Between Screens</h2>
+  <p>Because there is no URL, inter-screen data is passed through the Redux store — not through route params. Add a <code>context</code> field to the navigation state if you need to pass structured data alongside navigation:</p>
+  <pre><code>type NavigationState = {
+  screen: Screen
+  context: Record&lt;string, unknown&gt;
+}</code></pre>
+
+  <div class="callout">
+    <strong>Design Note</strong>
+    For a desktop app with a sidebar + main content layout, you may want to split navigation into two Redux slices: one for the top-level screen and one for sub-navigation within a screen (tabs, panels). Keep the top-level <code>navigationReducer</code> static and handle sub-navigation in the feature container's own reducer.
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     10. STYLING (TAILWIND CSS)
+════════════════════════════════════════════════════════════════ -->
+<div class="page" id="s10">
+  <span class="section-num">Section 10</span>
+  <h1 class="section-title">Styling (Tailwind CSS)</h1>
+
+  <h2>Custom Theme</h2>
+  <p>The design system extends Tailwind with three custom dark-UI colours defined in <code>tailwind.config.js</code>:</p>
+  <table>
+    <thead><tr><th>Token</th><th>Hex</th><th>Usage</th></tr></thead>
+    <tbody>
+      <tr><td><code>bg-dark</code></td><td>#0f1117</td><td>App background, code blocks</td></tr>
+      <tr><td><code>bg-panel</code></td><td>#1a1d27</td><td>Cards, panels, sidebars</td></tr>
+      <tr><td><code>border-app-border</code></td><td>#2a2d3a</td><td>All borders and dividers</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn">
+    <strong>Important</strong>
+    The token is named <code>app-border</code>, not <code>border</code>. Using <code>border</code> as a colour key conflicts with Tailwind's built-in border-width utilities. Always use <code>border-app-border</code> for border colour and <code>bg-app-border</code> for hover backgrounds.
+  </div>
+
+  <h2>Layout Conventions</h2>
+  <ul>
+    <li>Top-level screen wrapper: <code>flex flex-col h-full p-6 gap-6</code></li>
+    <li>Cards / sections: <code>bg-panel border border-app-border rounded-lg p-4</code></li>
+    <li>Primary text: <code>text-neutral-100</code></li>
+    <li>Secondary / label text: <code>text-neutral-400</code></li>
+    <li>Destructive / error: <code>text-red-400</code></li>
+    <li>Monospace values: <code>font-mono text-neutral-100</code></li>
+  </ul>
+
+  <h2>Adding Global Styles</h2>
+  <p>Global styles go in <code>src/renderer/src/index.css</code>. The three Tailwind directives must stay at the top:</p>
+  <pre><code>@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* custom globals below */</code></pre>
+
+  <h2>Component-Level Styles</h2>
+  <p>Use Tailwind utility classes directly in JSX. For conditional classes, prefer array join over template literals:</p>
+  <pre><code>className={[
+  'px-3 py-1.5 text-xs rounded border',
+  isActive
+    ? 'border-blue-500 text-blue-400'
+    : 'border-app-border text-neutral-200'
+].join(' ')}</code></pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     11. TESTING STRATEGY
+════════════════════════════════════════════════════════════════ -->
+<div class="page" id="s11">
+  <span class="section-num">Section 11</span>
+  <h1 class="section-title">Testing Strategy</h1>
+
+  <p>Tests live inside the feature they test — in a <code>tests/</code> subfolder within the container or component directory. This keeps tests close to the source and easy to find.</p>
+
+  <h2>Test Runner &amp; Setup</h2>
+  <p>Vitest is configured in <code>vitest.config.ts</code> with <code>jsdom</code> environment and Testing Library setup. The <code>globals: true</code> setting means no explicit imports of <code>describe</code>, <code>it</code>, or <code>expect</code> are needed.</p>
+
+  <h2>What to Test Per File</h2>
+  <table>
+    <thead><tr><th>File</th><th>Test approach</th><th>Key assertions</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>actions.test.ts</code></td>
+        <td>Pure function — call creator, check output object</td>
+        <td>Correct <code>type</code> constant, payload shape</td>
+      </tr>
+      <tr>
+        <td><code>reducer.test.ts</code></td>
+        <td>Pure function — pass state + action, check next state</td>
+        <td>Field mutations, immutability (original unchanged), initial state</td>
+      </tr>
+      <tr>
+        <td><code>saga.test.ts</code></td>
+        <td>Generator stepping — manually call <code>.next()</code> / <code>.throw()</code></td>
+        <td><code>call</code> effects match expected API call, <code>put</code> effects match expected actions</td>
+      </tr>
+      <tr>
+        <td><code>selectors.test.ts</code></td>
+        <td>Pure function — build mock state, assert selector output</td>
+        <td>Returns correct field, falls back to <code>initialState</code> when slice absent</td>
+      </tr>
+      <tr>
+        <td><code>index.test.tsx</code></td>
+        <td>React Testing Library — render with mock store, query DOM</td>
+        <td>Key elements render, snapshot regression</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Saga Testing Pattern</h2>
+  <p>Test saga workers by manually stepping through the generator. This avoids mocking the saga runtime and keeps tests fast:</p>
+  <pre><code>it('dispatches fetchStatusSuccess on success', () =&gt; {
+  const gen = fetchStatusWorker()
+
+  // Step 1: should yield a call to api.get
+  expect(gen.next().value).toEqual(call(api.get, '/api/status'))
+
+  // Step 2: inject mock response, should put success action
+  const mockStatus = { version: '1.0', uptime: 30 }
+  expect(gen.next(mockStatus).value).toEqual(
+    put(actions.fetchStatusSuccess(mockStatus))
+  )
+
+  // Step 3: done
+  expect(gen.next().done).toBe(true)
+})</code></pre>
+
+  <h2>Component Testing — Mock Store</h2>
+  <p>Components require an <code>InjectableStore</code>-compatible mock. Build the minimum stub that satisfies the interface:</p>
+  <pre><code>const mockStore = createStore((state = {}) =&gt; state) as InjectableStore
+mockStore.injectedReducers = {}
+mockStore.injectedSagas    = {}
+mockStore.runSaga          = () =&gt; ({ ...} as any)
+mockStore.createReducer    = () =&gt; ((s = {}) =&gt; s) as Reducer&lt;unknown, UnknownAction&gt;
+
+render(
+  &lt;Provider store={mockStore}&gt;
+    &lt;MyContainer /&gt;
+  &lt;/Provider&gt;
+)</code></pre>
+
+  <h2>Coverage</h2>
+  <pre><code>npm run test:coverage</code></pre>
+  <p>Coverage reports are generated by <code>@vitest/coverage-v8</code> into a <code>coverage/</code> directory. Focus coverage on reducers and saga workers — these carry the business logic. Component snapshot tests are supplementary.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     12. CODE GENERATION (PLOP)
+════════════════════════════════════════════════════════════════ -->
+<div class="page" id="s12">
+  <span class="section-num">Section 12</span>
+  <h1 class="section-title">Code Generation (Plop)</h1>
+
+  <p>The Plop generator at <code>internals/generators/</code> scaffolds all the boilerplate for a new container or component, ensuring every feature follows the same structure.</p>
+
+  <h2>Running the Generator</h2>
+  <pre><code>npm run generate</code></pre>
+  <p>Plop will prompt:</p>
+  <ol>
+    <li><strong>Name</strong> — PascalCase name (e.g. <code>ProjectDashboard</code>)</li>
+    <li><strong>React.memo?</strong> — wrap with memo for performance</li>
+    <li><strong>Actions + Reducer?</strong> — generates the full Redux slice</li>
+    <li><strong>Sagas?</strong> — generates REST and SSE saga workers</li>
+    <li><strong>Messages file?</strong> — i18n-style text strings</li>
+    <li><strong>Loadable.tsx?</strong> — async code-split wrapper</li>
+  </ol>
+
+  <h2>Generator Templates</h2>
+  <table>
+    <thead><tr><th>Template file</th><th>Generates</th></tr></thead>
+    <tbody>
+      <tr><td><code>types.js.hbs</code></td><td><code>types.ts</code> — domain interface stubs</td></tr>
+      <tr><td><code>constants.js.hbs</code></td><td><code>constants.ts</code> — all 6 action type strings</td></tr>
+      <tr><td><code>actions.js.hbs</code></td><td><code>actions.ts</code> — interfaces + creators + union</td></tr>
+      <tr><td><code>reducer.js.hbs</code></td><td><code>reducer.ts</code> — state shape + Immer reducer</td></tr>
+      <tr><td><code>saga.js.hbs</code></td><td><code>saga.ts</code> — REST worker + SSE worker + watcher</td></tr>
+      <tr><td><code>selectors.js.hbs</code></td><td><code>selectors.ts</code> — individual memoised selectors</td></tr>
+      <tr><td><code>index.jsx.hbs</code></td><td><code>index.tsx</code> — React component with hooks</td></tr>
+      <tr><td><code>actions.test.js.hbs</code></td><td><code>tests/actions.test.ts</code></td></tr>
+      <tr><td><code>reducer.test.js.hbs</code></td><td><code>tests/reducer.test.ts</code></td></tr>
+      <tr><td><code>saga.test.js.hbs</code></td><td><code>tests/saga.test.ts</code></td></tr>
+      <tr><td><code>selectors.test.js.hbs</code></td><td><code>tests/selectors.test.ts</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2>Updating Templates</h2>
+  <p>When the project-wide convention changes (e.g. a new base API pattern), update the relevant <code>.hbs</code> template. All future generated containers will use the new pattern automatically.</p>
+
+  <div class="callout">
+    <strong>After generating</strong>
+    Plop runs Prettier on the generated directory automatically. Then: wire the new container into <code>App.tsx</code>, add its <code>Screen</code> entry to <code>navigationReducer.ts</code>, and update <code>env.d.ts</code> if you added IPC methods.
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     13. BUILD & PACKAGING
+════════════════════════════════════════════════════════════════ -->
+<div class="page" id="s13">
+  <span class="section-num">Section 13</span>
+  <h1 class="section-title">Build &amp; Packaging</h1>
+
+  <h2>Build Outputs</h2>
+  <table>
+    <thead><tr><th>Command</th><th>Output</th><th>Use case</th></tr></thead>
+    <tbody>
+      <tr><td><code>npm run build</code></td><td><code>out/</code></td><td>Production build — main, preload, renderer</td></tr>
+      <tr><td><code>npm run preview</code></td><td>Serves <code>out/</code></td><td>Verify production build locally</td></tr>
+      <tr><td><code>npm run package</code></td><td><code>dist/</code></td><td>Full OS-native installer via electron-builder</td></tr>
+    </tbody>
+  </table>
+
+  <h2>electron-vite Build Pipeline</h2>
+  <p>The build runs three Vite instances in sequence:</p>
+  <ol>
+    <li><strong>Main</strong> — <code>src/main/index.ts</code> → <code>out/main/index.js</code> (SSR/CJS bundle, externals: electron + node builtins)</li>
+    <li><strong>Preload</strong> — <code>src/preload/index.ts</code> → <code>out/preload/index.js</code> (CJS bundle)</li>
+    <li><strong>Renderer</strong> — <code>src/renderer/</code> → <code>out/renderer/</code> (standard Vite client bundle with tree-shaking)</li>
+  </ol>
+
+  <h2>electron-builder Configuration</h2>
+  <p>Packaging is configured in <code>electron-builder.yml</code>:</p>
+  <pre><code>appId: com.navyug.helios
+productName: HeliosApp
+directories:
+  buildResources: build
+files:
+  - out/**
+  - package.json</code></pre>
+
+  <h2>Linux Sandbox in Packaged Builds</h2>
+  <p>The <code>--no-sandbox</code> flag in the <code>dev</code> script must not be carried into production packaging. The packaged app should have the sandbox properly configured. electron-builder handles setting SUID permissions on <code>chrome-sandbox</code> during packaging on Linux.</p>
+
+  <div class="callout warn">
+    <strong>Before Packaging</strong>
+    Remove or guard the <code>--no-sandbox</code> flag so it only applies in dev. Consider using an environment-gated approach: check <code>!app.isPackaged</code> in main, or use a separate <code>dev</code> script only.
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     14. END-TO-END WORKFLOW
+════════════════════════════════════════════════════════════════ -->
+<div class="page" id="s14">
+  <span class="section-num">Section 14</span>
+  <h1 class="section-title">Adding a New Feature — End-to-End Workflow</h1>
+
+  <p>This section walks through the complete process of adding a new screen with a REST API integration and a real-time SSE stream.</p>
+
+  <h2>Step 1 — Scaffold the container</h2>
+  <pre><code>npm run generate
+# Choose: container → name: "ProjectDashboard" → yes to all options</code></pre>
+
+  <h2>Step 2 — Define domain types (<code>types.ts</code>)</h2>
+  <pre><code>export interface ProjectStatus {
+  id: string
+  name: string
+  progress: number
+}
+export interface ProjectEvent {
+  type: 'progress' | 'complete' | 'error'
+  data: unknown
+  timestamp: number
+}</code></pre>
+
+  <h2>Step 3 — Wire constants, actions, reducer</h2>
+  <p>The generator produces these — update the generated stubs to use your real domain types from Step 2. The REST + SSE pattern is already in place; only the type names need updating.</p>
+
+  <h2>Step 4 — Implement the saga workers</h2>
+  <pre><code>export function* fetchProjectStatusWorker(): Generator {
+  try {
+    const status = (yield call(api.get&lt;ProjectStatus&gt;, '/api/project/status')) as ProjectStatus
+    yield put(actions.fetchStatusSuccess(status))
+  } catch (err) {
+    yield put(actions.fetchStatusFailure((err as Error).message))
+  }
+}</code></pre>
+
+  <h2>Step 5 — Add the screen to navigation</h2>
+  <pre><code>// store/navigationReducer.ts
+type Screen = 'home' | 'projectDashboard'
+
+// App.tsx
+{screen === 'projectDashboard' &amp;&amp; &lt;ProjectDashboard /&gt;}</code></pre>
+
+  <h2>Step 6 — Add IPC if needed</h2>
+  <p>If the feature needs native OS access, add the IPC handler trio: main handler → preload bridge → env.d.ts type declaration.</p>
+
+  <h2>Step 7 — Write tests</h2>
+  <p>The generator produces skeleton tests for actions, reducer, saga, and selectors. Fill in the assertions following the patterns in Section 11. Run <code>npm test</code> to verify all pass before integrating.</p>
+
+  <h2>Step 8 — Lint and format</h2>
+  <pre><code>npm run lint:fix
+npm run format</code></pre>
+
+  <div class="divider"></div>
+
+  <table>
+    <thead><tr><th>Checklist</th><th></th></tr></thead>
+    <tbody>
+      <tr><td>Domain types defined in <code>types.ts</code></td><td><span class="badge badge-blue">types.ts</span></td></tr>
+      <tr><td>Constants, actions, reducer updated</td><td><span class="badge badge-blue">slice</span></td></tr>
+      <tr><td>Saga workers implemented and exported</td><td><span class="badge badge-blue">saga.ts</span></td></tr>
+      <tr><td>Selectors cover every state field</td><td><span class="badge badge-blue">selectors.ts</span></td></tr>
+      <tr><td>Screen added to <code>Screen</code> type + <code>App.tsx</code></td><td><span class="badge badge-green">nav</span></td></tr>
+      <tr><td>IPC handlers added (if needed)</td><td><span class="badge badge-yellow">ipc</span></td></tr>
+      <tr><td><code>env.d.ts</code> updated (if new IPC)</td><td><span class="badge badge-yellow">types</span></td></tr>
+      <tr><td>All tests pass</td><td><span class="badge badge-green">tests</span></td></tr>
+      <tr><td>Lint + format clean</td><td><span class="badge badge-green">lint</span></td></tr>
+    </tbody>
+  </table>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,23 @@
+import { createSelector } from 'reselect'
+import type { RootState } from 'store/reducers'
+import { initialState, type {{ properCase name }}State } from './reducer'
+
+// ── Domain ─────────────────────────────────────────────────────────────────────
+
+const select{{ properCase name }}Domain = (state: RootState): {{ properCase name }}State =>
+  (state as any).{{ camelCase name }} ?? initialState
+
+// ── Memoised selectors ─────────────────────────────────────────────────────────
+
+export const selectStatus    = createSelector(select{{ properCase name }}Domain, (s) => s.status)
+export const selectLoading   = createSelector(select{{ properCase name }}Domain, (s) => s.loading)
+export const selectError     = createSelector(select{{ properCase name }}Domain, (s) => s.error)
+export const selectStreaming  = createSelector(select{{ properCase name }}Domain, (s) => s.streaming)
+export const selectStreamLog = createSelector(select{{ properCase name }}Domain, (s) => s.streamLog)
+
+// ── Legacy factory (kept for test compatibility) ───────────────────────────────
+
+const makeSelect{{ properCase name }} = () => createSelector(select{{ properCase name }}Domain, (s) => s)
+
+export default makeSelect{{ properCase name }}
+export { select{{ properCase name }}Domain as select{{ properCase name }}Domain }

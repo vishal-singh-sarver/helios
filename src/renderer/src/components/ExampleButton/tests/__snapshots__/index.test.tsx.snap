@@ -1,0 +1,9 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`<ExampleButton /> > should match the snapshot 1`] = `
+<button
+  class="px-4 py-2 bg-panel border border-app-border rounded text-neutral-200 hover:bg-app-border disabled:opacity-50 disabled:cursor-not-allowed"
+>
+  Snapshot
+</button>
+`;

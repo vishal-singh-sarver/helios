@@ -1,0 +1,46 @@
+{{#if memo}}
+import React, { memo } from 'react'
+{{else}}
+import React from 'react'
+{{/if}}
+import { useInjectReducer } from 'utils/injectReducer'
+{{#if wantSaga}}
+import { useInjectSaga } from 'utils/injectSaga'
+import saga from './saga'
+{{/if}}
+{{#if wantActionsAndReducer}}
+import reducer from './reducer'
+{{/if}}
+{{#if wantMessages}}
+import messages from './messages'
+{{/if}}
+
+// To read state:  const value = useSelector((s: RootState) => s.{{ camelCase name }}.someField)
+// To dispatch:    const dispatch = useDispatch()
+
+{{#if memo}}
+function {{ properCase name }}(): React.JSX.Element {
+{{else}}
+export function {{ properCase name }}(): React.JSX.Element {
+{{/if}}
+  {{#if wantActionsAndReducer}}
+  useInjectReducer({ key: '{{ camelCase name }}', reducer })
+  {{/if}}
+  {{#if wantSaga}}
+  useInjectSaga({ key: '{{ camelCase name }}', saga })
+  {{/if}}
+
+  return (
+    <div className="flex flex-col items-center justify-center h-full gap-4">
+      {{#if wantMessages}}
+      <h1 className="text-2xl font-semibold text-neutral-100">{messages.header}</h1>
+      {{/if}}
+    </div>
+  )
+}
+
+{{#if memo}}
+export default memo({{ properCase name }})
+{{else}}
+export default {{ properCase name }}
+{{/if}}

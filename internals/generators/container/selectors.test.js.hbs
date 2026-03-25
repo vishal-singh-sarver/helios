@@ -1,0 +1,53 @@
+import makeSelect{{ properCase name }}, {
+  select{{ properCase name }}Domain,
+  selectStatus,
+  selectLoading,
+  selectError,
+  selectStreaming,
+  selectStreamLog
+} from '../selectors'
+import { initialState } from '../reducer'
+
+const with{{ properCase name }} = (partial: Partial<typeof initialState>) =>
+  ({ {{ camelCase name }}: { ...initialState, ...partial } } as any)
+
+describe('select{{ properCase name }}Domain', () => {
+  it('selects the {{ camelCase name }} slice', () => {
+    expect(select{{ properCase name }}Domain(with{{ properCase name }}({}))).toEqual(initialState)
+  })
+
+  it('returns initialState when key is absent', () => {
+    expect(select{{ properCase name }}Domain({})).toEqual(initialState)
+  })
+})
+
+describe('makeSelect{{ properCase name }}', () => {
+  it('selects the whole {{ camelCase name }} domain', () => {
+    const selector = makeSelect{{ properCase name }}()
+    expect(selector(with{{ properCase name }}({}))).toEqual(initialState)
+  })
+})
+
+describe('individual selectors', () => {
+  it('selectStatus', () => {
+    const status = { version: '1.0', uptime: 5 }
+    expect(selectStatus(with{{ properCase name }}({ status }))).toEqual(status)
+  })
+
+  it('selectLoading', () => {
+    expect(selectLoading(with{{ properCase name }}({ loading: true }))).toBe(true)
+  })
+
+  it('selectError', () => {
+    expect(selectError(with{{ properCase name }}({ error: 'bad' }))).toBe('bad')
+  })
+
+  it('selectStreaming', () => {
+    expect(selectStreaming(with{{ properCase name }}({ streaming: true }))).toBe(true)
+  })
+
+  it('selectStreamLog', () => {
+    const log = [{ type: 'ping', data: null, timestamp: 1 }]
+    expect(selectStreamLog(with{{ properCase name }}({ streamLog: log }))).toEqual(log)
+  })
+})

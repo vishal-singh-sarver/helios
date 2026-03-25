@@ -1,0 +1,67 @@
+import { produce } from 'immer'
+import {
+  FETCH_STATUS, FETCH_STATUS_SUCCESS, FETCH_STATUS_FAILURE,
+  SSE_CONNECT, SSE_EVENT, SSE_DISCONNECT
+} from './constants'
+import type { {{ properCase name }}Action } from './actions'
+import type { {{ properCase name }}Status, {{ properCase name }}StreamEvent } from './types'
+
+export type { {{ properCase name }}Status, {{ properCase name }}StreamEvent }
+
+// ── State ──────────────────────────────────────────────────────────────────────
+
+export interface {{ properCase name }}State {
+  status:    {{ properCase name }}Status | null
+  loading:   boolean
+  error:     string | null
+  streaming: boolean
+  streamLog: {{ properCase name }}StreamEvent[]
+}
+
+export const initialState: {{ properCase name }}State = {
+  status:    null,
+  loading:   false,
+  error:     null,
+  streaming: false,
+  streamLog: []
+}
+
+// ── Reducer ────────────────────────────────────────────────────────────────────
+
+const {{ camelCase name }}Reducer = (
+  state: {{ properCase name }}State = initialState,
+  action: {{ properCase name }}Action
+): {{ properCase name }}State =>
+  produce(state, (draft) => {
+    switch (action.type) {
+      case FETCH_STATUS:
+        draft.loading = true
+        draft.error   = null
+        break
+
+      case FETCH_STATUS_SUCCESS:
+        draft.loading = false
+        draft.status  = action.payload
+        break
+
+      case FETCH_STATUS_FAILURE:
+        draft.loading = false
+        draft.error   = action.payload
+        break
+
+      case SSE_CONNECT:
+        draft.streaming = true
+        draft.streamLog = []
+        break
+
+      case SSE_EVENT:
+        draft.streamLog.push(action.payload)
+        break
+
+      case SSE_DISCONNECT:
+        draft.streaming = false
+        break
+    }
+  })
+
+export default {{ camelCase name }}Reducer

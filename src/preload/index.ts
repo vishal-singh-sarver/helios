@@ -1,0 +1,53 @@
+import { contextBridge, ipcRenderer } from 'electron'
+import { electronAPI } from '@electron-toolkit/preload'
+
+export interface FileFilter {
+  name: string
+  extensions: string[]
+}
+
+export interface BackendStatus {
+  running: boolean
+  pid: number | null
+}
+
+// App-specific API exposed to the renderer
+const api = {
+  // File dialogs
+  openFile: (filters: FileFilter[]): Promise<string | null> =>
+    ipcRenderer.invoke('dialog:openFile', filters),
+
+  saveFile: (filters: FileFilter[], defaultPath?: string): Promise<string | null> =>
+    ipcRenderer.invoke('dialog:saveFile', filters, defaultPath),
+
+  // File system
+  readFile: (filePath: string): Promise<string> =>
+    ipcRenderer.invoke('fs:readFile', filePath),
+
+  writeFile: (filePath: string, content: string): Promise<void> =>
+    ipcRenderer.invoke('fs:writeFile', filePath, content),
+
+  // Backend session
+  getBackendStatus: (): Promise<BackendStatus> =>
+    ipcRenderer.invoke('backend:getStatus'),
+
+  startBackend: (): Promise<{ ok: boolean }> =>
+    ipcRenderer.invoke('backend:start'),
+
+  stopBackend: (): Promise<{ ok: boolean }> =>
+    ipcRenderer.invoke('backend:stop')
+}
+
+if (process.contextIsolated) {
+  try {
+    contextBridge.exposeInMainWorld('electron', electronAPI)
+    contextBridge.exposeInMainWorld('api', api)
+  } catch (error) {
+    console.error(error)
+  }
+} else {
+  // @ts-expect-error (fallback for non-isolated context)
+  window.electron = electronAPI
+  // @ts-expect-error
+  window.api = api
+}
