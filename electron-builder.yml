@@ -1,6 +1,6 @@
 appId: com.navyug.helios
-productName: HeliosApp
-copyright: Copyright © 2024
+productName: Helios
+copyright: Copyright © 2024 Navyug Designs
 
 directories:
   buildResources: build
@@ -14,18 +14,79 @@ files:
   - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
   - '!internals/*'
 
+extraFiles:
+  - from: /Users/navyug/PyHelios/Helios-UI/heliosgui-desktop/src-tauri/resources/heliosgui_backend
+    to: resources/heliosgui_backend
+
+# NSIS Windows Installer Configuration
+# Implements professional multi-step installer with license agreement + directory selection
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
-  shortcutName: ${productName}
-  uninstallDisplayName: ${productName}
-  createDesktopShortcut: always
+  shortcutName: Helios
+  uninstallDisplayName: Helios
+  
+  # === Installer Type: Assisted (NOT one-click) ===
+  # Enables multi-step UI flow: Welcome → License → Directory → Install → Complete
+  oneClick: false
+  
+  # === License Agreement ===
+  # User MUST accept license before proceeding to installation
+  license: build/license.txt
+  
+  # === Installation Directory Selection ===
+  # Allows users to choose custom install location
+  allowToChangeInstallationDirectory: true
+  
+  # === Permissions & System Integration ===
+  # Installs per-machine (all users) - requires admin elevation
+  perMachine: true
+  allowElevation: true
+  
+  # === Shortcuts & Launch ===
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  
+  # === Post-Install Action ===
+  # Automatically launch app after successful installation
+  runAfterFinish: true
+  
+  # === Installer Customization ===
+  # Icon files for branding consistency
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  installerHeaderIcon: build/icon.ico
+  
+  # === NSIS Script Customization ===
+  # Custom installer pages and behavior
+  include: build/installer.nsh
 
 mac:
-  entitlementsInherit: build/entitlements.mac.plist
+  # Development: Skip code signing
+  identity: null
+  sign: null
   notarize: false
+  
+  # PKG installer targets (with license agreement support)
+  target:
+    - dmg
+    - pkg
 
 dmg:
   artifactName: ${name}-${version}.${ext}
+
+pkg:
+  # PKG installer configuration with license agreement
+  artifactName: ${name}-${version}.${ext}
+  # License file shown in installer
+  license: build/license.txt
+  # Installation location - changed to user Applications for unsigned builds
+  installLocation: /Applications
+  # Allow installation anywhere
+  allowAnywhere: true
+  allowCurrentUserHome: true
+  # Welcome, conclusion, and other screens
+  welcome: build/welcome.txt
+  conclusion: build/conclusion.txt
 
 linux:
   target:
