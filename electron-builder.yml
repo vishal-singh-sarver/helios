@@ -1,11 +1,28 @@
+################################################################################
+# Helios Desktop Application - electron-builder Configuration
+#
+# This file configures cross-platform packaging for:
+# - Windows (NSIS assisted installer)
+# - macOS (DMG + PKG installers)
+# - Linux (AppImage + DEB packages)
+#
+# Build outputs are created in dist/
+# Do not use absolute paths for build resources - all paths are relative to repo root
+#
+# For CI/CD: This configuration is platform-agnostic and works in any environment
+################################################################################
+
 appId: com.navyug.helios
 productName: Helios
-copyright: Copyright © 2024 Navyug Designs
+copyright: Copyright © 2024-2026 Navyug Designs
 
+# Build directories (relative paths only)
 directories:
-  buildResources: build
-  output: dist
+  buildResources: build       # Installer assets: icons, license, etc.
+  output: dist                # Final installers go here
 
+# Files to include in packaged app
+# Excludes: node_modules is handled by default, src/ code is compiled to out/
 files:
   - '!**/.vscode/*'
   - '!src/*'
@@ -14,92 +31,126 @@ files:
   - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
   - '!internals/*'
 
-extraFiles:
-  - from: /Users/navyug/PyHelios/Helios-UI/heliosgui-desktop/src-tauri/resources/heliosgui_backend
-    to: resources/heliosgui_backend
+# Extra resources to bundle (repo-local paths only - NO absolute paths)
+# Backend executables: bundled at resources/backend/
+# electron-builder ${os} variable maps to: mac, win, linux
+# Files copied from resources/backend/${os}/ are placed in packaged app resources/backend/
+extraResources:
+  - from: resources/backend/${os}
+    to: backend
 
-# NSIS Windows Installer Configuration
-# Implements professional multi-step installer with license agreement + directory selection
+################################################################################
+# WINDOWS - NSIS Assisted Installer
+################################################################################
+# Produces: helios-1.0.0-setup.exe
+# UX flow: Welcome → License → Directory → Progress → Complete Launch
+# Professional enterprise-grade installer with UAC elevation support
+#
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: Helios
   uninstallDisplayName: Helios
   
-  # === Installer Type: Assisted (NOT one-click) ===
-  # Enables multi-step UI flow: Welcome → License → Directory → Install → Complete
+  # Installer mode: assisted (NOT one-click)
+  # Enables all customization options
   oneClick: false
   
-  # === License Agreement ===
-  # User MUST accept license before proceeding to installation
+  # License agreement - user MUST accept before proceeding
   license: build/license.txt
   
-  # === Installation Directory Selection ===
-  # Allows users to choose custom install location
+  # Allow users to select custom install directory
   allowToChangeInstallationDirectory: true
   
-  # === Permissions & System Integration ===
-  # Installs per-machine (all users) - requires admin elevation
+  # System-wide installation (all users) - requires admin elevation
   perMachine: true
   allowElevation: true
   
-  # === Shortcuts & Launch ===
+  # Post-install actions
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  
-  # === Post-Install Action ===
-  # Automatically launch app after successful installation
   runAfterFinish: true
   
-  # === Installer Customization ===
-  # Icon files for branding consistency
+  # Branding assets (must exist in build/ folder)
   installerIcon: build/icon.ico
   uninstallerIcon: build/icon.ico
   installerHeaderIcon: build/icon.ico
   
-  # === NSIS Script Customization ===
-  # Custom installer pages and behavior
+  # Optional: custom NSIS script for advanced customization
+  # Only include if the file exists and contains stable code
   include: build/installer.nsh
 
+################################################################################
+# macOS - Professional App Bundle + Installers
+################################################################################
+# Targets:
+# - DMG: Simple drag-and-drop installer (Helios.dmg)
+# - PKG: Professional installer with license (Helios.pkg)
+# App bundle: /Applications/Helios.app
+#
 mac:
-  # Development: Skip code signing
+  # Code signing: Set to valid identity for production
+  # For development, leave as null (no code signing)
   identity: null
   sign: null
+  
+  # Notarization: Required for distribution via App Store or web
+  # For development, leave as false
   notarize: false
   
-  # PKG installer targets (with license agreement support)
+  # Installer targets
   target:
-    - dmg
-    - pkg
+    - dmg   # Drag-and-drop disk image
+    - pkg   # Professional multi-screen installer
 
 dmg:
   artifactName: ${name}-${version}.${ext}
 
 pkg:
-  # PKG installer configuration with license agreement
   artifactName: ${name}-${version}.${ext}
-  # License file shown in installer
+  # License shown in installer
   license: build/license.txt
-  # Installation location - changed to user Applications for unsigned builds
+  # Installation path for unsigned app
   installLocation: /Applications
-  # Allow installation anywhere
   allowAnywhere: true
-  allowCurrentUserHome: true
-  # Welcome, conclusion, and other screens
+  allowCurrentUserHome: false
+  isRelocatable: false
+  isVersionChecked: true
+  # Installer screen text
   welcome: build/welcome.txt
   conclusion: build/conclusion.txt
 
+################################################################################
+# LINUX - AppImage + DEB Packages
+################################################################################
+# AppImage: Universal Linux executable (no dependencies required)
+# DEB: Standard Debian/Ubuntu package
+#
 linux:
   target:
     - AppImage
     - deb
-  maintainer: yourname@email.com
+  # Maintainer contact for DEB package
+  maintainer: support@example.com
+  # Linux desktop classification
   category: Utility
+  # Optional: desktop icon name (if .desktop file references it)
+  # icon: resources/icon
 
 appImage:
   artifactName: ${name}-${version}.${ext}
 
+deb:
+  artifactName: ${name}-${version}.${ext}
+
+################################################################################
+# General Build Settings
+################################################################################
+
+# Do not auto-rebuild native modules in packaged app
 npmRebuild: false
 
+# Publish configuration (for auto-updates)
+# Update with actual URL for production distribution
 publish:
   provider: generic
-  url: https://example.com/auto-updates
+  url: https://updates.example.com/auto-updates

@@ -9,11 +9,19 @@
   },
   "scripts": {
     "dev": "electron-vite dev -- --no-sandbox",
-    "build": "electron-vite build",
+    "build": "node scripts/sync-backend.js && electron-vite build",
     "preview": "electron-vite preview",
-    "package": "electron-vite build && electron-builder",
-    "package:win": "electron-vite build && electron-builder --win --publish never",
-    "package:win-portable": "electron-vite build && electron-builder --win portable --publish never",
+    
+    "sync-backend": "node scripts/sync-backend.js",
+    "package": "npm run build && electron-builder",
+    "package:all": "npm run build && electron-builder -mwl --publish never",
+    "package:mac": "npm run build && electron-builder --mac --publish never",
+    "package:win": "npm run build && electron-builder --win --publish never",
+    "package:linux": "npm run build && electron-builder --linux --publish never",
+    
+    "dist:clean": "rm -rf dist/ out/",
+    "dist:clean-all": "rm -rf dist/ out/ node_modules/ package-lock.json",
+    
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

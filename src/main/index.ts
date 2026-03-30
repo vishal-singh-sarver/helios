@@ -1,6 +1,7 @@
-import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
-import { join } from 'path'
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { promises as fs } from 'fs'
+import { join } from 'path'
+import { backendManager } from './backend-manager'
 
 const isDev = !app.isPackaged
 
@@ -32,6 +33,17 @@ function createWindow(): void {
   }
 }
 
+// Set a stable userData location before app readiness so Electron
+// does not create platform-default folders with inconsistent naming.
+if (process.platform === 'win32') {
+  app.setAppUserModelId('com.navyug.helios')
+  app.setPath('userData', join(process.env.APPDATA || '', 'Helios'))
+} else if (process.platform === 'darwin') {
+  app.setPath('userData', join(process.env.HOME || '', 'Library/Application Support/Helios'))
+} else {
+  app.setPath('userData', join(process.env.HOME || '', '.config/Helios'))
+}
+
 // --- File dialog IPC handlers ---
 
 ipcMain.handle('dialog:openFile', async (_event, filters: Electron.FileFilter[]) => {
@@ -59,33 +71,33 @@ ipcMain.handle('fs:writeFile', async (_event, filePath: string, content: string)
 })
 
 // --- Backend session IPC handlers ---
-// Wire these to your actual backend process management logic.
 
 ipcMain.handle('backend:getStatus', async () => {
-  // TODO: return actual backend process status
-  return { running: false, pid: null }
+  return backendManager.getBackendStatus()
 })
 
 ipcMain.handle('backend:start', async () => {
-  // TODO: spawn backend process
-  return { ok: true }
+  return backendManager.startBackend()
 })
 
 ipcMain.handle('backend:stop', async () => {
-  // TODO: kill backend process
-  return { ok: true }
+  return backendManager.stopBackend()
 })
 
 // --- App lifecycle ---
 
 app.whenReady().then(() => {
-  if (process.platform === 'win32') {
-    app.setAppUserModelId('com.navyug.helios')
-  }
+  backendManager.startBackend().then((status) => {
+    if (status.running) {
+      console.log(`Backend started (PID: ${status.pid}, Port: ${status.port})`)
+    } else {
+      console.error(`Failed to start backend: ${status.error}`)
+    }
+  })
 
   createWindow()
 
-  app.on('activate', function () {
+  app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
 })
@@ -94,4 +106,8 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+app.on('before-quit', async () => {
+  await backendManager.cleanup()
 })
