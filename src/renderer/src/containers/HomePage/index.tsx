@@ -1,124 +1,189 @@
-import React, { useEffect } from 'react'
-import { useSelector, useDispatch } from 'react-redux'
-import { useInjectReducer } from 'utils/injectReducer'
-import { useInjectSaga } from 'utils/injectSaga'
-import reducer from './reducer'
-import saga from './saga'
-import * as actions from './actions'
-import {
-  selectStatus,
-  selectLoading,
-  selectError,
-  selectStreaming,
-  selectStreamLog
-} from './selectors'
+import React from 'react'
 
 export function HomePage(): React.JSX.Element {
-  useInjectReducer({ key: 'homePage', reducer })
-  useInjectSaga({ key: 'homePage', saga })
+  const [openMenu, setOpenMenu] = React.useState<string | null>(null)
+  const [searchText, setSearchText] = React.useState('')
+  const [showNewProjectDialog, setShowNewProjectDialog] = React.useState(false)
 
-  const dispatch  = useDispatch()
-  const status    = useSelector(selectStatus)
-  const loading   = useSelector(selectLoading)
-  const error     = useSelector(selectError)
-  const streaming = useSelector(selectStreaming)
-  const streamLog = useSelector(selectStreamLog)
-
-  // Fetch backend status on mount
-  useEffect(() => {
-    dispatch(actions.fetchStatus())
-  }, [dispatch])
-
-  const handleStreamToggle = () => {
-    if (streaming) {
-      dispatch(actions.sseDisconnect())
-    } else {
-      dispatch(actions.sseConnect())
-    }
+  const toolbarItems: Record<string, string[]> = {
+    File: ['New Project', 'Open Project', 'Import Project', 'Exit'],
+    Edit: ['Undo', 'Redo', 'Preferences'],
+    View: ['Zoom In', 'Zoom Out', 'Reset Layout'],
+    Tools: ['Scripting Console', 'Extensions', 'Diagnostics'],
+    Help: ['Documentation', 'Shortcuts', 'About Helios']
   }
 
+  const projectActions = ['Home', 'New Project', 'Open project']
+  const savedProjects: { name: string; lastUpdated: string; size: string }[] = []
+
   return (
-    <div className="flex flex-col h-full p-6 gap-6">
-
-      {/* Header */}
-      <h1 className="text-2xl font-semibold text-neutral-100">
-        Welcome to Electron App
-      </h1>
-
-      {/* Status card */}
-      <section className="bg-panel border border-app-border rounded-lg p-4 flex flex-col gap-2">
-        <h2 className="text-sm font-medium text-neutral-400 uppercase tracking-wide">
-          Backend Status
-        </h2>
-
-        {loading && (
-          <p className="text-neutral-400 text-sm">Loading…</p>
-        )}
-
-        {error && (
-          <p className="text-red-400 text-sm">{error}</p>
-        )}
-
-        {status && !loading && (
-          <dl className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm">
-            <dt className="text-neutral-400">Version</dt>
-            <dd className="text-neutral-100 font-mono">{status.version}</dd>
-            <dt className="text-neutral-400">Uptime</dt>
-            <dd className="text-neutral-100 font-mono">{status.uptime}s</dd>
-          </dl>
-        )}
-
-        <button
-          onClick={() => dispatch(actions.fetchStatus())}
-          disabled={loading}
-          className="mt-2 self-start px-3 py-1.5 text-xs bg-dark border border-app-border rounded hover:bg-app-border disabled:opacity-50 disabled:cursor-not-allowed text-neutral-200"
-        >
-          Refresh
-        </button>
-      </section>
-
-      {/* SSE stream */}
-      <section className="bg-panel border border-app-border rounded-lg p-4 flex flex-col gap-3 flex-1 min-h-0">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-medium text-neutral-400 uppercase tracking-wide">
-            Live Stream
-          </h2>
-          <button
-            onClick={handleStreamToggle}
-            className={[
-              'px-3 py-1.5 text-xs rounded border',
-              streaming
-                ? 'border-red-500 text-red-400 hover:bg-red-500/10'
-                : 'border-app-border text-neutral-200 hover:bg-app-border'
-            ].join(' ')}
-          >
-            {streaming ? 'Disconnect' : 'Connect'}
-          </button>
+    <div className="flex h-full flex-col">
+      <header className="border-b border-app-border">
+        <div className="flex h-11 items-center justify-between border-b border-app-border px-4">
+          <div className="text-sm font-semibold tracking-wide text-neutral-100">HELIOS</div>
+          <div className="relative">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500">
+              🔎
+            </span>
+            <input
+              aria-label="Search projects"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              placeholder="Search..."
+              className="h-8 w-64 rounded border border-app-border bg-dark pl-9 pr-3 text-sm text-neutral-200 outline-none focus:border-neutral-500"
+            />
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto font-mono text-xs text-neutral-300 bg-dark rounded p-3 space-y-1 min-h-0">
-          {streamLog.length === 0 ? (
-            <p className="text-neutral-500">
-              {streaming ? 'Waiting for events…' : 'Stream not connected.'}
-            </p>
-          ) : (
-            streamLog.map((event, i) => (
-              <div key={i} className="flex gap-3">
-                <span className="text-neutral-500 shrink-0">
-                  {new Date(event.timestamp).toLocaleTimeString()}
-                </span>
-                <span className="text-neutral-400 shrink-0">[{event.type}]</span>
-                <span className="text-neutral-200 break-all">
-                  {typeof event.data === 'string'
-                    ? event.data
-                    : JSON.stringify(event.data)}
-                </span>
+        <nav aria-label="Top toolbar" className="flex items-center gap-1 px-3 py-2 text-sm text-neutral-300">
+          {Object.keys(toolbarItems).map((item) => (
+            <div key={item} className="relative">
+              <button
+                onClick={() => setOpenMenu((prev) => (prev === item ? null : item))}
+                className="rounded px-2 py-1 hover:bg-panel hover:text-neutral-100"
+              >
+                {item}
+              </button>
+              {openMenu === item && (
+                <div className="absolute left-0 top-9 z-20 min-w-44 rounded border border-app-border bg-[#181a1f] py-1 shadow-lg">
+                  {toolbarItems[item].map((menuItem) => (
+                    <button
+                      key={menuItem}
+                      className="block w-full px-3 py-1.5 text-left text-sm text-neutral-200 hover:bg-app-border"
+                    >
+                      {menuItem}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </nav>
+      </header>
+
+      <div className="flex min-h-0 flex-1">
+        <aside className="w-64 border-r border-app-border p-4">
+          <nav aria-label="Project actions" className="flex flex-col gap-3">
+            {projectActions.map((item, index) => (
+              <button
+                key={item}
+                onClick={() => {
+                  if (item === 'New Project') {
+                    setShowNewProjectDialog(true)
+                  }
+                }}
+                className={[
+                  'rounded px-3 py-2 text-left text-sm transition-colors',
+                  index === 0
+                    ? 'bg-panel text-neutral-100'
+                    : 'text-neutral-300 hover:bg-panel hover:text-neutral-100'
+                ].join(' ')}
+              >
+                {item}
+              </button>
+            ))}
+          </nav>
+        </aside>
+
+        <main className="min-w-0 flex-1 p-6">
+          <h1 className="mb-6 text-3xl font-semibold text-neutral-100">Recent Projects</h1>
+
+          <div className="overflow-hidden rounded border border-app-border bg-panel/20">
+            <div className="grid grid-cols-[2fr_2fr_1fr] border-b border-app-border px-4 py-2 text-sm text-neutral-300">
+              <span>Name ↑↓</span>
+              <span>Last Updated ↑↓</span>
+              <span>Size ↑↓</span>
+            </div>
+
+            {savedProjects.length === 0 ? (
+              <div className="flex h-[440px] flex-col items-center justify-center gap-3">
+                <div className="rounded border border-app-border p-2 text-lg text-neutral-300">🔎</div>
+                <p className="text-3xl font-semibold text-neutral-100">No Projects Found</p>
+                <p className="text-lg text-neutral-400">No Projects Found. Please add a new Project.</p>
+                <button
+                  onClick={() => setShowNewProjectDialog(true)}
+                  className="rounded bg-blue-600 px-4 py-1.5 text-lg text-white hover:bg-blue-500"
+                >
+                  + Add New Project
+                </button>
               </div>
-            ))
-          )}
-        </div>
-      </section>
+            ) : (
+              <div className="max-h-[520px] overflow-y-auto">
+                {savedProjects.map((project) => (
+                  <div
+                    key={project.name}
+                    className="grid grid-cols-[2fr_2fr_1fr] items-center border-b border-app-border/80 px-4 py-3 text-sm last:border-b-0"
+                  >
+                    <span className="text-neutral-100">{project.name}</span>
+                    <span className="text-neutral-400">{project.lastUpdated}</span>
+                    <span className="text-neutral-300">{project.size}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
 
+      {showNewProjectDialog && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/45">
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-label="New Project"
+            className="w-[430px] overflow-hidden rounded border border-app-border bg-[#1f2126]"
+          >
+            <header className="flex items-center justify-between bg-neutral-200 px-4 py-3 text-neutral-900">
+              <h2 className="text-3xl font-semibold">New Project</h2>
+              <button
+                aria-label="Close New Project dialog"
+                onClick={() => setShowNewProjectDialog(false)}
+                className="rounded px-2 py-1 text-2xl hover:bg-neutral-300"
+              >
+                ×
+              </button>
+            </header>
+
+            <div className="space-y-4 p-4">
+              <label className="block text-lg text-neutral-200">
+                Project Name<span className="text-red-400">*</span>
+                <input
+                  placeholder="Enter"
+                  className="mt-1 block h-10 w-full rounded border border-app-border bg-dark px-3 text-lg text-neutral-200 outline-none focus:border-neutral-500"
+                />
+              </label>
+
+              <label className="block text-lg text-neutral-200">
+                Latitude<span className="text-red-400">*</span>
+                <input
+                  placeholder="Enter"
+                  className="mt-1 block h-10 w-full rounded border border-app-border bg-dark px-3 text-lg text-neutral-200 outline-none focus:border-neutral-500"
+                />
+              </label>
+
+              <label className="block text-lg text-neutral-200">
+                Longitude<span className="text-red-400">*</span>
+                <input
+                  placeholder="Enter"
+                  className="mt-1 block h-10 w-full rounded border border-app-border bg-dark px-3 text-lg text-neutral-200 outline-none focus:border-neutral-500"
+                />
+              </label>
+
+              <div className="flex justify-end gap-3 pt-1">
+                <button
+                  onClick={() => setShowNewProjectDialog(false)}
+                  className="rounded bg-neutral-200 px-4 py-1.5 text-lg text-neutral-900 hover:bg-neutral-100"
+                >
+                  Cancel
+                </button>
+                <button className="rounded bg-blue-600 px-4 py-1.5 text-lg text-white hover:bg-blue-500">
+                  Create
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   )
 }
