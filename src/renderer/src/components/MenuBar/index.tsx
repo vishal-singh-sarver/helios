@@ -32,7 +32,7 @@ function MenuBar({
   return (
     <div ref={toolbarRef}>
       <nav className="flex items-center gap-2 text-sm font-medium text-neutral-300">
-        {Object.keys(items).map((item) => (
+        {Object?.keys(items)?.map((item) => (
           <div key={item} className="relative">
             <button
               onClick={() => onToggle((prev) => (prev === item ? null : item))}
@@ -43,7 +43,7 @@ function MenuBar({
 
             {openMenu === item && (
               <div className="absolute top-9 left-0 z-20 min-w-44 rounded border border-app-border bg-[#181a1f] py-1 shadow-lg">
-                {items[item].map((menuItem) => (
+                {items[item]?.map((menuItem) => (
                   <button
                     key={menuItem}
                     onClick={() => onItemSelect(menuItem)}
