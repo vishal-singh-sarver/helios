@@ -9,7 +9,7 @@ const BACKENDS = {
   mac: {
     source: '/Users/navyug/PyHelios/Helios-UI/heliosgui-desktop/src-tauri/resources/heliosgui_backend',
     dest: path.join(RESOURCES_DIR, 'mac', 'heliosgui_backend'),
-    required: true
+    required: process.platform === 'darwin'
   },
   win: {
     source: null,
@@ -18,12 +18,12 @@ const BACKENDS = {
     note: 'Windows backend not yet available. Set a valid executable source path when ready.'
   },
   linux: {
-    source: null,
+    source: '/home/navyug/HeliosInstallerHimani/Helios-UI/heliosgui-desktop/src-tauri/resources/heliosgui_backend',
     dest: path.join(RESOURCES_DIR, 'linux', 'heliosgui_backend'),
-    required: false,
-    note: 'Linux backend not yet available. Set a valid executable source path when ready.'
+    required: process.platform === 'linux'
   }
 }
+
 
 function ensureDir(dir) {
   if (!fs.existsSync(dir)) {

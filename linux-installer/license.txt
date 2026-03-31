@@ -1,0 +1,5 @@
+Helios License Agreement
+
+Please read this agreement carefully before installing Helios.
+
+By typing YES, you agree to the terms and conditions of this software.

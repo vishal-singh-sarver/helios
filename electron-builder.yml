@@ -130,17 +130,20 @@ linux:
     - AppImage
     - deb
   # Maintainer contact for DEB package
-  maintainer: support@example.com
+  maintainer: Navyug Designs
   # Linux desktop classification
   category: Utility
   # Optional: desktop icon name (if .desktop file references it)
   # icon: resources/icon
-
-appImage:
+  executableName: helios
   artifactName: ${name}-${version}.${ext}
+  icon: build/icon.png
 
-deb:
-  artifactName: ${name}-${version}.${ext}
+# appImage:
+#   artifactName: ${name}-${version}.${ext}
+
+# deb:
+#   artifactName: ${name}-${version}.${ext}
 
 ################################################################################
 # General Build Settings
