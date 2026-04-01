@@ -137,7 +137,8 @@ linux:
   # icon: resources/icon
   executableName: helios
   artifactName: ${name}-${version}.${ext}
-  icon: build/icon.png
+  icon: build/icon-linux.png
+
 
 # appImage:
 #   artifactName: ${name}-${version}.${ext}
