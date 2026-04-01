@@ -81,7 +81,7 @@ describe('<HomePage />', () => {
     expect(screen.getByText(/Name/)).toBeInTheDocument()
     expect(screen.getByText(/Last Updated/)).toBeInTheDocument()
     expect(screen.getByText(/Size/)).toBeInTheDocument()
-    expect(screen.getByText('No Projects Found')).toBeInTheDocument()
+    expect(screen.getByText('Coastal Survey Alpha')).toBeInTheDocument()
   })
 
   it('opens and closes new project dialog', async () => {
