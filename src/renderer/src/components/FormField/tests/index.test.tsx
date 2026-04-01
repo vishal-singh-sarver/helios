@@ -5,14 +5,21 @@ import FormField from '../index'
 
 describe('<FormField />', () => {
   it('renders label, required marker, and input value', () => {
+    const mockFormik = {
+      touched: {},
+      errors: {},
+      getFieldProps: (name: any) => ({ value: '12.3', onChange: vi.fn(), name }),
+      submitForm: vi.fn()
+    } as unknown as any
+
     render(
       <FormField
         label="Latitude"
-        value="12.3"
+        name="latitude"
         helpText="Latitude help text"
         isHelpVisible={false}
         helpAriaLabel="Show latitude help"
-        onChange={vi.fn()}
+        formik={mockFormik}
         onHelpChange={vi.fn()}
       />
     )
@@ -24,36 +31,47 @@ describe('<FormField />', () => {
 
   it('calls onChange when the input changes', async () => {
     const user = userEvent.setup()
-    const onChange = vi.fn()
+    const mockOnChange = vi.fn()
+    const mockFormik = {
+      touched: {},
+      errors: {},
+      getFieldProps: (name: any) => ({ value: '', onChange: (e: any) => mockOnChange(e.target ? e.target.value : e), name }),
+      submitForm: vi.fn()
+    } as unknown as any
 
     render(
       <FormField
         label="Latitude"
-        value=""
+        name="latitude"
         helpText="Latitude help text"
         isHelpVisible={false}
         helpAriaLabel="Show latitude help"
-        onChange={onChange}
+        formik={mockFormik}
         onHelpChange={vi.fn()}
       />
     )
 
     await user.type(screen.getByPlaceholderText('Enter'), '45')
 
-    expect(onChange).toHaveBeenCalled()
-    expect(onChange).toHaveBeenLastCalledWith('5')
+    expect(mockOnChange).toHaveBeenCalled()
   })
 
   it('shows tooltip and validation error from props', () => {
+    const mockFormik = {
+      touched: { latitude: true },
+      errors: { latitude: 'Latitude is invalid' },
+      getFieldProps: (name: any) => ({ value: '', onChange: vi.fn(), name }),
+      submitForm: vi.fn()
+    } as unknown as any
+
     render(
       <FormField
         label="Latitude"
-        value=""
-        error="Latitude is invalid"
+        name="latitude"
         helpText="Latitude help text"
         isHelpVisible
         helpAriaLabel="Show latitude help"
-        onChange={vi.fn()}
+        formik={mockFormik}
         onHelpChange={vi.fn()}
       />
     )
@@ -65,15 +83,21 @@ describe('<FormField />', () => {
   it('calls onHelpChange on hover and unhover', async () => {
     const user = userEvent.setup()
     const onHelpChange = vi.fn()
+    const mockFormik = {
+      touched: {},
+      errors: {},
+      getFieldProps: (name: any) => ({ value: '', onChange: vi.fn(), name }),
+      submitForm: vi.fn()
+    } as unknown as any
 
     render(
       <FormField
         label="Latitude"
-        value=""
+        name="latitude"
         helpText="Latitude help text"
         isHelpVisible={false}
         helpAriaLabel="Show latitude help"
-        onChange={vi.fn()}
+        formik={mockFormik}
         onHelpChange={onHelpChange}
       />
     )

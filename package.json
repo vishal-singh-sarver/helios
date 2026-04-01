@@ -25,6 +25,7 @@
     "@electron-toolkit/preload": "^3.0.0",
     "@electron-toolkit/utils": "^3.0.0",
     "@reduxjs/toolkit": "^2.11.2",
+    "formik": "^2.4.9",
     "immer": "^10.0.3",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",

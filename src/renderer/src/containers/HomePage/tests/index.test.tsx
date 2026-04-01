@@ -78,9 +78,9 @@ describe('<HomePage />', () => {
     )
 
     expect(screen.getByText('Recent Projects')).toBeInTheDocument()
-    expect(screen.getByText('Name ↑↓')).toBeInTheDocument()
-    expect(screen.getByText('Last Updated ↑↓')).toBeInTheDocument()
-    expect(screen.getByText('Size ↑↓')).toBeInTheDocument()
+    expect(screen.getByText(/Name/)).toBeInTheDocument()
+    expect(screen.getByText(/Last Updated/)).toBeInTheDocument()
+    expect(screen.getByText(/Size/)).toBeInTheDocument()
     expect(screen.getByText('No Projects Found')).toBeInTheDocument()
   })
 

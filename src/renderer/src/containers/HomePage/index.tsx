@@ -5,13 +5,13 @@ import newProjectIcon from '@renderer/assets/new_project.svg'
 import openProjectIcon from '@renderer/assets/open_project.svg'
 import searchIcon from '@renderer/assets/search.svg'
 import MenuBar from '@renderer/components/MenuBar'
+import NewProjectDialog from '@renderer/components/NewProjectDialog'
+import ProjectsTable from '@renderer/components/ProjectsTable'
 import SearchBar from '@renderer/components/SearchBar'
-import NewProjectDialog from './components/NewProjectDialog'
-import ProjectsTable from './components/ProjectsTable'
-import Sidebar from './components/Sidebar'
+import Sidebar from '@renderer/components/Sidebar'
+import { useFormik } from 'formik'
 
 type ToolbarMap = Record<string, string[]>
-type HelpField = 'projectName' | 'latitude' | 'longitude'
 
 interface SidebarItem {
   label: string
@@ -38,57 +38,69 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
   { label: 'Open project', icon: openProjectIcon }
 ]
 
-const SAVED_PROJECTS: ProjectRecord[] = []
+const SAVED_PROJECTS: ProjectRecord[] = [
+  { name: 'Coastal Survey Alpha', lastUpdated: '2026-03-29 09:15', size: '128.4 MB' },
+  { name: 'Delta Wind Farm', lastUpdated: '2026-03-27 14:42', size: '86.1 MB' },
+  { name: 'Northern Grid Scan', lastUpdated: '2026-03-24 18:05', size: '214.9 MB' },
+  { name: 'River Basin Mapping', lastUpdated: '2026-03-20 11:30', size: '97.6 MB' },
+  { name: 'Urban Heat Island Study', lastUpdated: '2026-03-16 16:50', size: '142.3 MB' }
+]
 
 export function HomePage(): React.JSX.Element {
   const [openMenu, setOpenMenu] = React.useState<string | null>(null)
   const [searchText, setSearchText] = React.useState('')
   const [showNewProjectDialog, setShowNewProjectDialog] = React.useState(false)
-  const [projectName, setProjectName] = React.useState('')
-  const [latitude, setLatitude] = React.useState('')
-  const [longitude, setLongitude] = React.useState('')
-  const [hoveredHelp, setHoveredHelp] = React.useState<HelpField | null>(null)
-  const [formErrors, setFormErrors] = React.useState<{
-    projectName?: string
-    latitude?: string
-    longitude?: string
-  }>({})
+
+  const formik = useFormik({
+    initialValues: {
+      projectName: '',
+      latitude: '',
+      longitude: ''
+    },
+    validate: (values) => {
+      const errors: { projectName?: string; latitude?: string; longitude?: string } = {}
+
+      if (!values.projectName.trim()) {
+        errors.projectName = 'Project name is required.'
+      }
+
+      const lat = Number.parseFloat(values.latitude)
+      if (Number.isNaN(lat) || lat < -90 || lat > 90) {
+        errors.latitude =
+          'Invalid latitude. Enter latitude in decimal degrees. Valid range: -90 <= latitude <= 90. Negative for South, positive for North.'
+      }
+
+      const lon = Number.parseFloat(values.longitude)
+      if (Number.isNaN(lon) || lon < -180 || lon > 180) {
+        errors.longitude =
+          'Invalid longitude. Enter longitude in decimal degrees. Valid range: -180 <= longitude <= 180. Negative for West, positive for East.'
+      }
+
+      return errors
+    },
+    onSubmit: (_values, { resetForm }) => {
+      // TODO: handle project creation with values
+      resetForm()
+      setShowNewProjectDialog(false)
+    }
+  })
 
   const openNewProjectDialog = (): void => {
     setOpenMenu(null)
-    setFormErrors({})
-    setHoveredHelp(null)
+    formik.resetForm()
     setShowNewProjectDialog(true)
   }
 
   const closeNewProjectDialog = (): void => {
+    formik.resetForm()
     setShowNewProjectDialog(false)
   }
 
-  const validateAndCreateProject = (): void => {
-    const nextErrors: { projectName?: string; latitude?: string; longitude?: string } = {}
-
-    if (!projectName.trim()) {
-      nextErrors.projectName = 'Project name is required.'
-    }
-
-    const lat = Number.parseFloat(latitude)
-    if (Number.isNaN(lat) || lat < -90 || lat > 90) {
-      nextErrors.latitude =
-        'Invalid latitude. Enter latitude in decimal degrees. Valid range: -90 <= latitude <= 90. Negative for South, positive for North.'
-    }
-
-    const lon = Number.parseFloat(longitude)
-    if (Number.isNaN(lon) || lon < -180 || lon > 180) {
-      nextErrors.longitude =
-        'Invalid longitude. Enter longitude in decimal degrees. Valid range: -180 <= longitude <= 180. Negative for West, positive for East.'
-    }
-
-    setFormErrors(nextErrors)
-    if (Object.keys(nextErrors).length > 0) return
-
-    closeNewProjectDialog()
-  }
+  const filteredProjects = SAVED_PROJECTS.filter((project) =>
+    [project.name, project.lastUpdated, project.size].some((value) =>
+      value.toLowerCase().includes(searchText.trim().toLowerCase())
+    )
+  )
 
   return (
     <div className="flex h-full flex-col font-sans">
@@ -107,7 +119,6 @@ export function HomePage(): React.JSX.Element {
                 openNewProjectDialog()
                 return
               }
-
               setOpenMenu(null)
             }}
           />
@@ -127,7 +138,7 @@ export function HomePage(): React.JSX.Element {
 
         <main className="flex-1 p-6">
           <ProjectsTable
-            projects={SAVED_PROJECTS}
+            projects={filteredProjects}
             emptyIcon={searchIcon}
             onCreateNew={openNewProjectDialog}
           />
@@ -136,21 +147,8 @@ export function HomePage(): React.JSX.Element {
 
       <NewProjectDialog
         isOpen={showNewProjectDialog}
-        projectName={projectName}
-        latitude={latitude}
-        longitude={longitude}
-        formErrors={formErrors}
-        hoveredHelp={hoveredHelp}
+        formik={formik}
         onClose={closeNewProjectDialog}
-        onCreate={validateAndCreateProject}
-        onFieldChange={(field, value) => {
-          if (field === 'projectName') setProjectName(value)
-          if (field === 'latitude') setLatitude(value)
-          if (field === 'longitude') setLongitude(value)
-
-          setFormErrors((prev) => ({ ...prev, [field]: undefined }))
-        }}
-        onHelpChange={setHoveredHelp}
       />
     </div>
   )
