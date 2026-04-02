@@ -29,7 +29,7 @@ function FormField({
   formik,
   onHelpChange
 }: FormFieldProps): React.JSX.Element {
-  const error = formik.touched[name] ? formik.errors[name] : undefined
+  const error = formik.errors[name]
 
   return (
     <label className="block text-sm text-neutral-300">

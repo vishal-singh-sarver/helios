@@ -57,29 +57,46 @@ export function HomePage(): React.JSX.Element {
       latitude: '',
       longitude: ''
     },
+    validateOnChange: true,
+    validateOnBlur: true,
     validate: (values) => {
       const errors: { projectName?: string; latitude?: string; longitude?: string } = {}
 
       if (!values.projectName.trim()) {
         errors.projectName = 'Project name is required.'
+      } else if (values.projectName.length > 30) {
+        errors.projectName = 'Project name must be 30 characters or fewer.'
       }
 
-      const lat = Number.parseFloat(values.latitude)
-      if (Number.isNaN(lat) || lat < -90 || lat > 90) {
-        errors.latitude =
-          'Invalid latitude. Enter latitude in decimal degrees. Valid range: -90 <= latitude <= 90. Negative for South, positive for North.'
+      if (values.latitude !== '') {
+        const lat = Number.parseFloat(values.latitude)
+        if (Number.isNaN(lat) || lat < -90 || lat > 90) {
+          errors.latitude =
+            'Invalid latitude. Enter latitude in decimal degrees. Valid range: -90 <= latitude <= 90. Negative for South, positive for North.'
+        }
       }
 
-      const lon = Number.parseFloat(values.longitude)
-      if (Number.isNaN(lon) || lon < -180 || lon > 180) {
-        errors.longitude =
-          'Invalid longitude. Enter longitude in decimal degrees. Valid range: -180 <= longitude <= 180. Negative for West, positive for East.'
+      if (values.longitude !== '') {
+        const lon = Number.parseFloat(values.longitude)
+        if (Number.isNaN(lon) || lon < -180 || lon > 180) {
+          errors.longitude =
+            'Invalid longitude. Enter longitude in decimal degrees. Valid range: -180 <= longitude <= 180. Negative for West, positive for East.'
+        }
       }
 
       return errors
     },
-    onSubmit: (_values, { resetForm }) => {
-      // TODO: handle project creation with values
+    onSubmit: (values, { resetForm }) => {
+    
+             if (!values.projectName || !values.latitude || !values.longitude) {
+        formik.setErrors({
+          ...(!values.projectName ? { projectName: 'Project name is required.' } : {}),
+          ...(!values.latitude ? { latitude: 'Latitude is required.' } : {}),
+          ...(!values.longitude ? { longitude: 'Longitude is required.' } : {})
+        })
+        return
+      }
+
       resetForm()
       setShowNewProjectDialog(false)
     }
