@@ -96,7 +96,7 @@ mac:
   # Notarization: Required for distribution via App Store or web
   # For development, leave as false
   notarize: false
-  
+  icon: build/icon.icns
   # Installer targets
   target:
     - dmg   # Drag-and-drop disk image
@@ -145,6 +145,13 @@ linux:
 
 # deb:
 #   artifactName: ${name}-${version}.${ext}
+
+################################################################################
+# Build Hooks - Runs after packaging completes
+################################################################################
+# afterPack: Ensures backend binary has proper executable permissions
+#            This is critical for bundled backends in packaged apps
+afterPack: build/afterPack.js
 
 ################################################################################
 # General Build Settings
