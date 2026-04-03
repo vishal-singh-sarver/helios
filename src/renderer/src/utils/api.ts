@@ -1,5 +1,5 @@
 import { BASE_URL } from './constants'
-
+import { getSessionId } from './session'
 // ── Error type ───────────────────────────────────────────────────────────────
 
 export class ApiError extends Error {
@@ -18,7 +18,9 @@ async function request<T>(
 ): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json',
+           'X-Session-Id': getSessionId()
+    },
     ...(body !== undefined && { body: JSON.stringify(body) })
   })
 
