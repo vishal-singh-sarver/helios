@@ -20,7 +20,8 @@ const { execSync } = require('child_process')
 
 const REPO_ROOT = path.join(__dirname, '..')
 const BACKEND_API_DIR = path.join(REPO_ROOT, 'backend-api')
-const BACKEND_BUILD_SCRIPT = path.join(BACKEND_API_DIR, 'scripts', 'build_binary.sh')
+const BACKEND_BUILD_SCRIPT_UNIX = path.join(BACKEND_API_DIR, 'scripts', 'build_binary.sh')
+const BACKEND_BUILD_SCRIPT_WINDOWS = path.join(BACKEND_API_DIR, 'scripts', 'build_binary.ps1')
 const BACKEND_DIST_DIR = path.join(BACKEND_API_DIR, 'dist')
 const RESOURCES_BACKEND_DIR = path.join(REPO_ROOT, 'resources', 'backend')
 
@@ -68,6 +69,25 @@ function ensureDir(dir) {
     fs.mkdirSync(dir, { recursive: true })
     console.log(`[*] Created directory: ${dir}`)
   }
+}
+
+/**
+ * Check whether the current platform already has a usable bundled backend.
+ * On Windows we prefer reusing the pre-synced binary so packaging does not
+ * have to rebuild anything inside backend-api/.
+ */
+function hasUsableBundledBackend(platformConfig) {
+  const { binaryName, destPath } = platformConfig
+
+  if (!fs.existsSync(destPath)) {
+    return false
+  }
+
+  if (fs.statSync(destPath).isDirectory()) {
+    return fs.existsSync(path.join(destPath, binaryName))
+  }
+
+  return true
 }
 
 /**
@@ -124,20 +144,31 @@ function buildBackend() {
     throw new Error(`Backend API directory not found: ${BACKEND_API_DIR}`)
   }
 
-  if (!fs.existsSync(BACKEND_BUILD_SCRIPT)) {
+  if (process.platform === 'win32') {
+    if (!fs.existsSync(BACKEND_BUILD_SCRIPT_WINDOWS)) {
+      throw new Error(
+        `Backend build script not found: ${BACKEND_BUILD_SCRIPT_WINDOWS}\n` +
+        `Make sure backend-api/scripts/build_binary.ps1 exists.`
+      )
+    }
+
+    runCommand(
+      `powershell -NoProfile -ExecutionPolicy Bypass -File "${BACKEND_BUILD_SCRIPT_WINDOWS}"`,
+      'Build backend executable'
+    )
+    return
+  }
+
+  if (!fs.existsSync(BACKEND_BUILD_SCRIPT_UNIX)) {
     throw new Error(
-      `Backend build script not found: ${BACKEND_BUILD_SCRIPT}\n` +
+      `Backend build script not found: ${BACKEND_BUILD_SCRIPT_UNIX}\n` +
       `Make sure backend-api/scripts/build_binary.sh exists.`
     )
   }
 
-  // Make the build script executable on Unix
-  if (process.platform !== 'win32') {
-    fs.chmodSync(BACKEND_BUILD_SCRIPT, 0o755)
-  }
-
-  // Run the build script
-  runCommand(`bash "${BACKEND_BUILD_SCRIPT}"`, 'Build backend executable')
+  // Preserve existing Unix behavior.
+  fs.chmodSync(BACKEND_BUILD_SCRIPT_UNIX, 0o755)
+  runCommand(`bash "${BACKEND_BUILD_SCRIPT_UNIX}"`, 'Build backend executable')
 }
 
 /**
@@ -232,6 +263,22 @@ function main() {
         `This script must be run from the repo root.\n` +
         `Expected backend-api directory at: ${BACKEND_API_DIR}`
       )
+    }
+
+    const platformConfig = getPlatformConfig()
+
+    // Windows installer builds should not require mutating backend-api/ when
+    // a valid prebuilt backend is already present in resources/backend/win.
+    if (process.platform === 'win32' && hasUsableBundledBackend(platformConfig)) {
+      console.log('\n========================================')
+      console.log('Using Existing Windows Backend Resource')
+      console.log('========================================')
+      console.log(`[*] Reusing bundled backend at: ${platformConfig.destPath}`)
+      console.log(`[*] Skipping backend-api build on Windows`)
+      console.log('\n========================================')
+      console.log('✓ Backend sync complete')
+      console.log('========================================\n')
+      return
     }
 
     // Build the backend

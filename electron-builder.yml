@@ -39,6 +39,14 @@ extraResources:
   - from: resources/backend/${os}
     to: backend
 
+win:
+  target:
+    - nsis
+  icon: build/icon.ico
+  # Build unsigned Windows installers without pulling in signing/edit tools.
+  # This keeps local packaging stable and does not affect macOS/Linux targets.
+  signAndEditExecutable: false
+
 ################################################################################
 # WINDOWS - NSIS Assisted Installer
 ################################################################################
@@ -74,10 +82,9 @@ nsis:
   installerIcon: build/icon.ico
   uninstallerIcon: build/icon.ico
   installerHeaderIcon: build/icon.ico
-  
-  # Optional: custom NSIS script for advanced customization
-  # Only include if the file exists and contains stable code
-  include: build/installer.nsh
+
+  # Use electron-builder's built-in license wizard on Windows.
+  # This keeps the NSIS flow stable without affecting macOS/Linux packaging.
 
 ################################################################################
 # macOS - Professional App Bundle + Installers
