@@ -5,14 +5,25 @@ import { backendManager } from './backend-manager'
 
 const isDev = !app.isPackaged
 
+function getPlatformUserDataPath(homeDir: string): string {
+  if (process.platform === 'win32') {
+    return join(homeDir, 'AppData/Roaming/Helios')
+  }
+
+  if (process.platform === 'darwin') {
+    return join(homeDir, 'Library/Application Support/Helios')
+  }
+
+  return join(homeDir, '.config/Helios')
+}
+
 /**
  * Early startup logger - writes to a stable location even if app crashes early.
  * Use this before backendManager is initialized.
  */
 function getEarlyLogPath(): string {
-  // Use app.getPath('home') - works reliably in packaged apps launched from Finder
   const homeDir = app.getPath('home')
-  const logDir = join(homeDir, 'Library/Application Support/Helios/logs')
+  const logDir = join(getPlatformUserDataPath(homeDir), 'logs')
   return join(logDir, 'app-startup.log')
 }
 
@@ -33,7 +44,7 @@ function writeEarlyLog(message: string): void {
   }
 }
 
-function createWindow(): void {
+function createWindow(onReadyToShow?: () => void): BrowserWindow {
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -47,6 +58,7 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
+    onReadyToShow?.()
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -59,6 +71,8 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  return mainWindow
 }
 
 /**
@@ -138,26 +152,15 @@ function createSplashWindow(): BrowserWindow {
  * platform-specific default folders.
  */
 function setUserDataPath(): void {
-  // Use app.getPath('home') for cross-platform reliability
   const homeDir = app.getPath('home')
-  
+
   if (process.platform === 'win32') {
     app.setAppUserModelId('com.navyug.helios')
-    // On Windows, use user's AppData\Roaming
-    const userDataPath = join(homeDir, 'AppData/Roaming/Helios')
-    app.setPath('userData', userDataPath)
-    writeEarlyLog(`Windows: userData=${userDataPath}`)
-  } else if (process.platform === 'darwin') {
-    // On macOS, use ~/Library/Application Support/Helios
-    const userDataPath = join(homeDir, 'Library/Application Support/Helios')
-    app.setPath('userData', userDataPath)
-    writeEarlyLog(`macOS: userData=${userDataPath}`)
-  } else {
-    // On Linux, use ~/.config/Helios
-    const userDataPath = join(homeDir, '.config/Helios')
-    app.setPath('userData', userDataPath)
-    writeEarlyLog(`Linux: userData=${userDataPath}`)
   }
+
+  const userDataPath = getPlatformUserDataPath(homeDir)
+  app.setPath('userData', userDataPath)
+  writeEarlyLog(`${process.platform}: userData=${userDataPath}`)
 }
 
 // Initialize paths and early logging BEFORE app is ready
@@ -252,12 +255,16 @@ app.whenReady().then(async () => {
       return
     }
     
-    // Backend is ready - close splash and create main window
+    // Keep the splash alive until the main window is ready.
+    // This avoids a zero-window gap that would trigger window-all-closed on Linux/Windows.
     writeEarlyLog(`Backend started successfully [PID=${status.pid}, port=${status.port}]`)
     console.log(`Backend started (PID: ${status.pid}, Port: ${status.port})`)
-    
-    splash?.destroy()
-    createWindow()
+
+    createWindow(() => {
+      if (!splash.isDestroyed()) {
+        splash.destroy()
+      }
+    })
   } catch (error) {
     splash?.destroy()
     const message = error instanceof Error ? error.message : String(error)

@@ -407,7 +407,7 @@ rm -rf dist out
 rm -rf backend-api/build backend-api/dist
 rm -rf linux-installer/payload/Helios
 rm -f resources/backend/mac/heliosgui_backend
-rm -f resources/backend/linux/heliosgui_backend
+rm -rf resources/backend/linux/heliosgui_backend
 If you also want to remove the Python virtual environment and force backend dependencies to reinstall next time:
 
 rm -rf backend-api/venv
