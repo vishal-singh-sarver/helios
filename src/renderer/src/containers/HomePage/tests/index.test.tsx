@@ -142,7 +142,7 @@ describe('<HomePage />', () => {
       )
     ).not.toBeInTheDocument()
 
-    const latitudeHelpButton = screen.getByRole('button', { name: 'Show latitude help' })
+    const latitudeHelpButton = screen.getByRole('img', { name: 'Show latitude help' })
     await user.hover(latitudeHelpButton)
     expect(
       screen.getByText(

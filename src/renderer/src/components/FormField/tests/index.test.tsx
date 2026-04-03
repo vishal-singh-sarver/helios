@@ -102,7 +102,7 @@ describe('<FormField />', () => {
       />
     )
 
-    const helpButton = screen.getByRole('button', { name: 'Show latitude help' })
+    const helpButton = screen.getByRole('img', { name: 'Show latitude help' })
     await user.hover(helpButton)
     await user.unhover(helpButton)
 

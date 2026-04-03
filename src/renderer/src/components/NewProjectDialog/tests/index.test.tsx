@@ -79,7 +79,7 @@ describe('<NewProjectDialog />', () => {
 
     expect(screen.getByText('Project name is required.')).toBeInTheDocument()
 
-    const latitudeHelpButton = screen.getAllByRole('button', { name: 'Show latitude help' })[0]
+    const latitudeHelpButton = screen.getByRole('img', { name: 'Show latitude help' })
     await user.hover(latitudeHelpButton)
     expect(
       screen.getByText(
