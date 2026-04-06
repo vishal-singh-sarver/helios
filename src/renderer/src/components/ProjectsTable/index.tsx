@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react'
 import EmptyState from '../EmptyState'
 
@@ -16,11 +17,17 @@ interface ProjectsTableProps {
 type SortKey = 'name' | 'lastUpdated' | 'size'
 type SortOrder = 'asc' | 'desc'
 
+const COLUMN_LABELS: Record<SortKey, string> = {
+  name: 'Name',
+  lastUpdated: 'Last Updated',
+  size: 'Size'
+}
+
 function ProjectsTable({ projects, emptyIcon, onCreateNew }: ProjectsTableProps): React.JSX.Element {
   const [sortKey, setSortKey] = useState<SortKey>('name')
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc')
 
-  const handleSort = (key: SortKey) => {
+  const handleSort = (key: SortKey): void => {
     if (key === sortKey) {
       setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))
     } else {
@@ -33,26 +40,23 @@ function ProjectsTable({ projects, emptyIcon, onCreateNew }: ProjectsTableProps)
     let aValue: string | number = a[sortKey]
     let bValue: string | number = b[sortKey]
 
-    // handle size (convert MB string to number)
     if (sortKey === 'size') {
       aValue = parseFloat(a.size)
       bValue = parseFloat(b.size)
     }
 
-    // handle date
     if (sortKey === 'lastUpdated') {
       return sortOrder === 'asc'
         ? new Date(a.lastUpdated).getTime() - new Date(b.lastUpdated).getTime()
         : new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime()
     }
 
-    // default string compare
     if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1
     if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1
     return 0
   })
 
-  const getArrow = (key: SortKey) => {
+  const getArrow = (key: SortKey): string => {
     if (key !== sortKey) return '↑↓'
     return sortOrder === 'asc' ? '↑' : '↓'
   }
@@ -62,11 +66,29 @@ function ProjectsTable({ projects, emptyIcon, onCreateNew }: ProjectsTableProps)
       <h1 className="mb-6 text-lg font-medium text-white">Recent Projects</h1>
 
       <div className="overflow-hidden rounded border border-app-border bg-panel/20">
-        <div className="grid grid-cols-[2fr_2fr_1fr] border-b border-app-border px-4 py-2 text-sm text-neutral-400">
-          <span onClick={() => handleSort('name')}>Name {getArrow('name')}</span>
-          <span onClick={() => handleSort('lastUpdated')}>Last Updated {getArrow('lastUpdated')}</span>
-          <span onClick={() => handleSort('size')}>Size {getArrow('size')}</span>
-        </div>
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-app-border">
+              {(['name', 'lastUpdated', 'size'] as SortKey[]).map((key) => (
+                <th
+                  key={key}
+                  scope="col"
+                  className={`px-4 py-2 text-left text-sm font-normal text-neutral-400 ${
+                    key === 'size' ? 'w-[20%]' : 'w-[40%]'
+                  }`}
+                >
+                  <button
+                    onClick={() => handleSort(key)}
+                    className="flex items-center gap-1 hover:text-white"
+                  >
+                    {COLUMN_LABELS[key]}
+                    <span aria-hidden="true">{getArrow(key)}</span>
+                  </button>
+                </th>
+              ))}
+            </tr>
+          </thead>
+        </table>
 
         {sortedProjects.length === 0 ? (
           <EmptyState icon={emptyIcon} onCreateNew={onCreateNew} />
