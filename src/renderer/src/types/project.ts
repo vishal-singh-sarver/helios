@@ -10,3 +10,13 @@ export const INITIAL_VALUES: FormValues = {
   latitude: '',
   longitude: ''
 }
+
+
+export interface ProjectRecord {
+  name: string
+  lastUpdated: string
+  size: string
+}
+
+
+export type ToolbarMap = Record<string, string[]>

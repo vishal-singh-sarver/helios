@@ -1,6 +1,5 @@
 import React from 'react'
-
-type ToolbarMap = Record<string, string[]>
+import { ToolbarMap } from '../../types/project'
 
 interface MenuBarProps {
   items: ToolbarMap

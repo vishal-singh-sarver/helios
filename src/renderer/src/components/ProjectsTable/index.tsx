@@ -1,11 +1,6 @@
 import React, { useState } from 'react'
 import EmptyState from '../EmptyState'
-
-interface ProjectRecord {
-  name: string
-  lastUpdated: string
-  size: string
-}
+import { ProjectRecord } from '../../types/project'
 
 interface ProjectsTableProps {
   projects: ProjectRecord[]

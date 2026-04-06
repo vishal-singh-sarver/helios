@@ -10,20 +10,11 @@ import ProjectsTable from '@renderer/components/ProjectsTable'
 import SearchBar from '@renderer/components/SearchBar'
 import Sidebar from '@renderer/components/Sidebar'
 import { useFormik } from 'formik'
-import { FormValues, INITIAL_VALUES } from '../../types/project'
-
-
-type ToolbarMap = Record<string, string[]>
+import { FormValues, INITIAL_VALUES, ProjectRecord, ToolbarMap } from '../../types/project'
 
 interface SidebarItem {
   label: string
   icon: string
-}
-
-interface ProjectRecord {
-  name: string
-  lastUpdated: string
-  size: string
 }
 
 const TOOLBAR_ITEMS: ToolbarMap = {
