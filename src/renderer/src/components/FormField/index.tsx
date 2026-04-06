@@ -1,53 +1,52 @@
-// src/renderer/components/FormField.tsx
-
 import React from 'react'
-import { FormikProps } from 'formik'
-import { FormValues } from '../../types/project'
-
 import Tooltip from '../ToolTip'
 
-
-
-interface FormFieldProps {
+export interface FormFieldLabelProps {
   label: string
-  name: keyof FormValues
   helpText: string
-  isHelpVisible: boolean
   helpAriaLabel: string
-  formik: FormikProps<FormValues>
-  onHelpChange: (visible: boolean) => void
 }
 
-function FormField({
-  label,
-  name,
-  helpText,
-  isHelpVisible,
-  helpAriaLabel,
-  formik,
-  onHelpChange
-}: FormFieldProps): React.JSX.Element {
-  const error = formik.errors[name]
+export interface FormFieldInputProps {
+  name: string
+  value: string
+  onChange: React.ChangeEventHandler<HTMLInputElement>
+  onBlur: React.FocusEventHandler<HTMLInputElement>
+  error?: string
+  type?: string
+  placeholder?: string
+  disabled?: boolean
+}
+
+interface FormFieldProps {
+  labelProps: FormFieldLabelProps
+  inputProps: FormFieldInputProps
+}
+
+function FormField({ labelProps, inputProps }: FormFieldProps): React.JSX.Element {
+  // console.log(`FormField label ${label}`)
+  // console.log(`FormField value ${value}`)
+  
+  const { label, helpText, helpAriaLabel } = labelProps
+  const { error, type = 'text', placeholder = 'Enter', disabled = false, ...restInputProps } = inputProps
+
 
   return (
     <label className="block text-sm text-neutral-300">
       <span className="flex items-center gap-1">
         {label}
         <span className="text-red-400">*</span>
-
-      
         <Tooltip
           text={helpText}
-          isVisible={isHelpVisible}
           ariaLabel={helpAriaLabel}
-          onHoverChange={onHelpChange}
         />
-
       </span>
 
       <input
-        placeholder="Enter"
-        {...formik.getFieldProps(name)}
+        {...restInputProps}
+        type={type}
+        placeholder={placeholder}
+        disabled={disabled}
         className="mt-1 h-9 w-full rounded border border-app-border bg-dark 
         px-3 text-sm text-white outline-none focus:border-neutral-500"
       />

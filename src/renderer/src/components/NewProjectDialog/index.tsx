@@ -2,7 +2,7 @@ import React from 'react'
 import { FormikProps } from 'formik'
 import FormField from '../FormField'
 import { FormValues } from '../../types/project'
-type HelpField = keyof FormValues
+
 
 
 interface NewProjectDialogProps {
@@ -16,12 +16,11 @@ function NewProjectDialog({
   formik,
   onClose
 }: NewProjectDialogProps): React.JSX.Element | null {
-  const [hoveredHelp, setHoveredHelp] = React.useState<HelpField | null>(null)
 
   if (!isOpen) return null
 
   return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/50">
+    <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/50">
       <section
         role="dialog"
         aria-modal="true"
@@ -36,32 +35,40 @@ function NewProjectDialog({
         </header>
 
         <div className="space-y-3 p-4">
-          <FormField
-            label="Project Name"
-            name="projectName"
-            helpText="Enter a project name to identify your work."
-            isHelpVisible={hoveredHelp === 'projectName'}
-            helpAriaLabel="Show project name help"
-            formik={formik}
-            onHelpChange={(visible) => setHoveredHelp(visible ? 'projectName' : null)}
+<FormField
+            labelProps={{
+              label: 'Project Name',
+              helpText: 'Enter a project name to identify your work.',
+              helpAriaLabel: 'Show project name help'
+            }}
+            inputProps={{
+              ...formik.getFieldProps('projectName'),
+              error: formik.errors.projectName as string | undefined
+            }}
           />
           <FormField
-            label="Latitude"
-            name="latitude"
-            helpText="Enter latitude in decimal degrees. Valid range: -90 <= latitude <= 90. Negative for South, positive for North."
-            isHelpVisible={hoveredHelp === 'latitude'}
-            helpAriaLabel="Show latitude help"
-            formik={formik}
-            onHelpChange={(visible) => setHoveredHelp(visible ? 'latitude' : null)}
+            labelProps={{
+              label: 'Latitude',
+              helpText: 'Enter latitude in decimal degrees. Valid range: -90 <= latitude <= 90. Negative for South, positive for North.',
+              helpAriaLabel: 'Show latitude help'
+            }}
+            inputProps={{
+              ...formik.getFieldProps('latitude'),
+              error: formik.errors.latitude as string | undefined,
+               type: 'number'
+            }}
           />
           <FormField
-            label="Longitude"
-            name="longitude"
-            helpText="Enter longitude in decimal degrees. Valid range: -180 <= longitude <= 180. Negative for West, positive for East."
-            isHelpVisible={hoveredHelp === 'longitude'}
-            helpAriaLabel="Show longitude help"
-            formik={formik}
-            onHelpChange={(visible) => setHoveredHelp(visible ? 'longitude' : null)}
+            labelProps={{
+              label: 'Longitude',
+              helpText: 'Enter longitude in decimal degrees. Valid range: -180 <= longitude <= 180. Negative for West, positive for East.',
+              helpAriaLabel: 'Show longitude help'
+            }}
+            inputProps={{
+              ...formik.getFieldProps('longitude'),
+              error: formik.errors.longitude as string | undefined,
+              type: 'number'
+            }}
           />
 
           <div className="flex justify-end gap-2 pt-2">
