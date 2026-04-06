@@ -5,21 +5,17 @@ interface TooltipProps {
   ariaLabel: string
 }
 
-function Tooltip({
-  text,
-  ariaLabel,
-}: TooltipProps): React.JSX.Element {
+function Tooltip({ text, ariaLabel }: TooltipProps): React.JSX.Element {
   return (
-       <span className="group relative inline-flex">
-      <span
-        role="button"
+    <span className="group relative inline-flex">
+      <button
+        type="button"
         aria-label={ariaLabel}
-        tabIndex={0}
         className="flex h-5 w-5 cursor-default items-center justify-center 
-        rounded-full border border-neutral-300 text-xs font-semibold text-white"
+  rounded-full border border-neutral-300 text-xs font-semibold text-white"
       >
         ?
-      </span>
+      </button>
 
       <span
         role="tooltip"
@@ -32,7 +28,6 @@ function Tooltip({
       </span>
     </span>
   )
-  
 }
 
 export default Tooltip
