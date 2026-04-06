@@ -86,16 +86,8 @@ export function HomePage(): React.JSX.Element {
 
       return errors
     },
-    onSubmit: (values, { resetForm }) => {
-    
-             if (!values.projectName || !values.latitude || !values.longitude) {
-        formik.setErrors({
-          ...(!values.projectName ? { projectName: 'Project name is required.' } : {}),
-          ...(!values.latitude ? { latitude: 'Latitude is required.' } : {}),
-          ...(!values.longitude ? { longitude: 'Longitude is required.' } : {})
-        })
-        return
-      }
+    onSubmit: (_values, { resetForm }) => {
+  
 
       resetForm()
       setShowNewProjectDialog(false)
