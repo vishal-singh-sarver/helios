@@ -10,6 +10,8 @@ import ProjectsTable from '@renderer/components/ProjectsTable'
 import SearchBar from '@renderer/components/SearchBar'
 import Sidebar from '@renderer/components/Sidebar'
 import { useFormik } from 'formik'
+import { FormValues, INITIAL_VALUES } from '../../types/project'
+
 
 type ToolbarMap = Record<string, string[]>
 
@@ -51,12 +53,8 @@ export function HomePage(): React.JSX.Element {
   const [searchText, setSearchText] = React.useState('')
   const [showNewProjectDialog, setShowNewProjectDialog] = React.useState(false)
 
-  const formik = useFormik({
-    initialValues: {
-      projectName: '',
-      latitude: '',
-      longitude: ''
-    },
+  const formik = useFormik<FormValues>({
+    initialValues: INITIAL_VALUES, 
     validateOnChange: true,
     validateOnBlur: true,
     validate: (values) => {

@@ -2,13 +2,11 @@
 
 import React from 'react'
 import { FormikProps } from 'formik'
+import { FormValues } from '../../types/project'
+
 import Tooltip from '../ToolTip'
 
-interface FormValues {
-  projectName: string
-  latitude: string
-  longitude: string
-}
+
 
 interface FormFieldProps {
   label: string

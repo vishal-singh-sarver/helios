@@ -1,14 +1,9 @@
 import React from 'react'
 import { FormikProps } from 'formik'
 import FormField from '../FormField'
+import { FormValues } from '../../types/project'
+type HelpField = keyof FormValues
 
-type HelpField = 'projectName' | 'latitude' | 'longitude'
-
-interface FormValues {
-  projectName: string
-  latitude: string
-  longitude: string
-}
 
 interface NewProjectDialogProps {
   isOpen: boolean
