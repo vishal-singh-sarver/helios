@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react'
 import EmptyState from '../EmptyState'
 
@@ -41,9 +40,9 @@ function ProjectsTable({ projects, emptyIcon, onCreateNew }: ProjectsTableProps)
     let bValue: string | number = b[sortKey]
 
     if (sortKey === 'size') {
-      aValue = parseFloat(a.size)
-      bValue = parseFloat(b.size)
-    }
+  aValue = Number.parseFloat(a.size)
+  bValue = Number.parseFloat(b.size)
+}
 
     if (sortKey === 'lastUpdated') {
       return sortOrder === 'asc'
@@ -66,7 +65,7 @@ function ProjectsTable({ projects, emptyIcon, onCreateNew }: ProjectsTableProps)
       <h1 className="mb-6 text-lg font-medium text-white">Recent Projects</h1>
 
       <div className="overflow-hidden rounded border border-app-border bg-panel/20">
-        <table className="w-full">
+        <table className="w-full border-collapse">
           <thead>
             <tr className="border-b border-app-border">
               {(['name', 'lastUpdated', 'size'] as SortKey[]).map((key) => (
@@ -88,24 +87,28 @@ function ProjectsTable({ projects, emptyIcon, onCreateNew }: ProjectsTableProps)
               ))}
             </tr>
           </thead>
-        </table>
 
-        {sortedProjects.length === 0 ? (
-          <EmptyState icon={emptyIcon} onCreateNew={onCreateNew} />
-        ) : (
-          <div className="max-h-130 overflow-y-auto">
-            {sortedProjects.map((project) => (
-              <button
-                key={project.name}
-                className="grid w-full grid-cols-[2fr_2fr_1fr] items-center border-b border-app-border/80 px-4 py-3 text-left text-sm"
-              >
-                <span className="text-white">{project.name}</span>
-                <span className="text-neutral-400">{project.lastUpdated}</span>
-                <span className="text-neutral-300">{project.size}</span>
-              </button>
-            ))}
-          </div>
-        )}
+          <tbody>
+            {sortedProjects.length === 0 ? (
+              <tr>
+                <td colSpan={3}>
+                  <EmptyState icon={emptyIcon} onCreateNew={onCreateNew} />
+                </td>
+              </tr>
+            ) : (
+              sortedProjects.map((project) => (
+                <tr
+                  key={project.name}
+                  className="border-b border-app-border/80 hover:bg-panel/40 cursor-pointer"
+                >
+                  <td className="px-4 py-3 text-sm text-white">{project.name}</td>
+                  <td className="px-4 py-3 text-sm text-neutral-400">{project.lastUpdated}</td>
+                  <td className="px-4 py-3 text-sm text-neutral-300">{project.size}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
     </>
   )

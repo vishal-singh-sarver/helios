@@ -15,7 +15,7 @@ function Sidebar({ items, onSelect }: SidebarProps): React.JSX.Element {
   return (
     <aside className="w-56 border-r border-app-border p-4">
       <nav className="flex flex-col gap-2">
-        {items?.map((item, index) => (
+        {items.map((item, index) => (
           <SidebarButton
             key={item.label}
             label={item.label}

@@ -5,16 +5,11 @@ type ToolbarMap = Record<string, string[]>
 interface MenuBarProps {
   items: ToolbarMap
   openMenu: string | null
-  onToggle: React.Dispatch<React.SetStateAction<string | null>>
+  onToggle: (value: string | null) => void
   onItemSelect: (menuItem: string) => void
 }
 
-function MenuBar({
-  items,
-  openMenu,
-  onToggle,
-  onItemSelect
-}: MenuBarProps): React.JSX.Element {
+function MenuBar({ items, openMenu, onToggle, onItemSelect }: MenuBarProps): React.JSX.Element {
   const toolbarRef = React.useRef<HTMLDivElement | null>(null)
 
   React.useEffect(() => {
@@ -32,10 +27,10 @@ function MenuBar({
   return (
     <div ref={toolbarRef}>
       <nav className="flex items-center gap-2 text-sm font-medium text-neutral-300">
-        {Object?.keys(items)?.map((item) => (
+        {Object.keys(items).map((item) => (
           <div key={item} className="relative">
             <button
-              onClick={() => onToggle((prev) => (prev === item ? null : item))}
+              onClick={() => onToggle(openMenu === item ? null : item)}
               className="rounded px-2 py-1 hover:bg-panel hover:text-white"
             >
               {item}
