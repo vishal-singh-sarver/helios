@@ -22,6 +22,10 @@ function NewProjectDialog({
 
     if (isOpen) {
       dialog.showModal()
+      const firstFocusable = dialog.querySelector<HTMLElement>(
+      'button, input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    )
+    firstFocusable?.focus()
     } else {
       dialog.close()
     }
