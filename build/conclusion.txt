@@ -1,0 +1,12 @@
+Installation Complete
+
+Helios has been successfully installed on your computer.
+
+The application is now available in your Applications folder.
+
+To launch Helios:
+1. Open Finder
+2. Go to Applications
+3. Double-click "Helios"
+
+For support and documentation, visit our website.
