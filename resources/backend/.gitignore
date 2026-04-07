@@ -1,7 +1,0 @@
-# Build artifacts - generated from backend-api/scripts/build_binary.sh
-# These should be rebuilt locally and never committed
-heliosgui_backend
-heliosgui_backend.exe
-*.so
-*.dylib
-*.dll
