@@ -45,7 +45,9 @@ export function HomePage(): React.JSX.Element {
         errors.projectName = 'Project name must be 30 characters or fewer.'
       }
 
-      if (values.latitude !== '') {
+      if (values.latitude === '') {
+        errors.latitude = 'Latitude is required.'
+      } else {
         const lat = Number.parseFloat(values.latitude)
         if (Number.isNaN(lat) || lat < -90 || lat > 90) {
           errors.latitude =
@@ -53,7 +55,9 @@ export function HomePage(): React.JSX.Element {
         }
       }
 
-      if (values.longitude !== '') {
+      if (values.longitude === '') {
+        errors.longitude = 'Longitude is required.'
+      } else {
         const lon = Number.parseFloat(values.longitude)
         if (Number.isNaN(lon) || lon < -180 || lon > 180) {
           errors.longitude =
@@ -135,7 +139,7 @@ export function HomePage(): React.JSX.Element {
           }}
           inputProps={{
             ...formik.getFieldProps('projectName'),
-            error: formik.errors.projectName as string | undefined
+            error: (formik.touched.projectName || formik.values.projectName !== '') ? formik.errors.projectName as string | undefined : undefined
           }}
         />
         <FormField
@@ -146,7 +150,7 @@ export function HomePage(): React.JSX.Element {
           }}
           inputProps={{
             ...formik.getFieldProps('latitude'),
-            error: formik.errors.latitude as string | undefined,
+            error: (formik.touched.latitude || formik.values.latitude !== '') ? formik.errors.latitude as string | undefined : undefined,
             type: 'number'
           }}
         />
@@ -158,7 +162,7 @@ export function HomePage(): React.JSX.Element {
           }}
           inputProps={{
             ...formik.getFieldProps('longitude'),
-            error: formik.errors.longitude as string | undefined,
+            error: (formik.touched.longitude || formik.values.longitude !== '') ? formik.errors.longitude as string | undefined : undefined,
             type: 'number'
           }}
         />

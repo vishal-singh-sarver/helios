@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useCallback } from 'react'
+import React, { useEffect, useRef } from 'react'
 
 interface DialogProps {
   isOpen: boolean
@@ -9,14 +9,6 @@ interface DialogProps {
 
 function Dialog({ isOpen, title, onClose, children }: DialogProps): React.JSX.Element {
   const dialogRef = useRef<HTMLDialogElement>(null)
-
-  const handleCancel = useCallback(
-    (event: Event): void => {
-      event.preventDefault()
-      onClose()
-    },
-    [onClose]
-  )
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -33,18 +25,14 @@ function Dialog({ isOpen, title, onClose, children }: DialogProps): React.JSX.El
     }
   }, [isOpen])
 
-  useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-
-    dialog.addEventListener('cancel', handleCancel)
-    return () => dialog.removeEventListener('cancel', handleCancel)
-  }, [handleCancel])
-
   return (
     <dialog
       ref={dialogRef}
       aria-label={title}
+      onCancel={(e) => {
+        e.preventDefault()
+        onClose()
+      }}
       className="fixed inset-0 m-auto w-[420px] rounded border border-app-border bg-[#1f2126] p-0 backdrop:bg-black/50"
     >
       <header className="flex items-center justify-between bg-neutral-200 px-4 py-2">
