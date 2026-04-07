@@ -1,28 +1,20 @@
 import React from 'react'
-import heliosLogo from '@renderer/assets/Helios_logo.svg'
 import homeIcon from '@renderer/assets/home.svg'
 import newProjectIcon from '@renderer/assets/new_project.svg'
 import openProjectIcon from '@renderer/assets/open_project.svg'
 import searchIcon from '@renderer/assets/search.svg'
+import Header from '@renderer/components/Header'
 import MenuBar from '@renderer/components/MenuBar'
 import NewProjectDialog from '@renderer/components/NewProjectDialog'
 import ProjectsTable from '@renderer/components/ProjectsTable'
 import SearchBar from '@renderer/components/SearchBar'
 import Sidebar from '@renderer/components/Sidebar'
 import { useFormik } from 'formik'
-import { FormValues, INITIAL_VALUES, ProjectRecord, ToolbarMap } from '../../types/project'
+import { FormValues, INITIAL_VALUES, ProjectRecord, TOOLBAR_ITEMS } from '../../types/project'
 
 interface SidebarItem {
   label: string
   icon: string
-}
-
-const TOOLBAR_ITEMS: ToolbarMap = {
-  File: ['New Project', 'Open Project', 'Import Project', 'Exit'],
-  Edit: ['Undo', 'Redo', 'Preferences'],
-  View: ['Zoom In', 'Zoom Out', 'Reset Layout'],
-  Tools: ['Scripting Console', 'Extensions', 'Diagnostics'],
-  Help: ['Documentation', 'Shortcuts', 'About Helios']
 }
 
 const SIDEBAR_ITEMS: SidebarItem[] = [
@@ -102,12 +94,7 @@ export function HomePage(): React.JSX.Element {
 
   return (
     <div className="flex h-full flex-col font-sans">
-      <header className="border-b border-app-border">
-        <div className="flex h-11 items-center border-b border-app-border px-4">
-          <img src={heliosLogo} alt="Helios logo" className="h-5 w-auto" />
-        </div>
-
-        <div className="flex h-11 items-center justify-between px-3">
+      <Header>
           <MenuBar
             items={TOOLBAR_ITEMS}
             openMenu={openMenu}
@@ -128,8 +115,7 @@ export function HomePage(): React.JSX.Element {
             placeholder="Search..."
             onChange={setSearchText}
           />
-        </div>
-      </header>
+      </Header>
 
       <div className="flex flex-1">
         <Sidebar items={SIDEBAR_ITEMS} onSelect={openNewProjectDialog} />
