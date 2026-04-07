@@ -4,7 +4,6 @@ import newProjectIcon from '@renderer/assets/new_project.svg'
 import openProjectIcon from '@renderer/assets/open_project.svg'
 import searchIcon from '@renderer/assets/search.svg'
 import Dialog from '@renderer/components/Dialog'
-import Form from '@renderer/components/Form'
 import FormField from '@renderer/components/FormField'
 import Header from '@renderer/components/Header'
 import MenuBar from '@renderer/components/MenuBar'
@@ -12,12 +11,7 @@ import ProjectsTable from '@renderer/components/ProjectsTable'
 import SearchBar from '@renderer/components/SearchBar'
 import Sidebar from '@renderer/components/Sidebar'
 import { useFormik } from 'formik'
-import { FormValues, INITIAL_VALUES, ProjectRecord, TOOLBAR_ITEMS } from '../../types/project'
-
-interface SidebarItem {
-  label: string
-  icon: string
-}
+import { FormValues, INITIAL_VALUES, ProjectRecord, SidebarItem, TOOLBAR_ITEMS } from '../../types/project'
 
 const SIDEBAR_ITEMS: SidebarItem[] = [
   { label: 'Home', icon: homeIcon },
@@ -34,16 +28,16 @@ const SAVED_PROJECTS: ProjectRecord[] = [
 ]
 
 export function HomePage(): React.JSX.Element {
-  const [openMenu, setOpenMenu] = React.useState<string | null>(null)
   const [searchText, setSearchText] = React.useState('')
   const [showNewProjectDialog, setShowNewProjectDialog] = React.useState(false)
+  const [activeSidebar, setActiveSidebar] = React.useState('Home')
 
   const formik = useFormik<FormValues>({
     initialValues: INITIAL_VALUES, 
     validateOnChange: true,
     validateOnBlur: true,
     validate: (values) => {
-      const errors: { projectName?: string; latitude?: string; longitude?: string } = {}
+      const errors: Partial<Record<keyof FormValues, string>> = {}
 
       if (!values.projectName.trim()) {
         errors.projectName = 'Project name is required.'
@@ -78,7 +72,6 @@ export function HomePage(): React.JSX.Element {
   })
 
   const openNewProjectDialog = (): void => {
-    setOpenMenu(null)
     formik.resetForm()
     setShowNewProjectDialog(true)
   }
@@ -98,18 +91,13 @@ export function HomePage(): React.JSX.Element {
     <div className="flex h-full flex-col font-sans">
       <Header>
           <MenuBar
-            items={TOOLBAR_ITEMS}
-            openMenu={openMenu}
-            onToggle={setOpenMenu}
-            onItemSelect={(menuItem) => {
-              if (menuItem === 'New Project') {
-                openNewProjectDialog()
-                return
-              }
-              setOpenMenu(null)
-            }}
-          />
-
+          items={TOOLBAR_ITEMS}
+          onItemSelect={(menuItem) => {
+            if (menuItem === 'New Project') {
+              openNewProjectDialog()
+            }
+          }}
+        />
           <SearchBar
             ariaLabel="Search projects"
             icon={searchIcon}
@@ -120,7 +108,14 @@ export function HomePage(): React.JSX.Element {
       </Header>
 
       <div className="flex flex-1">
-        <Sidebar items={SIDEBAR_ITEMS} onSelect={openNewProjectDialog} />
+        <Sidebar
+          items={SIDEBAR_ITEMS}
+          activeLabel={activeSidebar}
+          onSelect={(label) => {
+            setActiveSidebar(label)
+            if (label === 'New Project') openNewProjectDialog()
+          }}
+        />
 
         <main className="flex-1 p-6">
           <ProjectsTable
@@ -132,48 +127,56 @@ export function HomePage(): React.JSX.Element {
       </div>
 
       <Dialog isOpen={showNewProjectDialog} title="New Project" onClose={closeNewProjectDialog}>
-        <Form
-          onSubmit={() => formik.submitForm()}
-          onCancel={closeNewProjectDialog}
-          submitLabel="Create"
-          cancelLabel="Cancel"
-        >
-          <FormField
-            labelProps={{
-              label: 'Project Name',
-              helpText: 'Enter a project name to identify your work.',
-              helpAriaLabel: 'Show project name help'
-            }}
-            inputProps={{
-              ...formik.getFieldProps('projectName'),
-              error: formik.errors.projectName as string | undefined
-            }}
-          />
-          <FormField
-            labelProps={{
-              label: 'Latitude',
-              helpText: 'Enter latitude in decimal degrees. Valid range: -90 <= latitude <= 90. Negative for South, positive for North.',
-              helpAriaLabel: 'Show latitude help'
-            }}
-            inputProps={{
-              ...formik.getFieldProps('latitude'),
-              error: formik.errors.latitude as string | undefined,
-              type: 'number'
-            }}
-          />
-          <FormField
-            labelProps={{
-              label: 'Longitude',
-              helpText: 'Enter longitude in decimal degrees. Valid range: -180 <= longitude <= 180. Negative for West, positive for East.',
-              helpAriaLabel: 'Show longitude help'
-            }}
-            inputProps={{
-              ...formik.getFieldProps('longitude'),
-              error: formik.errors.longitude as string | undefined,
-              type: 'number'
-            }}
-          />
-        </Form>
+        <FormField
+          labelProps={{
+            label: 'Project Name',
+            helpText: 'Enter a project name to identify your work.',
+            helpAriaLabel: 'Show project name help'
+          }}
+          inputProps={{
+            ...formik.getFieldProps('projectName'),
+            error: formik.errors.projectName as string | undefined
+          }}
+        />
+        <FormField
+          labelProps={{
+            label: 'Latitude',
+            helpText: 'Enter latitude in decimal degrees. Valid range: -90 <= latitude <= 90. Negative for South, positive for North.',
+            helpAriaLabel: 'Show latitude help'
+          }}
+          inputProps={{
+            ...formik.getFieldProps('latitude'),
+            error: formik.errors.latitude as string | undefined,
+            type: 'number'
+          }}
+        />
+        <FormField
+          labelProps={{
+            label: 'Longitude',
+            helpText: 'Enter longitude in decimal degrees. Valid range: -180 <= longitude <= 180. Negative for West, positive for East.',
+            helpAriaLabel: 'Show longitude help'
+          }}
+          inputProps={{
+            ...formik.getFieldProps('longitude'),
+            error: formik.errors.longitude as string | undefined,
+            type: 'number'
+          }}
+        />
+
+        <div className="flex justify-end gap-2 pt-2">
+          <button
+            onClick={closeNewProjectDialog}
+            className="rounded bg-neutral-200 px-3 py-1 text-sm text-black hover:bg-neutral-100"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => formik.submitForm()}
+            className="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-500"
+          >
+            Create
+          </button>
+        </div>
       </Dialog>
     </div>
   )

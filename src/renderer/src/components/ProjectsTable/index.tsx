@@ -94,7 +94,7 @@ function ProjectsTable({ projects, emptyIcon, onCreateNew }: ProjectsTableProps)
               sortedProjects.map((project) => (
                 <tr
                   key={project.name}
-                  className="border-b border-app-border/80 hover:bg-panel/40 cursor-pointer"
+                  className="border-b border-app-border/80 hover:bg-panel/40"
                 >
                   <td className="px-4 py-3 text-sm text-white">{project.name}</td>
                   <td className="px-4 py-3 text-sm text-neutral-400">{project.lastUpdated}</td>

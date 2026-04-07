@@ -19,6 +19,11 @@ export interface ProjectRecord {
 }
 
 
+export interface SidebarItem {
+  label: string
+  icon: string
+}
+
 export type ToolbarMap = Record<string, string[]>
 
 export const TOOLBAR_ITEMS: ToolbarMap = {

@@ -1,5 +1,5 @@
 import React,{ useId } from 'react'
-import Tooltip from '../ToolTip'
+import Tooltip from '../Tooltip'
 
 export interface FormFieldLabelProps {
   label: string
@@ -24,14 +24,11 @@ interface FormFieldProps {
 }
 
 function FormField({ labelProps, inputProps }: FormFieldProps): React.JSX.Element {
-  
-  //console.log(`FormField value ${value}`)
-  
   const { label, helpText, helpAriaLabel } = labelProps
   const { error, type = 'text', placeholder = 'Enter', disabled = false, ...restInputProps } = inputProps
-   const errorId = useId()
+  const errorId = useId()
 
- return (
+  return (
     <div className="block text-sm text-neutral-300">
       <label htmlFor={restInputProps.name} className="flex items-center gap-1">
         {label}

@@ -1,14 +1,14 @@
 import React from 'react'
 import { render } from '@testing-library/react'
-import ToolTip from '../index'
+import Tooltip from '../index'
 
-describe('<ToolTip />', () => {
+describe('<Tooltip />', () => {
   it('renders without error', () => {
-    render(<ToolTip />)
+    render(<Tooltip />)
   })
 
   it('should match the snapshot', () => {
-    const { container } = render(<ToolTip />)
+    const { container } = render(<Tooltip />)
     expect(container.firstChild).toMatchSnapshot()
   })
 })

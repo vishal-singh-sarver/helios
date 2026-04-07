@@ -22,13 +22,13 @@ function Dialog({ isOpen, title, onClose, children }: DialogProps): React.JSX.El
     const dialog = dialogRef.current
     if (!dialog) return
 
-    if (isOpen) {
+    if (isOpen && !dialog.open) {
       dialog.showModal()
       const firstFocusable = dialog.querySelector<HTMLElement>(
         'button, input, select, textarea, [tabindex]:not([tabindex="-1"])'
       )
       firstFocusable?.focus()
-    } else {
+    } else if (!isOpen && dialog.open) {
       dialog.close()
     }
   }, [isOpen])
