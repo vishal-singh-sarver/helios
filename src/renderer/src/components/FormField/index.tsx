@@ -24,14 +24,14 @@ interface FormFieldProps {
 }
 
 function FormField({ labelProps, inputProps }: FormFieldProps): React.JSX.Element {
-  // console.log(`FormField label ${label}`)
+  
   // console.log(`FormField value ${value}`)
   
   const { label, helpText, helpAriaLabel } = labelProps
   const { error, type = 'text', placeholder = 'Enter', disabled = false, ...restInputProps } = inputProps
    const errorId = useId()
 
-
+         console.log(`FormField label ${label}`)
  return (
     <div className="block text-sm text-neutral-300">
       <label htmlFor={restInputProps.name} className="flex items-center gap-1">

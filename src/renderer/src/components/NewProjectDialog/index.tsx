@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import React, {useEffect, useRef } from 'react'
 import { FormikProps } from 'formik'
 import FormField from '../FormField'
 import { FormValues } from '../../types/project'
@@ -13,8 +13,13 @@ function NewProjectDialog({
   isOpen,
   formik,
   onClose
-}: NewProjectDialogProps): React.JSX.Element | null {
+}: NewProjectDialogProps): React.JSX.Element {
   const dialogRef = useRef<HTMLDialogElement>(null)
+
+  const handleClose = (): void => {
+    formik.resetForm()
+    onClose()
+  }
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -23,9 +28,9 @@ function NewProjectDialog({
     if (isOpen) {
       dialog.showModal()
       const firstFocusable = dialog.querySelector<HTMLElement>(
-      'button, input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    )
-    firstFocusable?.focus()
+        'button, input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      )
+      firstFocusable?.focus()
     } else {
       dialog.close()
     }
@@ -37,8 +42,7 @@ function NewProjectDialog({
 
     const handleCancel = (event: Event): void => {
       event.preventDefault()
-      formik.resetForm()
-      onClose()
+      handleClose()
     }
 
     dialog.addEventListener('cancel', handleCancel)
@@ -53,7 +57,7 @@ function NewProjectDialog({
     >
       <header className="flex items-center justify-between bg-neutral-200 px-4 py-2">
         <h2 className="text-md font-medium text-black">New Project</h2>
-        <button onClick={onClose} className="px-2 py-1 text-sm text-black hover:bg-neutral-300">
+        <button aria-label="Close dialog" onClick={handleClose} className="px-2 py-1 text-sm text-black hover:bg-neutral-300">
           ×
         </button>
       </header>
@@ -97,7 +101,7 @@ function NewProjectDialog({
 
         <div className="flex justify-end gap-2 pt-2">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="rounded bg-neutral-200 px-3 py-1 text-sm text-black hover:bg-neutral-100"
           >
             Cancel

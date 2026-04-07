@@ -8,14 +8,14 @@ interface TooltipProps {
 function Tooltip({ text, ariaLabel }: TooltipProps): React.JSX.Element {
   return (
     <span className="group relative inline-flex">
-      <button
-        type="button"
+      <span
+       
         aria-label={ariaLabel}
         className="flex h-5 w-5 cursor-default items-center justify-center 
   rounded-full border border-neutral-300 text-xs font-semibold text-white"
       >
         ?
-      </button>
+      </span>
 
       <span
         role="tooltip"
