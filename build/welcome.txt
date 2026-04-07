@@ -1,9 +1,0 @@
-Welcome to Helios
-
-Professional desktop application by Navyug Designs
-
-Version 1.0.0
-
-Thank you for choosing Helios. This installer will guide you through the installation process and ensure you have the best experience with our application.
-
-Please review the license agreement before proceeding with installation.
