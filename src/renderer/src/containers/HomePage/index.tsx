@@ -3,9 +3,11 @@ import homeIcon from '@renderer/assets/home.svg'
 import newProjectIcon from '@renderer/assets/new_project.svg'
 import openProjectIcon from '@renderer/assets/open_project.svg'
 import searchIcon from '@renderer/assets/search.svg'
+import Dialog from '@renderer/components/Dialog'
+import Form from '@renderer/components/Form'
+import FormField from '@renderer/components/FormField'
 import Header from '@renderer/components/Header'
 import MenuBar from '@renderer/components/MenuBar'
-import NewProjectDialog from '@renderer/components/NewProjectDialog'
 import ProjectsTable from '@renderer/components/ProjectsTable'
 import SearchBar from '@renderer/components/SearchBar'
 import Sidebar from '@renderer/components/Sidebar'
@@ -129,11 +131,50 @@ export function HomePage(): React.JSX.Element {
         </main>
       </div>
 
-      <NewProjectDialog
-        isOpen={showNewProjectDialog}
-        formik={formik}
-        onClose={closeNewProjectDialog}
-      />
+      <Dialog isOpen={showNewProjectDialog} title="New Project" onClose={closeNewProjectDialog}>
+        <Form
+          onSubmit={() => formik.submitForm()}
+          onCancel={closeNewProjectDialog}
+          submitLabel="Create"
+          cancelLabel="Cancel"
+        >
+          <FormField
+            labelProps={{
+              label: 'Project Name',
+              helpText: 'Enter a project name to identify your work.',
+              helpAriaLabel: 'Show project name help'
+            }}
+            inputProps={{
+              ...formik.getFieldProps('projectName'),
+              error: formik.errors.projectName as string | undefined
+            }}
+          />
+          <FormField
+            labelProps={{
+              label: 'Latitude',
+              helpText: 'Enter latitude in decimal degrees. Valid range: -90 <= latitude <= 90. Negative for South, positive for North.',
+              helpAriaLabel: 'Show latitude help'
+            }}
+            inputProps={{
+              ...formik.getFieldProps('latitude'),
+              error: formik.errors.latitude as string | undefined,
+              type: 'number'
+            }}
+          />
+          <FormField
+            labelProps={{
+              label: 'Longitude',
+              helpText: 'Enter longitude in decimal degrees. Valid range: -180 <= longitude <= 180. Negative for West, positive for East.',
+              helpAriaLabel: 'Show longitude help'
+            }}
+            inputProps={{
+              ...formik.getFieldProps('longitude'),
+              error: formik.errors.longitude as string | undefined,
+              type: 'number'
+            }}
+          />
+        </Form>
+      </Dialog>
     </div>
   )
 }
