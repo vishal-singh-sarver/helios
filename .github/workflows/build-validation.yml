@@ -1,0 +1,62 @@
+################################################################################
+# Helios - Development Build Validation
+#
+# This workflow validates that builds work on all platforms.
+# Triggered on every pull request and commit to development branches.
+#
+# Purpose: Catch build issues early before merging to release
+################################################################################
+
+name: Build Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+  push:
+    branches:
+      - develop
+      - feature/**
+  workflow_dispatch:
+
+jobs:
+  validate-build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    
+    runs-on: ${{ matrix.os }}
+    name: Build on ${{ matrix.os }}
+    
+    steps:
+      - name: ✓ Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: ✓ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      
+      - name: ✓ Install dependencies
+        run: npm ci
+      
+      - name: ✓ Lint code
+        run: npm run lint
+      
+      - name: ✓ Test
+        run: npm run test
+      
+      - name: ✓ Build application
+        run: npm run build
+      
+      - name: ✓ Verify build output
+        shell: bash
+        run: |
+          echo "Build artifacts:"
+          ls -lh out/
+          du -sh out/
+      
+      - name: ✓ Build validation complete
+        run: echo "✓ Build validation passed on ${{ matrix.os }}"

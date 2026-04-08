@@ -1,16 +1,28 @@
 {
-  "name": "electron-desktop-boilerplate",
+  "name": "helios",
   "version": "1.0.0",
-  "description": "Electron desktop app boilerplate with Vite, React, Redux-Saga, TypeScript, and Tailwind CSS",
+  "description": "Professional Electron desktop application with integrated FastAPI backend",
+  "author": "Navyug Designs",
+  "homepage": "https://example.com",
   "main": "./out/main/index.js",
   "engines": {
     "node": ">=22.0.0"
   },
   "scripts": {
     "dev": "electron-vite dev -- --no-sandbox",
-    "build": "electron-vite build",
+    "build": "node scripts/sync-backend.js && electron-vite build",
     "preview": "electron-vite preview",
-    "package": "electron-vite build && electron-builder",
+    
+    "sync-backend": "node scripts/sync-backend.js",
+    "package": "npm run build && electron-builder",
+    "package:all": "npm run build && electron-builder -mwl --publish never",
+    "package:mac": "npm run build && electron-builder --mac --publish never",
+    "package:win": "npm run build && electron-builder --win --publish never",
+    "package:linux": "npm run build && electron-builder --linux --publish never",
+    
+    "dist:clean": "rm -rf dist/ out/",
+    "dist:clean-all": "rm -rf dist/ out/ node_modules/ package-lock.json",
+    
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
