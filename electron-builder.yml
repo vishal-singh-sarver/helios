@@ -24,12 +24,8 @@ directories:
 # Files to include in packaged app
 # Excludes: node_modules is handled by default, src/ code is compiled to out/
 files:
-  - '!**/.vscode/*'
-  - '!src/*'
-  - '!electron.vite.config.{js,ts,mjs,cjs}'
-  - '!{.eslintignore,.eslintrc.js,.prettierignore,.prettierrc,CHANGELOG.md,README.md}'
-  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
-  - '!internals/*'
+  - out/**
+  - package.json
 
 # Extra resources to bundle (repo-local paths only - NO absolute paths)
 # Backend executables: bundled at resources/backend/
@@ -38,6 +34,8 @@ files:
 extraResources:
   - from: resources/backend/${os}
     to: backend
+  - from: resources/Helios_splash.png
+    to: Helios_splash.png
 
 win:
   target:
