@@ -1,0 +1,62 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`<Dialog /> > should match the snapshot (closed) 1`] = `
+<dialog
+  aria-label="Test Dialog"
+  class="fixed inset-0 m-auto w-[420px] rounded border border-app-border bg-[#1f2126] p-0 backdrop:bg-black/50"
+>
+  <header
+    class="flex items-center justify-between bg-neutral-200 px-4 py-2"
+  >
+    <h2
+      class="text-md font-medium text-black"
+    >
+      Test Dialog
+    </h2>
+    <button
+      aria-label="Close dialog"
+      class="px-2 py-1 text-sm text-black hover:bg-neutral-300"
+    >
+      ×
+    </button>
+  </header>
+  <div
+    class="space-y-3 p-4"
+  >
+    <p>
+      Dialog content
+    </p>
+  </div>
+</dialog>
+`;
+
+exports[`<Dialog /> > should match the snapshot (open) 1`] = `
+<dialog
+  aria-label="Test Dialog"
+  class="fixed inset-0 m-auto w-[420px] rounded border border-app-border bg-[#1f2126] p-0 backdrop:bg-black/50"
+  open=""
+>
+  <header
+    class="flex items-center justify-between bg-neutral-200 px-4 py-2"
+  >
+    <h2
+      class="text-md font-medium text-black"
+    >
+      Test Dialog
+    </h2>
+    <button
+      aria-label="Close dialog"
+      class="px-2 py-1 text-sm text-black hover:bg-neutral-300"
+    >
+      ×
+    </button>
+  </header>
+  <div
+    class="space-y-3 p-4"
+  >
+    <p>
+      Dialog content
+    </p>
+  </div>
+</dialog>
+`;
