@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Helios - Installer Creation Guide</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      line-height: 1.7;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      position: fixed;
+      top: 0; left: 0;
+      width: 260px;
+      height: 100vh;
+      background: #1a1d27;
+      border-right: 1px solid #2d3148;
+      overflow-y: auto;
+      padding: 28px 0 40px;
+      z-index: 100;
+    }
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 24px 24px;
+      border-bottom: 1px solid #2d3148;
+      margin-bottom: 20px;
+    }
+    .sidebar-logo .icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .sidebar-logo span { font-size: 16px; font-weight: 700; color: #fff; }
+    .nav-section { padding: 0 12px 8px; }
+    .nav-label {
+      font-size: 10px; font-weight: 700; letter-spacing: .1em;
+      text-transform: uppercase; color: #6b7280;
+      padding: 4px 12px 6px;
+    }
+    .nav-link {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 12px;
+      border-radius: 6px;
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 13.5px;
+      transition: background .15s, color .15s;
+    }
+    .nav-link:hover { background: #252840; color: #e2e8f0; }
+    .nav-link.active { background: #252840; color: #818cf8; }
+    .nav-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      margin-right: 8px; flex-shrink: 0;
+    }
+    .dot-mac   { background: #f59e0b; }
+    .dot-win   { background: #3b82f6; }
+    .dot-linux { background: #10b981; }
+    .dot-gen   { background: #8b5cf6; }
+
+    /* ── Main content ── */
+    .main { margin-left: 260px; padding: 0 0 80px; }
+
+    /* Hero */
+    .hero {
+      background: linear-gradient(135deg, #1e1f35 0%, #0f1117 60%);
+      border-bottom: 1px solid #2d3148;
+      padding: 60px 64px 52px;
+    }
+    .hero-badge {
+      display: inline-block;
+      background: rgba(99,102,241,.18);
+      color: #818cf8;
+      border: 1px solid rgba(99,102,241,.35);
+      border-radius: 20px;
+      font-size: 12px; font-weight: 600;
+      padding: 3px 12px;
+      margin-bottom: 16px;
+    }
+    .hero h1 {
+      font-size: 38px; font-weight: 800;
+      background: linear-gradient(135deg, #fff 30%, #818cf8);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.2; margin-bottom: 14px;
+    }
+    .hero p { font-size: 16px; color: #94a3b8; max-width: 620px; }
+    .platform-badges { display: flex; gap: 10px; margin-top: 24px; flex-wrap: wrap; }
+    .platform-badge {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 13px; font-weight: 600;
+    }
+    .badge-mac   { background: rgba(245,158,11,.12); color: #fbbf24; border: 1px solid rgba(245,158,11,.25); }
+    .badge-win   { background: rgba(59,130,246,.12); color: #60a5fa; border: 1px solid rgba(59,130,246,.25); }
+    .badge-linux { background: rgba(16,185,129,.12); color: #34d399; border: 1px solid rgba(16,185,129,.25); }
+
+    /* Content area */
+    .content { padding: 48px 64px; }
+
+    /* Section */
+    .section { margin-bottom: 64px; }
+    .section-header {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 28px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #2d3148;
+    }
+    .section-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+    }
+    .icon-mac   { background: rgba(245,158,11,.15); }
+    .icon-win   { background: rgba(59,130,246,.15); }
+    .icon-linux { background: rgba(16,185,129,.15); }
+    .icon-gen   { background: rgba(99,102,241,.15); }
+    .section-header h2 { font-size: 22px; font-weight: 700; color: #fff; }
+    .section-header p  { font-size: 13px; color: #6b7280; margin-top: 2px; }
+
+    /* Steps */
+    .steps { display: flex; flex-direction: column; gap: 4px; }
+    .step {
+      display: flex; gap: 0;
+      position: relative;
+    }
+    .step:not(:last-child)::before {
+      content: '';
+      position: absolute;
+      left: 19px; top: 44px;
+      width: 2px;
+      height: calc(100% - 8px);
+      background: #2d3148;
+    }
+    .step-num {
+      width: 40px; height: 40px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 8px;
+      position: relative; z-index: 1;
+    }
+    .num-mac   { background: rgba(245,158,11,.2); color: #fbbf24; border: 2px solid rgba(245,158,11,.4); }
+    .num-win   { background: rgba(59,130,246,.2);  color: #60a5fa; border: 2px solid rgba(59,130,246,.4); }
+    .num-linux { background: rgba(16,185,129,.2); color: #34d399; border: 2px solid rgba(16,185,129,.4); }
+    .num-gen   { background: rgba(99,102,241,.2); color: #818cf8; border: 2px solid rgba(99,102,241,.4); }
+    .step-body {
+      flex: 1;
+      padding: 8px 0 20px 16px;
+    }
+    .step-title {
+      font-size: 14.5px; font-weight: 600; color: #e2e8f0;
+      margin-bottom: 4px;
+    }
+    .step-desc {
+      font-size: 13.5px; color: #94a3b8;
+      margin-bottom: 8px;
+    }
+
+    /* Code block */
+    pre {
+      background: #13151f;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 14px 18px;
+      overflow-x: auto;
+      margin: 8px 0 0;
+    }
+    code {
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 12.5px;
+      color: #a5f3fc;
+      line-height: 1.7;
+    }
+    .inline-code {
+      background: #1e2035;
+      border: 1px solid #2d3148;
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 12px;
+      color: #a5f3fc;
+      font-family: 'SF Mono', monospace;
+    }
+
+    /* Info/note boxes */
+    .callout {
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 12px 0;
+      font-size: 13.5px;
+      display: flex; align-items: flex-start; gap: 10px;
+    }
+    .callout-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .callout-note    { background: rgba(99,102,241,.1);  border: 1px solid rgba(99,102,241,.3); color: #a5b4fc; }
+    .callout-warn    { background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.25); color: #fcd34d; }
+    .callout-success { background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.25); color: #6ee7b7; }
+    .callout-info    { background: rgba(59,130,246,.08);  border: 1px solid rgba(59,130,246,.25);  color: #93c5fd; }
+
+    /* Prereq grid */
+    .prereq-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-top: 12px; }
+    .prereq-card {
+      background: #13151f;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+    .prereq-card .tool { font-size: 13px; font-weight: 700; color: #e2e8f0; margin-bottom: 4px; }
+    .prereq-card .ver  { font-size: 12px; color: #6b7280; }
+
+    /* Output table */
+    .out-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+    .out-table th {
+      text-align: left; padding: 10px 14px;
+      background: #13151f; color: #6b7280; font-weight: 600;
+      border-bottom: 1px solid #2d3148;
+    }
+    .out-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid #1e2035;
+      color: #94a3b8;
+    }
+    .out-table tr:hover td { background: #1a1d27; }
+    .tag {
+      display: inline-block;
+      border-radius: 4px;
+      font-size: 11px; font-weight: 700;
+      padding: 2px 7px;
+    }
+    .tag-mac   { background: rgba(245,158,11,.15); color: #fbbf24; }
+    .tag-win   { background: rgba(59,130,246,.15);  color: #60a5fa; }
+    .tag-linux { background: rgba(16,185,129,.15); color: #34d399; }
+
+    /* Divider */
+    .divider { border: none; border-top: 1px solid #2d3148; margin: 48px 0; }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 32px;
+      color: #4b5563;
+      font-size: 13px;
+      border-top: 1px solid #1e2035;
+    }
+
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; }
+      .hero, .content { padding-left: 24px; padding-right: 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════ SIDEBAR ═══════════════════ -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <div class="icon">&#9728;</div>
+    <span>Helios GUI</span>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Getting Started</div>
+    <a href="#prerequisites" class="nav-link">
+      <span class="nav-dot dot-gen"></span>Prerequisites
+    </a>
+    <a href="#build" class="nav-link">
+      <span class="nav-dot dot-gen"></span>Build the App
+    </a>
+  </div>
+
+  <div class="nav-section" style="margin-top:12px">
+    <div class="nav-label">Platform Installers</div>
+    <a href="#macos" class="nav-link">
+      <span class="nav-dot dot-mac"></span>macOS
+    </a>
+    <a href="#windows" class="nav-link">
+      <span class="nav-dot dot-win"></span>Windows
+    </a>
+    <a href="#linux" class="nav-link">
+      <span class="nav-dot dot-linux"></span>Linux
+    </a>
+  </div>
+
+  <div class="nav-section" style="margin-top:12px">
+    <div class="nav-label">Advanced</div>
+    <a href="#outputs" class="nav-link">
+      <span class="nav-dot dot-gen"></span>Output Files
+    </a>
+    <a href="#backend" class="nav-link">
+      <span class="nav-dot dot-gen"></span>Backend Integration
+    </a>
+    <a href="#troubleshooting" class="nav-link">
+      <span class="nav-dot dot-gen"></span>Troubleshooting
+    </a>
+  </div>
+</nav>
+
+<!-- ═══════════════════ MAIN ═══════════════════ -->
+<main class="main">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-badge">Installer Creation Guide</div>
+    <h1>Build &amp; Package Helios</h1>
+    <p>Step-by-step instructions for creating production-ready installers for macOS, Windows, and Linux from a single codebase.</p>
+    <div class="platform-badges">
+      <span class="platform-badge badge-mac">&#63743; macOS — DMG &amp; PKG</span>
+      <span class="platform-badge badge-win">&#11036; Windows — NSIS EXE</span>
+      <span class="platform-badge badge-linux">&#11044; Linux — AppImage &amp; DEB</span>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ══ PREREQUISITES ══ -->
+    <section class="section" id="prerequisites">
+      <div class="section-header">
+        <div class="section-icon icon-gen">&#9881;</div>
+        <div>
+          <h2>Prerequisites</h2>
+          <p>Install these tools before running any build commands</p>
+        </div>
+      </div>
+
+      <div class="prereq-grid">
+        <div class="prereq-card">
+          <div class="tool">Node.js</div>
+          <div class="ver">v22.0.0 or higher</div>
+        </div>
+        <div class="prereq-card">
+          <div class="tool">npm</div>
+          <div class="ver">v10.0.0 or higher</div>
+        </div>
+        <div class="prereq-card">
+          <div class="tool">Python</div>
+          <div class="ver">v3.10 or higher</div>
+        </div>
+        <div class="prereq-card">
+          <div class="tool">Git</div>
+          <div class="ver">Any modern version</div>
+        </div>
+      </div>
+
+      <div class="callout callout-warn" style="margin-top:16px">
+        <span class="callout-icon">&#9888;&#65039;</span>
+        <div>Each platform must build on its <strong>native OS</strong>. Cross-compilation is not supported for Electron. Build macOS installers on macOS, Windows installers on Windows, and Linux installers on Linux.</div>
+      </div>
+
+      <div class="steps" style="margin-top:24px">
+        <div class="step">
+          <div class="step-num num-gen">1</div>
+          <div class="step-body">
+            <div class="step-title">Verify tool versions</div>
+            <pre><code>node --version    # must be v22+
+npm --version     # must be v10+
+python3 --version # must be 3.10+
+git --version</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-gen">2</div>
+          <div class="step-body">
+            <div class="step-title">macOS — Install Xcode Command Line Tools</div>
+            <div class="step-desc">Required for native module compilation on macOS.</div>
+            <pre><code>xcode-select --install</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-gen">3</div>
+          <div class="step-body">
+            <div class="step-title">Linux — Install build essentials</div>
+            <div class="step-desc">Required for native module compilation and AppImage support.</div>
+            <pre><code>sudo apt-get update
+sudo apt-get install -y build-essential python3-dev makeself zenity</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-gen">4</div>
+          <div class="step-body">
+            <div class="step-title">Clone the repository</div>
+            <pre><code>git clone &lt;repo-url&gt;
+cd helios_gui</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-gen">5</div>
+          <div class="step-body">
+            <div class="step-title">Install Node dependencies</div>
+            <pre><code>npm install</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-gen">6</div>
+          <div class="step-body">
+            <div class="step-title">Set up Python virtual environment &amp; backend</div>
+            <div class="step-desc">Only required if the <span class="inline-code">sync-backend</span> script does not create the venv automatically.</div>
+            <pre><code>python3 -m venv backend-api/venv
+source backend-api/venv/bin/activate   # Windows: backend-api\venv\Scripts\activate
+pip install -U pip
+pip install -r backend-api/requirements.txt
+pip install pyinstaller
+deactivate</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- ══ BUILD ══ -->
+    <section class="section" id="build">
+      <div class="section-header">
+        <div class="section-icon icon-gen">&#128736;</div>
+        <div>
+          <h2>Build the App</h2>
+          <p>Compile TypeScript, React, and the backend binary before packaging</p>
+        </div>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num num-gen">1</div>
+          <div class="step-body">
+            <div class="step-title">Compile everything</div>
+            <div class="step-desc">Runs <span class="inline-code">sync-backend</span> first (copies the backend binary), then compiles the main &amp; renderer processes.</div>
+            <pre><code>npm run build</code></pre>
+            <div class="callout callout-note" style="margin-top:10px">
+              <span class="callout-icon">&#8505;&#65039;</span>
+              <div>Output lands in <span class="inline-code">out/</span>. Do <strong>not</strong> distribute files from <span class="inline-code">out/</span> directly — use a packaging command instead.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-gen">2</div>
+          <div class="step-body">
+            <div class="step-title">Verify the build succeeded</div>
+            <div class="step-desc">No TypeScript errors should appear. Check that <span class="inline-code">out/main/index.js</span> and <span class="inline-code">out/renderer/</span> exist.</div>
+            <pre><code>ls out/main/index.js
+ls out/renderer/</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- ══ macOS ══ -->
+    <section class="section" id="macos">
+      <div class="section-header">
+        <div class="section-icon icon-mac">&#63743;</div>
+        <div>
+          <h2>macOS Installer</h2>
+          <p>Creates a DMG (drag-and-drop) and a PKG (professional installer)</p>
+        </div>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num num-mac">1</div>
+          <div class="step-body">
+            <div class="step-title">Ensure you are on a Mac</div>
+            <div class="step-desc">macOS packaging requires running on native macOS hardware or a macOS VM.</div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-mac">2</div>
+          <div class="step-body">
+            <div class="step-title">Confirm the macOS backend binary exists</div>
+            <div class="step-desc">The sync script copies the compiled Python binary here during <span class="inline-code">npm run build</span>.</div>
+            <pre><code>ls resources/backend/mac/heliosgui_backend</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-mac">3</div>
+          <div class="step-body">
+            <div class="step-title">Run the macOS packaging command</div>
+            <pre><code>npm run package:mac</code></pre>
+            <div class="callout callout-note" style="margin-top:10px">
+              <span class="callout-icon">&#8505;&#65039;</span>
+              <div>This internally runs <span class="inline-code">npm run build</span> first, then calls <span class="inline-code">electron-builder --mac</span>.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-mac">4</div>
+          <div class="step-body">
+            <div class="step-title">Locate the output installers</div>
+            <pre><code>ls dist/
+# Helios-1.0.0.dmg   (~135 MB)
+# Helios-1.0.0.pkg   (~135 MB)</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-mac">5</div>
+          <div class="step-body">
+            <div class="step-title">Test the DMG installer</div>
+            <div class="step-desc">Double-click <span class="inline-code">Helios-1.0.0.dmg</span>, drag <strong>Helios.app</strong> into <strong>Applications</strong>, then launch.</div>
+            <div class="callout callout-warn" style="margin-top:10px">
+              <span class="callout-icon">&#9888;&#65039;</span>
+              <div>Unsigned builds show a Gatekeeper warning. Right-click the app and choose <strong>Open</strong>, or run: <span class="inline-code">xattr -d com.apple.quarantine /Applications/Helios.app</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-mac">6</div>
+          <div class="step-body">
+            <div class="step-title">Test the PKG installer</div>
+            <div class="step-desc">Double-click <span class="inline-code">Helios-1.0.0.pkg</span> and follow the guided installer wizard (Welcome → License → Location → Auth → Progress → Done).</div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-mac">7</div>
+          <div class="step-body">
+            <div class="step-title">(Production only) Code-sign and notarize</div>
+            <div class="step-desc">Add your Apple Developer identity to <span class="inline-code">electron-builder.yml</span> before shipping publicly.</div>
+            <pre><code># electron-builder.yml
+mac:
+  identity: 'Developer ID Application: Your Company (TEAM_ID)'
+  sign: true</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- ══ WINDOWS ══ -->
+    <section class="section" id="windows">
+      <div class="section-header">
+        <div class="section-icon icon-win">&#11036;</div>
+        <div>
+          <h2>Windows Installer</h2>
+          <p>Creates an NSIS-based setup EXE with Start Menu and Desktop shortcuts</p>
+        </div>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num num-win">1</div>
+          <div class="step-body">
+            <div class="step-title">Ensure you are on Windows</div>
+            <div class="step-desc">Windows packaging requires native Windows tools. Use Windows 10 or later.</div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-win">2</div>
+          <div class="step-body">
+            <div class="step-title">Place the Windows backend binary</div>
+            <div class="step-desc">Compile or obtain the Windows binary and place it here:</div>
+            <pre><code>resources/backend/win/heliosgui_backend.exe</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-win">3</div>
+          <div class="step-body">
+            <div class="step-title">Activate the Python venv (Windows syntax)</div>
+            <pre><code>python -m venv backend-api\venv
+backend-api\venv\Scripts\activate
+pip install -U pip
+pip install -r backend-api\requirements.txt
+pip install pyinstaller
+deactivate</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-win">4</div>
+          <div class="step-body">
+            <div class="step-title">Run the Windows packaging command</div>
+            <pre><code>npm run package:win</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-win">5</div>
+          <div class="step-body">
+            <div class="step-title">Locate the output installer</div>
+            <pre><code>dir dist\
+# "Helios Setup 1.0.0.exe"  (~150 MB)</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-win">6</div>
+          <div class="step-body">
+            <div class="step-title">Test the installer end-to-end</div>
+            <div class="step-desc">Double-click the <span class="inline-code">.exe</span>. Walk through: UAC prompt → Welcome → License (check "I Agree") → Install path → Install → Finish. The app should launch automatically.</div>
+            <div class="callout callout-info" style="margin-top:10px">
+              <span class="callout-icon">&#8505;&#65039;</span>
+              <div>Shortcuts are created on the Desktop and in the Start Menu automatically.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-win">7</div>
+          <div class="step-body">
+            <div class="step-title">(Production only) Code-sign for SmartScreen</div>
+            <pre><code># electron-builder.yml
+win:
+  certificateFile: path/to/cert.pfx
+  certificatePassword: ${CERTIFICATE_PASSWORD}</code></pre>
+            <div class="step-desc" style="margin-top:8px">Set <span class="inline-code">CERTIFICATE_PASSWORD</span> as an environment variable before building.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- ══ LINUX ══ -->
+    <section class="section" id="linux">
+      <div class="section-header">
+        <div class="section-icon icon-linux">&#11044;</div>
+        <div>
+          <h2>Linux Installer</h2>
+          <p>Creates an AppImage (portable) and a DEB package (system integration)</p>
+        </div>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num num-linux">1</div>
+          <div class="step-body">
+            <div class="step-title">Ensure you are on Linux</div>
+            <div class="step-desc">Ubuntu 18.04+ or any modern Debian-based distro is recommended.</div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-linux">2</div>
+          <div class="step-body">
+            <div class="step-title">Place the Linux backend binary</div>
+            <div class="step-desc">Compile or obtain the Linux binary and place it here (no extension needed):</div>
+            <pre><code>resources/backend/linux/heliosgui_backend</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-linux">3</div>
+          <div class="step-body">
+            <div class="step-title">Set up the Python virtual environment</div>
+            <pre><code>python3 -m venv backend-api/venv
+source backend-api/venv/bin/activate
+pip install -U pip
+pip install -r backend-api/requirements.txt
+pip install pyinstaller
+deactivate</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-linux">4</div>
+          <div class="step-body">
+            <div class="step-title">Fix Electron sandbox permissions (one-time)</div>
+            <div class="step-desc">Required if you plan to test in dev mode. Not needed for packaging only.</div>
+            <pre><code>sudo chown root:root node_modules/electron/dist/chrome-sandbox
+sudo chmod 4755 node_modules/electron/dist/chrome-sandbox</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-linux">5</div>
+          <div class="step-body">
+            <div class="step-title">Run the Linux packaging command</div>
+            <pre><code>npm run package:linux</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-linux">6</div>
+          <div class="step-body">
+            <div class="step-title">Locate the output packages</div>
+            <pre><code>ls dist/
+# Helios-1.0.0.AppImage  (~150 MB)
+# helios-1.0.0.deb       (~140 MB)</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-linux">7</div>
+          <div class="step-body">
+            <div class="step-title">Test the AppImage</div>
+            <pre><code>chmod +x dist/Helios-1.0.0.AppImage
+./dist/Helios-1.0.0.AppImage</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-linux">8</div>
+          <div class="step-body">
+            <div class="step-title">Test the DEB package</div>
+            <pre><code>sudo dpkg -i dist/helios-1.0.0.deb
+helios   # or: /opt/helios/Helios</code></pre>
+            <div class="callout callout-note" style="margin-top:10px">
+              <span class="callout-icon">&#8505;&#65039;</span>
+              <div>To uninstall: <span class="inline-code">sudo apt remove helios</span>. User data in <span class="inline-code">~/.config/Helios/</span> is preserved.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-linux">9</div>
+          <div class="step-body">
+            <div class="step-title">(Optional) Build the custom <span class="inline-code">.run</span> installer</div>
+            <div class="step-desc">Requires <span class="inline-code">makeself</span> and <span class="inline-code">zenity</span> (already installed in step 3 of prerequisites).</div>
+            <pre><code>./linux-installer/build-linux-run.sh</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- ══ OUTPUTS ══ -->
+    <section class="section" id="outputs">
+      <div class="section-header">
+        <div class="section-icon icon-gen">&#128230;</div>
+        <div>
+          <h2>Output Files Reference</h2>
+          <p>All distributable files land in the <span class="inline-code">dist/</span> directory</p>
+        </div>
+      </div>
+
+      <table class="out-table">
+        <thead>
+          <tr>
+            <th>File</th>
+            <th>Platform</th>
+            <th>Type</th>
+            <th>Size (est.)</th>
+            <th>End-user action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="inline-code">Helios-1.0.0.dmg</span></td>
+            <td><span class="tag tag-mac">macOS</span></td>
+            <td>Drag-and-drop disk image</td>
+            <td>~135 MB</td>
+            <td>Drag app to Applications</td>
+          </tr>
+          <tr>
+            <td><span class="inline-code">Helios-1.0.0.pkg</span></td>
+            <td><span class="tag tag-mac">macOS</span></td>
+            <td>Professional installer wizard</td>
+            <td>~135 MB</td>
+            <td>Run installer wizard</td>
+          </tr>
+          <tr>
+            <td><span class="inline-code">Helios Setup 1.0.0.exe</span></td>
+            <td><span class="tag tag-win">Windows</span></td>
+            <td>NSIS installer</td>
+            <td>~150 MB</td>
+            <td>Double-click &amp; follow wizard</td>
+          </tr>
+          <tr>
+            <td><span class="inline-code">Helios-1.0.0.AppImage</span></td>
+            <td><span class="tag tag-linux">Linux</span></td>
+            <td>Portable executable</td>
+            <td>~150 MB</td>
+            <td><span class="inline-code">chmod +x</span> then run</td>
+          </tr>
+          <tr>
+            <td><span class="inline-code">helios-1.0.0.deb</span></td>
+            <td><span class="tag tag-linux">Linux</span></td>
+            <td>Debian package</td>
+            <td>~140 MB</td>
+            <td><span class="inline-code">sudo dpkg -i</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout callout-note" style="margin-top:20px">
+        <span class="callout-icon">&#8505;&#65039;</span>
+        <div>The large size is expected — Electron's runtime (~120 MB) is bundled inside every installer. To reduce size: remove unused <span class="inline-code">node_modules</span> dependencies and ensure tree-shaking is enabled.</div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- ══ BACKEND ══ -->
+    <section class="section" id="backend">
+      <div class="section-header">
+        <div class="section-icon icon-gen">&#9881;</div>
+        <div>
+          <h2>Backend Integration</h2>
+          <p>How the Python FastAPI backend is compiled and bundled into the installer</p>
+        </div>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num num-gen">1</div>
+          <div class="step-body">
+            <div class="step-title">Backend resource structure</div>
+            <div class="step-desc">Binaries must be placed in platform-specific subdirectories before packaging:</div>
+            <pre><code>resources/backend/
+├── mac/   heliosgui_backend       (no extension)
+├── win/   heliosgui_backend.exe
+└── linux/ heliosgui_backend       (no extension)</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-gen">2</div>
+          <div class="step-body">
+            <div class="step-title">How the sync script works</div>
+            <div class="step-desc"><span class="inline-code">scripts/sync-backend.js</span> runs automatically during <span class="inline-code">npm run build</span>. It copies the compiled PyInstaller binary into the correct <span class="inline-code">resources/backend/</span> subdirectory and reports file sizes. Missing win/linux binaries produce warnings, not errors.</div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-gen">3</div>
+          <div class="step-body">
+            <div class="step-title">How the backend starts at runtime</div>
+            <div class="step-desc"><span class="inline-code">src/main/backend-manager.ts</span> detects the platform at startup, resolves the binary path (packaged vs. dev mode), spawns the process on port 8008, and shuts it down gracefully when the app quits (SIGTERM → 5s → SIGKILL).</div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-gen">4</div>
+          <div class="step-body">
+            <div class="step-title">User data paths per platform</div>
+            <pre><code>Windows : %APPDATA%\Helios\
+macOS   : ~/Library/Application Support/Helios/
+Linux   : ~/.config/Helios/</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- ══ TROUBLESHOOTING ══ -->
+    <section class="section" id="troubleshooting">
+      <div class="section-header">
+        <div class="section-icon icon-gen">&#128269;</div>
+        <div>
+          <h2>Troubleshooting</h2>
+          <p>Common issues and their fixes</p>
+        </div>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num num-gen">&#9888;</div>
+          <div class="step-body">
+            <div class="step-title">Build fails: icon or license file not found</div>
+            <pre><code>ls build/icon.ico
+ls build/license.txt</code></pre>
+            <div class="step-desc">Both files must exist before packaging.</div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-gen">&#9888;</div>
+          <div class="step-body">
+            <div class="step-title">Backend won't start after install</div>
+            <div class="step-desc">Check the log files for the specific error:</div>
+            <pre><code># macOS
+cat ~/Library/Application\ Support/Helios/logs/backend.log
+
+# Linux
+cat ~/.config/Helios/logs/backend.log
+
+# Windows
+type %APPDATA%\Helios\logs\backend.log</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-gen">&#9888;</div>
+          <div class="step-body">
+            <div class="step-title">Port 8008 already in use</div>
+            <pre><code># macOS / Linux
+lsof -i :8008 | awk 'NR!=1 {print $2}' | xargs kill -9
+
+# Windows
+netstat -ano | findstr :8008
+taskkill /PID &lt;PID&gt; /F</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-gen">&#9888;</div>
+          <div class="step-body">
+            <div class="step-title">Complete clean rebuild</div>
+            <pre><code>npm run dist:clean-all    # removes dist/, out/, node_modules/
+npm install
+npm run build</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-gen">&#9888;</div>
+          <div class="step-body">
+            <div class="step-title">Clean all caches and app data (macOS)</div>
+            <pre><code>sudo rm -rf /Applications/Helios.app
+rm -rf ~/Library/Application\ Support/Helios
+rm -rf ~/Library/Caches/Helios
+rm -rf ~/Library/Preferences/com.navyug.helios.plist
+rm -rf ~/.cache/electron
+rm -rf ~/.cache/electron-builder</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num num-gen">&#9888;</div>
+          <div class="step-body">
+            <div class="step-title">Reset all build artifacts</div>
+            <pre><code>rm -rf dist out
+rm -rf backend-api/build backend-api/dist
+rm -rf linux-installer/payload/Helios
+rm -f  resources/backend/mac/heliosgui_backend
+rm -rf resources/backend/linux/heliosgui_backend</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div><!-- /content -->
+
+  <footer>
+    Helios GUI &mdash; Installer Creation Guide &mdash; Version 1.0.0
+  </footer>
+</main>
+
+</body>
+</html>
