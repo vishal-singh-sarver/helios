@@ -1,4 +1,4 @@
-// src/renderer/src/types/project.ts
+
 export interface FormValues {
   projectName: string
   latitude: string
@@ -11,17 +11,16 @@ export const INITIAL_VALUES: FormValues = {
   longitude: ''
 }
 
-
 export interface ProjectRecord {
   name: string
   lastUpdated: string
   size: string
 }
 
-
 export interface SidebarItem {
   label: string
   icon: string
+  onAction: () => void
 }
 
 export type ToolbarMap = Record<string, string[]>
