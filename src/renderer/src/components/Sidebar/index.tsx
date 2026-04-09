@@ -5,7 +5,7 @@ import { SidebarItem } from '../../types/project'
 interface SidebarProps {
   items: SidebarItem[]
   activeLabel: string
-  onSelect: (label: string) => void
+  onSelect: (item: SidebarItem) => void
 }
 
 function Sidebar({ items, activeLabel, onSelect }: SidebarProps): React.JSX.Element {
@@ -18,7 +18,7 @@ function Sidebar({ items, activeLabel, onSelect }: SidebarProps): React.JSX.Elem
             label={item.label}
             icon={item.icon}
             isActive={item.label === activeLabel}
-            onClick={() => onSelect(item.label)}
+            onClick={() => onSelect(item)}
           />
         ))}
       </nav>
