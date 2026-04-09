@@ -214,11 +214,28 @@ ipcMain.handle('backend:getLogFile', async () => {
 
 // --- App lifecycle ---
 
+const SKIP_BACKEND = process.env.HELIOS_SKIP_BACKEND === '1'
+
 app.whenReady().then(async () => {
   writeEarlyLog(`App ready - showing splash and waiting for backend...`)
 
   // Show splash screen while backend is starting
   const splash = createSplashWindow()
+
+  if (SKIP_BACKEND) {
+    writeEarlyLog('HELIOS_SKIP_BACKEND=1 set - skipping backend startup')
+    console.log('HELIOS_SKIP_BACKEND=1 set - skipping backend startup')
+    createWindow(() => {
+      if (!splash.isDestroyed()) {
+        splash.destroy()
+      }
+    })
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    })
+    return
+  }
 
   try {
     // CRITICAL: Wait for backend to be ready before showing the main window.
@@ -283,6 +300,10 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', async () => {
+  if (SKIP_BACKEND) {
+    writeEarlyLog('App before-quit: backend was skipped, nothing to clean up')
+    return
+  }
   writeEarlyLog('App before-quit: stopping backend...')
   await backendManager.cleanup()
   writeEarlyLog('App shutdown complete')
