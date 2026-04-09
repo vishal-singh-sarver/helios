@@ -74,3 +74,5 @@ coverage/
 junit.xml
 test-results/
 .playwright/
+
+package-lock.json
