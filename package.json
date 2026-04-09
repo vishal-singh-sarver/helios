@@ -10,6 +10,7 @@
   },
   "scripts": {
     "dev": "electron-vite dev -- --no-sandbox",
+    "dev:no-backend": "HELIOS_SKIP_BACKEND=1 electron-vite dev -- --no-sandbox",
     "build": "node scripts/sync-backend.js && electron-vite build",
     "preview": "electron-vite preview",
     
