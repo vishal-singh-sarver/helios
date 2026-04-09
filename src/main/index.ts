@@ -93,7 +93,10 @@ function createSplashWindow(): BrowserWindow {
     }
   })
 
-  const logoPath = resolve(__dirname, '../../resources/Helios_splash.png')
+  const logoPath = app.isPackaged
+    ? join(process.resourcesPath, 'Helios_splash.png')
+    : resolve(__dirname, '../../resources/Helios_splash.png')
+  const logoUrl = `file://${logoPath.replace(/\\/g, '/')}`
 
   const splashHtml = `
     <!DOCTYPE html>
@@ -123,7 +126,7 @@ function createSplashWindow(): BrowserWindow {
       </style>
     </head>
     <body>
-      <img class="logo" src="${logoPath}" />
+      <img class="logo" src="${logoUrl}" />
     </body>
     </html>
   `
