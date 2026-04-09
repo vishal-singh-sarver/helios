@@ -1,7 +1,50 @@
 @import "tailwindcss";
 
+/* Global design tokens */
+:root {
+  /* COLORS */
+  --color-bg: #0f1115;
+  --color-panel: #181a1f;
+  --color-border: #2a2d35;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #a1a1aa;
+
+  /* TYPOGRAPHY */
+  --font-main: Geist, sans-serif;
+  --text-sm: 14px;
+  --text-md: 16px;
+  --text-lg: 18px;
+}
+
+/* Tailwind v4 theme bridge */
 @theme {
-  --color-dark: #0f1117;
-  --color-panel: #1a1d27;
-  --color-app-border: #2a2d3a;
+  --color-app-bg: var(--color-bg);
+  --color-app-panel: var(--color-panel);
+  --color-app-border: var(--color-border);
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --font-main: var(--font-main);
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: var(--font-main);
+}
+
+.text-primary {
+  color: var(--color-text-primary);
+}
+
+.text-secondary {
+  color: var(--color-text-secondary);
+}
+
+.input {
+  @apply h-9 w-full rounded border border-app-border bg-app-bg px-3 text-sm text-white outline-none focus:border-neutral-500;
+}
+
+.button-primary {
+  @apply rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-500;
 }

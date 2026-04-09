@@ -1,124 +1,187 @@
-import React, { useEffect } from 'react'
-import { useSelector, useDispatch } from 'react-redux'
-import { useInjectReducer } from 'utils/injectReducer'
-import { useInjectSaga } from 'utils/injectSaga'
-import reducer from './reducer'
-import saga from './saga'
-import * as actions from './actions'
-import {
-  selectStatus,
-  selectLoading,
-  selectError,
-  selectStreaming,
-  selectStreamLog
-} from './selectors'
+import React from 'react'
+import homeIcon from '@renderer/assets/home.svg'
+import newProjectIcon from '@renderer/assets/new_project.svg'
+import openProjectIcon from '@renderer/assets/open_project.svg'
+import searchIcon from '@renderer/assets/search.svg'
+import Dialog from '@renderer/components/Dialog'
+import FormField from '@renderer/components/FormField'
+import Header from '@renderer/components/Header'
+import MenuBar from '@renderer/components/MenuBar'
+import ProjectsTable from '@renderer/components/ProjectsTable'
+import SearchBar from '@renderer/components/SearchBar'
+import Sidebar from '@renderer/components/Sidebar'
+import { useFormik } from 'formik'
+import { FormValues, INITIAL_VALUES, ProjectRecord, SidebarItem, TOOLBAR_ITEMS } from '../../types/project'
+
+const SIDEBAR_ITEMS: SidebarItem[] = [
+  { label: 'Home', icon: homeIcon },
+  { label: 'New Project', icon: newProjectIcon },
+  { label: 'Open project', icon: openProjectIcon }
+]
+
+const SAVED_PROJECTS: ProjectRecord[] = [
+  { name: 'Coastal Survey Alpha', lastUpdated: '2026-03-29 09:15', size: '128.4 MB' },
+  { name: 'Delta Wind Farm', lastUpdated: '2026-03-27 14:42', size: '86.1 MB' },
+  { name: 'Northern Grid Scan', lastUpdated: '2026-03-24 18:05', size: '214.9 MB' },
+  { name: 'River Basin Mapping', lastUpdated: '2026-03-20 11:30', size: '97.6 MB' },
+  { name: 'Urban Heat Island Study', lastUpdated: '2026-03-16 16:50', size: '142.3 MB' }
+]
 
 export function HomePage(): React.JSX.Element {
-  useInjectReducer({ key: 'homePage', reducer })
-  useInjectSaga({ key: 'homePage', saga })
+  const [searchText, setSearchText] = React.useState('')
+  const [showNewProjectDialog, setShowNewProjectDialog] = React.useState(false)
+  const [activeSidebar, setActiveSidebar] = React.useState('Home')
 
-  const dispatch  = useDispatch()
-  const status    = useSelector(selectStatus)
-  const loading   = useSelector(selectLoading)
-  const error     = useSelector(selectError)
-  const streaming = useSelector(selectStreaming)
-  const streamLog = useSelector(selectStreamLog)
+  const formik = useFormik<FormValues>({
+    initialValues: INITIAL_VALUES, 
+    validateOnChange: true,
+    validateOnBlur: true,
+    validate: (values) => {
+      const errors: Partial<Record<keyof FormValues, string>> = {}
 
-  // Fetch backend status on mount
-  useEffect(() => {
-    dispatch(actions.fetchStatus())
-  }, [dispatch])
+      if (!values.projectName.trim()) {
+        errors.projectName = 'Project name is required.'
+      } else if (values.projectName.length > 30) {
+        errors.projectName = 'Project name must be 30 characters or fewer.'
+      }
 
-  const handleStreamToggle = () => {
-    if (streaming) {
-      dispatch(actions.sseDisconnect())
-    } else {
-      dispatch(actions.sseConnect())
+      if (values.latitude === '') {
+        errors.latitude = 'Latitude is required.'
+      } else {
+        const lat = Number.parseFloat(values.latitude)
+        if (Number.isNaN(lat) || lat < -90 || lat > 90) {
+          errors.latitude =
+            'Invalid latitude. Enter latitude in decimal degrees. Valid range: -90 <= latitude <= 90. Negative for South, positive for North.'
+        }
+      }
+
+      if (values.longitude === '') {
+        errors.longitude = 'Longitude is required.'
+      } else {
+        const lon = Number.parseFloat(values.longitude)
+        if (Number.isNaN(lon) || lon < -180 || lon > 180) {
+          errors.longitude =
+            'Invalid longitude. Enter longitude in decimal degrees. Valid range: -180 <= longitude <= 180. Negative for West, positive for East.'
+        }
+      }
+
+      return errors
+    },
+    onSubmit: (_values, { resetForm }) => {
+  
+
+      resetForm()
+      setShowNewProjectDialog(false)
     }
+  })
+
+  const openNewProjectDialog = (): void => {
+    formik.resetForm()
+    setShowNewProjectDialog(true)
   }
 
+  const closeNewProjectDialog = (): void => {
+    formik.resetForm()
+    setShowNewProjectDialog(false)
+  }
+
+  const filteredProjects = SAVED_PROJECTS.filter((project) =>
+    [project.name, project.lastUpdated, project.size].some((value) =>
+      value.toLowerCase().includes(searchText.trim().toLowerCase())
+    )
+  )
+
   return (
-    <div className="flex flex-col h-full p-6 gap-6">
+    <div className="flex h-full flex-col font-sans">
+      <Header>
+          <MenuBar
+          items={TOOLBAR_ITEMS}
+          onItemSelect={(menuItem) => {
+            if (menuItem === 'New Project') {
+              openNewProjectDialog()
+            }
+          }}
+        />
+          <SearchBar
+            ariaLabel="Search projects"
+            icon={searchIcon}
+            value={searchText}
+            placeholder="Search..."
+            onChange={setSearchText}
+          />
+      </Header>
 
-      {/* Header */}
-      <h1 className="text-2xl font-semibold text-neutral-100">
-        Welcome to Electron App
-      </h1>
+      <div className="flex flex-1">
+        <Sidebar
+          items={SIDEBAR_ITEMS}
+          activeLabel={activeSidebar}
+          onSelect={(label) => {
+            setActiveSidebar(label)
+            if (label === 'New Project') openNewProjectDialog()
+          }}
+        />
 
-      {/* Status card */}
-      <section className="bg-panel border border-app-border rounded-lg p-4 flex flex-col gap-2">
-        <h2 className="text-sm font-medium text-neutral-400 uppercase tracking-wide">
-          Backend Status
-        </h2>
+        <main className="flex-1 p-6">
+          <ProjectsTable
+            projects={filteredProjects}
+            emptyIcon={searchIcon}
+            onCreateNew={openNewProjectDialog}
+          />
+        </main>
+      </div>
 
-        {loading && (
-          <p className="text-neutral-400 text-sm">Loading…</p>
-        )}
+      <Dialog isOpen={showNewProjectDialog} title="New Project" onClose={closeNewProjectDialog}>
+        <FormField
+          labelProps={{
+            label: 'Project Name',
+            helpText: 'Enter a project name to identify your work.',
+            helpAriaLabel: 'Show project name help'
+          }}
+          inputProps={{
+            ...formik.getFieldProps('projectName'),
+            error: (formik.touched.projectName || formik.values.projectName !== '') ? formik.errors.projectName as string | undefined : undefined
+          }}
+        />
+        <FormField
+          labelProps={{
+            label: 'Latitude',
+            helpText: 'Enter latitude in decimal degrees. Valid range: -90 <= latitude <= 90. Negative for South, positive for North.',
+            helpAriaLabel: 'Show latitude help'
+          }}
+          inputProps={{
+            ...formik.getFieldProps('latitude'),
+            error: (formik.touched.latitude || formik.values.latitude !== '') ? formik.errors.latitude as string | undefined : undefined,
+            type: 'number'
+          }}
+        />
+        <FormField
+          labelProps={{
+            label: 'Longitude',
+            helpText: 'Enter longitude in decimal degrees. Valid range: -180 <= longitude <= 180. Negative for West, positive for East.',
+            helpAriaLabel: 'Show longitude help'
+          }}
+          inputProps={{
+            ...formik.getFieldProps('longitude'),
+            error: (formik.touched.longitude || formik.values.longitude !== '') ? formik.errors.longitude as string | undefined : undefined,
+            type: 'number'
+          }}
+        />
 
-        {error && (
-          <p className="text-red-400 text-sm">{error}</p>
-        )}
-
-        {status && !loading && (
-          <dl className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm">
-            <dt className="text-neutral-400">Version</dt>
-            <dd className="text-neutral-100 font-mono">{status.version}</dd>
-            <dt className="text-neutral-400">Uptime</dt>
-            <dd className="text-neutral-100 font-mono">{status.uptime}s</dd>
-          </dl>
-        )}
-
-        <button
-          onClick={() => dispatch(actions.fetchStatus())}
-          disabled={loading}
-          className="mt-2 self-start px-3 py-1.5 text-xs bg-dark border border-app-border rounded hover:bg-app-border disabled:opacity-50 disabled:cursor-not-allowed text-neutral-200"
-        >
-          Refresh
-        </button>
-      </section>
-
-      {/* SSE stream */}
-      <section className="bg-panel border border-app-border rounded-lg p-4 flex flex-col gap-3 flex-1 min-h-0">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-medium text-neutral-400 uppercase tracking-wide">
-            Live Stream
-          </h2>
+        <div className="flex justify-end gap-2 pt-2">
           <button
-            onClick={handleStreamToggle}
-            className={[
-              'px-3 py-1.5 text-xs rounded border',
-              streaming
-                ? 'border-red-500 text-red-400 hover:bg-red-500/10'
-                : 'border-app-border text-neutral-200 hover:bg-app-border'
-            ].join(' ')}
+            onClick={closeNewProjectDialog}
+            className="rounded bg-neutral-200 px-3 py-1 text-sm text-black hover:bg-neutral-100"
           >
-            {streaming ? 'Disconnect' : 'Connect'}
+            Cancel
+          </button>
+          <button
+            onClick={() => formik.submitForm()}
+            className="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-500"
+          >
+            Create
           </button>
         </div>
-
-        <div className="flex-1 overflow-y-auto font-mono text-xs text-neutral-300 bg-dark rounded p-3 space-y-1 min-h-0">
-          {streamLog.length === 0 ? (
-            <p className="text-neutral-500">
-              {streaming ? 'Waiting for events…' : 'Stream not connected.'}
-            </p>
-          ) : (
-            streamLog.map((event, i) => (
-              <div key={i} className="flex gap-3">
-                <span className="text-neutral-500 shrink-0">
-                  {new Date(event.timestamp).toLocaleTimeString()}
-                </span>
-                <span className="text-neutral-400 shrink-0">[{event.type}]</span>
-                <span className="text-neutral-200 break-all">
-                  {typeof event.data === 'string'
-                    ? event.data
-                    : JSON.stringify(event.data)}
-                </span>
-              </div>
-            ))
-          )}
-        </div>
-      </section>
-
+      </Dialog>
     </div>
   )
 }
