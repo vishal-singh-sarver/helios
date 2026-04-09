@@ -1,0 +1,17 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`<ProjectsTable /> > should match the snapshot with empty projects 1`] = `
+<h1
+  class="mb-6 text-lg font-medium text-white"
+>
+  Recent Projects
+</h1>
+`;
+
+exports[`<ProjectsTable /> > should match the snapshot with projects 1`] = `
+<h1
+  class="mb-6 text-lg font-medium text-white"
+>
+  Recent Projects
+</h1>
+`;
