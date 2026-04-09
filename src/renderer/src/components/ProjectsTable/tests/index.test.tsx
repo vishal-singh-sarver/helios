@@ -1,41 +1,198 @@
+// components/ProjectsTable/tests/index.test.tsx
 import React from 'react'
-import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { render, screen, fireEvent } from '@testing-library/react'
 import ProjectsTable from '../index'
+import { ProjectRecord } from '../../../types/project'
+
+// Mock EmptyState to isolate ProjectsTable — EmptyState has its own tests
+vi.mock('../../EmptyState', () => ({
+  default: ({ onCreateNew }: { onCreateNew: () => void }) => (
+    <div data-testid="empty-state">
+      <button onClick={onCreateNew}>Add New</button>
+    </div>
+  )
+}))
+
+const MOCK_PROJECTS: ProjectRecord[] = [
+  { name: 'Alpha Project', lastUpdated: '2026-03-29 09:15', size: '128.4 MB' },
+  { name: 'Beta Project', lastUpdated: '2026-03-27 14:42', size: '86.1 MB' },
+  { name: 'Gamma Project', lastUpdated: '2026-03-24 18:05', size: '214.9 MB' }
+]
 
 describe('<ProjectsTable />', () => {
-  it('renders the empty state when there are no projects', () => {
-    render(<ProjectsTable projects={[]} emptyIcon="search.svg" onCreateNew={vi.fn()} />)
+  const defaultProps = {
+    projects: MOCK_PROJECTS,
+    emptyIcon: 'search.svg',
+    onCreateNew: vi.fn()
+  }
 
-    expect(screen.getByText('Recent Projects')).toBeInTheDocument()
-    expect(screen.getByText('No Projects Found')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '+ Add New Project' })).toBeInTheDocument()
+  // ── Rendering ──
+
+  // Smoke test — component mounts without throwing
+  it('renders without error', () => {
+    render(<ProjectsTable {...defaultProps} />)
   })
 
-  it('calls onCreateNew from the empty state action', async () => {
-    const user = userEvent.setup()
+  // Verifies the page heading is displayed
+  it('renders the heading', () => {
+    render(<ProjectsTable {...defaultProps} />)
+    expect(screen.getByText('Recent Projects')).toBeInTheDocument()
+  })
+
+  // Verifies all three column headers are present
+  it('renders all column headers', () => {
+    render(<ProjectsTable {...defaultProps} />)
+    expect(screen.getByText('Name')).toBeInTheDocument()
+    expect(screen.getByText('Last Updated')).toBeInTheDocument()
+    expect(screen.getByText('Size')).toBeInTheDocument()
+  })
+
+  // Verifies every project name appears as a table row
+  it('renders all project rows', () => {
+    render(<ProjectsTable {...defaultProps} />)
+    expect(screen.getByText('Alpha Project')).toBeInTheDocument()
+    expect(screen.getByText('Beta Project')).toBeInTheDocument()
+    expect(screen.getByText('Gamma Project')).toBeInTheDocument()
+  })
+
+  // Verifies date and size details are shown in the row
+  it('displays project details in each row', () => {
+    render(<ProjectsTable {...defaultProps} />)
+    expect(screen.getByText('2026-03-29 09:15')).toBeInTheDocument()
+    expect(screen.getByText('128.4 MB')).toBeInTheDocument()
+  })
+
+  // ── Empty state ──
+
+  // Verifies EmptyState is rendered when no projects are passed
+  it('renders EmptyState when projects array is empty', () => {
+    render(<ProjectsTable {...defaultProps} projects={[]} />)
+    expect(screen.getByTestId('empty-state')).toBeInTheDocument()
+  })
+
+  // Verifies onCreateNew fires when the EmptyState CTA is clicked
+  it('calls onCreateNew when EmptyState button is clicked', () => {
     const onCreateNew = vi.fn()
-
-    render(<ProjectsTable projects={[]} emptyIcon="search.svg" onCreateNew={onCreateNew} />)
-    await user.click(screen.getByRole('button', { name: '+ Add New Project' }))
-
+    render(<ProjectsTable {...defaultProps} projects={[]} onCreateNew={onCreateNew} />)
+    fireEvent.click(screen.getByText('Add New'))
     expect(onCreateNew).toHaveBeenCalledTimes(1)
   })
 
-  it('renders project rows when data exists', () => {
-    render(
-      <ProjectsTable
-        projects={[
-          { name: 'Alpha', lastUpdated: 'Today', size: '12 MB' },
-          { name: 'Bravo', lastUpdated: 'Yesterday', size: '8 MB' }
-        ]}
-        emptyIcon="search.svg"
-        onCreateNew={vi.fn()}
-      />
-    )
+  // Verifies EmptyState is NOT rendered when projects exist
+  it('does not render EmptyState when projects exist', () => {
+    render(<ProjectsTable {...defaultProps} />)
+    expect(screen.queryByTestId('empty-state')).not.toBeInTheDocument()
+  })
 
-    expect(screen.getByText('Alpha')).toBeInTheDocument()
-    expect(screen.getByText('Bravo')).toBeInTheDocument()
-    expect(screen.queryByText('No Projects Found')).not.toBeInTheDocument()
+  // ── Sorting by name ──
+
+  // Verifies default sort is by name ascending (A → Z)
+  it('sorts by name ascending by default', () => {
+    render(<ProjectsTable {...defaultProps} />)
+    const rows = screen.getAllByRole('row')
+    expect(rows[1]).toHaveTextContent('Alpha Project')
+    expect(rows[2]).toHaveTextContent('Beta Project')
+    expect(rows[3]).toHaveTextContent('Gamma Project')
+  })
+
+  // Verifies clicking Name header toggles to descending (Z → A)
+  it('toggles name sort to descending on second click', () => {
+    render(<ProjectsTable {...defaultProps} />)
+    fireEvent.click(screen.getByText('Name'))
+    const rows = screen.getAllByRole('row')
+    expect(rows[1]).toHaveTextContent('Gamma Project')
+    expect(rows[2]).toHaveTextContent('Beta Project')
+    expect(rows[3]).toHaveTextContent('Alpha Project')
+  })
+
+  // ── Sorting by date ──
+
+  // Verifies clicking Last Updated sorts oldest first
+  it('sorts by Last Updated ascending when clicked', () => {
+    render(<ProjectsTable {...defaultProps} />)
+    fireEvent.click(screen.getByText('Last Updated'))
+    const rows = screen.getAllByRole('row')
+    expect(rows[1]).toHaveTextContent('Gamma Project')   // Mar 24
+    expect(rows[2]).toHaveTextContent('Beta Project')    // Mar 27
+    expect(rows[3]).toHaveTextContent('Alpha Project')   // Mar 29
+  })
+
+  // Verifies double-clicking Last Updated sorts newest first
+  it('sorts by Last Updated descending on second click', () => {
+    render(<ProjectsTable {...defaultProps} />)
+    fireEvent.click(screen.getByText('Last Updated'))
+    fireEvent.click(screen.getByText('Last Updated'))
+    const rows = screen.getAllByRole('row')
+    expect(rows[1]).toHaveTextContent('Alpha Project')   // Mar 29
+    expect(rows[2]).toHaveTextContent('Beta Project')    // Mar 27
+    expect(rows[3]).toHaveTextContent('Gamma Project')   // Mar 24
+  })
+
+  // ── Sorting by size (must be numeric, not lexicographic) ──
+
+  // Verifies size sort is numeric: 86.1 < 128.4 < 214.9
+  it('sorts by Size numerically ascending', () => {
+    render(<ProjectsTable {...defaultProps} />)
+    fireEvent.click(screen.getByText('Size'))
+    const rows = screen.getAllByRole('row')
+    expect(rows[1]).toHaveTextContent('Beta Project')    // 86.1
+    expect(rows[2]).toHaveTextContent('Alpha Project')   // 128.4
+    expect(rows[3]).toHaveTextContent('Gamma Project')   // 214.9
+  })
+
+  // Verifies double-clicking Size sorts largest first
+  it('sorts by Size numerically descending on second click', () => {
+    render(<ProjectsTable {...defaultProps} />)
+    fireEvent.click(screen.getByText('Size'))
+    fireEvent.click(screen.getByText('Size'))
+    const rows = screen.getAllByRole('row')
+    expect(rows[1]).toHaveTextContent('Gamma Project')   // 214.9
+    expect(rows[2]).toHaveTextContent('Alpha Project')   // 128.4
+    expect(rows[3]).toHaveTextContent('Beta Project')    // 86.1
+  })
+
+  // ── Sort indicator arrows ──
+
+  // Verifies active column shows directional arrow, others show neutral ↑↓
+  it('shows active sort arrow on the current sort column', () => {
+    render(<ProjectsTable {...defaultProps} />)
+    const nameBtn = screen.getByText('Name').closest('button')
+    expect(nameBtn).toHaveTextContent('↑')
+
+    const sizeBtn = screen.getByText('Size').closest('button')
+    expect(sizeBtn).toHaveTextContent('↑↓')
+  })
+
+  // Verifies arrow changes to ↓ after toggling sort direction
+  it('shows down arrow after toggling to descending', () => {
+    render(<ProjectsTable {...defaultProps} />)
+    fireEvent.click(screen.getByText('Name'))
+    const nameBtn = screen.getByText('Name').closest('button')
+    expect(nameBtn).toHaveTextContent('↓')
+  })
+
+  // Verifies switching to a different column resets arrow to ↑
+  it('resets arrow to ascending when switching columns', () => {
+    render(<ProjectsTable {...defaultProps} />)
+    fireEvent.click(screen.getByText('Size'))
+    const sizeBtn = screen.getByText('Size').closest('button')
+    expect(sizeBtn).toHaveTextContent('↑')
+
+    const nameBtn = screen.getByText('Name').closest('button')
+    expect(nameBtn).toHaveTextContent('↑↓')
+  })
+
+  // ── Snapshots ──
+
+  // Snapshot regression guard — populated table
+  it('should match the snapshot with projects', () => {
+    const { container } = render(<ProjectsTable {...defaultProps} />)
+    expect(container.firstChild).toMatchSnapshot()
+  })
+
+  // Snapshot regression guard — empty table
+  it('should match the snapshot with empty projects', () => {
+    const { container } = render(<ProjectsTable {...defaultProps} projects={[]} />)
+    expect(container.firstChild).toMatchSnapshot()
   })
 })
