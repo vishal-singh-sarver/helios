@@ -1,4 +1,3 @@
-// components/FormField/tests/index.test.tsx
 import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import FormField from '../index'
@@ -6,7 +5,9 @@ import FormField from '../index'
 // Mock Tooltip to isolate FormField — Tooltip has its own tests
 vi.mock('../../Tooltip', () => ({
   default: ({ text, ariaLabel }: { text: string; ariaLabel: string }) => (
-    <span data-testid="tooltip" aria-label={ariaLabel}>{text}</span>
+    <span data-testid="tooltip" aria-label={ariaLabel}>
+      {text}
+    </span>
   )
 }))
 
@@ -64,12 +65,7 @@ describe('<FormField />', () => {
   // Verifies onChange callback fires when user types into the input
   it('calls onChange when user types', () => {
     const onChange = vi.fn()
-    render(
-      <FormField
-        {...defaultProps}
-        inputProps={{ ...defaultProps.inputProps, onChange }}
-      />
-    )
+    render(<FormField {...defaultProps} inputProps={{ ...defaultProps.inputProps, onChange }} />)
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Test' } })
     expect(onChange).toHaveBeenCalled()
   })
@@ -77,12 +73,7 @@ describe('<FormField />', () => {
   // Verifies onBlur callback fires when input loses focus
   it('calls onBlur when input loses focus', () => {
     const onBlur = vi.fn()
-    render(
-      <FormField
-        {...defaultProps}
-        inputProps={{ ...defaultProps.inputProps, onBlur }}
-      />
-    )
+    render(<FormField {...defaultProps} inputProps={{ ...defaultProps.inputProps, onBlur }} />)
     fireEvent.blur(screen.getByRole('textbox'))
     expect(onBlur).toHaveBeenCalled()
   })
@@ -107,10 +98,7 @@ describe('<FormField />', () => {
   // Verifies aria-invalid is set to true on the input when an error exists
   it('sets aria-invalid to true when error exists', () => {
     render(
-      <FormField
-        {...defaultProps}
-        inputProps={{ ...defaultProps.inputProps, error: 'Required' }}
-      />
+      <FormField {...defaultProps} inputProps={{ ...defaultProps.inputProps, error: 'Required' }} />
     )
     expect(screen.getByRole('textbox')).toHaveAttribute('aria-invalid', 'true')
   })
@@ -124,10 +112,7 @@ describe('<FormField />', () => {
   // Verifies the input's aria-describedby points to the error element's id
   it('links input to error via aria-describedby', () => {
     render(
-      <FormField
-        {...defaultProps}
-        inputProps={{ ...defaultProps.inputProps, error: 'Required' }}
-      />
+      <FormField {...defaultProps} inputProps={{ ...defaultProps.inputProps, error: 'Required' }} />
     )
     const input = screen.getByRole('textbox')
     const errorId = input.getAttribute('aria-describedby')
@@ -144,10 +129,7 @@ describe('<FormField />', () => {
   // Verifies the input renders as type="number" when specified
   it('renders number type input when specified', () => {
     render(
-      <FormField
-        {...defaultProps}
-        inputProps={{ ...defaultProps.inputProps, type: 'number' }}
-      />
+      <FormField {...defaultProps} inputProps={{ ...defaultProps.inputProps, type: 'number' }} />
     )
     expect(screen.getByRole('spinbutton')).toHaveAttribute('type', 'number')
   })
@@ -155,10 +137,7 @@ describe('<FormField />', () => {
   // Verifies the input is disabled when disabled prop is true
   it('disables input when disabled prop is true', () => {
     render(
-      <FormField
-        {...defaultProps}
-        inputProps={{ ...defaultProps.inputProps, disabled: true }}
-      />
+      <FormField {...defaultProps} inputProps={{ ...defaultProps.inputProps, disabled: true }} />
     )
     expect(screen.getByRole('textbox')).toBeDisabled()
   })
@@ -172,10 +151,7 @@ describe('<FormField />', () => {
   // Snapshot regression guard — error state
   it('should match the snapshot with error', () => {
     const { container } = render(
-      <FormField
-        {...defaultProps}
-        inputProps={{ ...defaultProps.inputProps, error: 'Required' }}
-      />
+      <FormField {...defaultProps} inputProps={{ ...defaultProps.inputProps, error: 'Required' }} />
     )
     expect(container.firstChild).toMatchSnapshot()
   })

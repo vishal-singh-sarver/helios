@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`<MenuBar /> > should match the snapshot 1`] = `
+exports[`<MenuBar /> > matches snapshot 1`] = `
 <nav
   class="flex items-center gap-2 text-sm font-medium text-neutral-300"
 >

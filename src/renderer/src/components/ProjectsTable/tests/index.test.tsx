@@ -1,4 +1,3 @@
-// components/ProjectsTable/tests/index.test.tsx
 import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import ProjectsTable from '../index'
@@ -112,9 +111,9 @@ describe('<ProjectsTable />', () => {
     render(<ProjectsTable {...defaultProps} />)
     fireEvent.click(screen.getByText('Last Updated'))
     const rows = screen.getAllByRole('row')
-    expect(rows[1]).toHaveTextContent('Gamma Project')   // Mar 24
-    expect(rows[2]).toHaveTextContent('Beta Project')    // Mar 27
-    expect(rows[3]).toHaveTextContent('Alpha Project')   // Mar 29
+    expect(rows[1]).toHaveTextContent('Gamma Project') // Mar 24
+    expect(rows[2]).toHaveTextContent('Beta Project') // Mar 27
+    expect(rows[3]).toHaveTextContent('Alpha Project') // Mar 29
   })
 
   // Verifies double-clicking Last Updated sorts newest first
@@ -123,9 +122,9 @@ describe('<ProjectsTable />', () => {
     fireEvent.click(screen.getByText('Last Updated'))
     fireEvent.click(screen.getByText('Last Updated'))
     const rows = screen.getAllByRole('row')
-    expect(rows[1]).toHaveTextContent('Alpha Project')   // Mar 29
-    expect(rows[2]).toHaveTextContent('Beta Project')    // Mar 27
-    expect(rows[3]).toHaveTextContent('Gamma Project')   // Mar 24
+    expect(rows[1]).toHaveTextContent('Alpha Project') // Mar 29
+    expect(rows[2]).toHaveTextContent('Beta Project') // Mar 27
+    expect(rows[3]).toHaveTextContent('Gamma Project') // Mar 24
   })
 
   // ── Sorting by size (must be numeric, not lexicographic) ──
@@ -135,9 +134,9 @@ describe('<ProjectsTable />', () => {
     render(<ProjectsTable {...defaultProps} />)
     fireEvent.click(screen.getByText('Size'))
     const rows = screen.getAllByRole('row')
-    expect(rows[1]).toHaveTextContent('Beta Project')    // 86.1
-    expect(rows[2]).toHaveTextContent('Alpha Project')   // 128.4
-    expect(rows[3]).toHaveTextContent('Gamma Project')   // 214.9
+    expect(rows[1]).toHaveTextContent('Beta Project') // 86.1
+    expect(rows[2]).toHaveTextContent('Alpha Project') // 128.4
+    expect(rows[3]).toHaveTextContent('Gamma Project') // 214.9
   })
 
   // Verifies double-clicking Size sorts largest first
@@ -146,9 +145,9 @@ describe('<ProjectsTable />', () => {
     fireEvent.click(screen.getByText('Size'))
     fireEvent.click(screen.getByText('Size'))
     const rows = screen.getAllByRole('row')
-    expect(rows[1]).toHaveTextContent('Gamma Project')   // 214.9
-    expect(rows[2]).toHaveTextContent('Alpha Project')   // 128.4
-    expect(rows[3]).toHaveTextContent('Beta Project')    // 86.1
+    expect(rows[1]).toHaveTextContent('Gamma Project') // 214.9
+    expect(rows[2]).toHaveTextContent('Alpha Project') // 128.4
+    expect(rows[3]).toHaveTextContent('Beta Project') // 86.1
   })
 
   // ── Sort indicator arrows ──
@@ -194,5 +193,31 @@ describe('<ProjectsTable />', () => {
   it('should match the snapshot with empty projects', () => {
     const { container } = render(<ProjectsTable {...defaultProps} projects={[]} />)
     expect(container.firstChild).toMatchSnapshot()
+  })
+
+  it('maintains stable order for equal values', () => {
+    const projects = [
+      { name: 'A', lastUpdated: '2026-03-29', size: '100 MB' },
+      { name: 'B', lastUpdated: '2026-03-29', size: '100 MB' }
+    ]
+
+    render(<ProjectsTable {...defaultProps} projects={projects} />)
+
+    const rows = screen.getAllByRole('row')
+    expect(rows[1]).toHaveTextContent('A')
+    expect(rows[2]).toHaveTextContent('B')
+  })
+
+  it('handles invalid size values gracefully', () => {
+    const projects = [
+      { name: 'A', lastUpdated: '2026-03-29', size: 'abc' },
+      { name: 'B', lastUpdated: '2026-03-28', size: '100 MB' }
+    ]
+
+    render(<ProjectsTable {...defaultProps} projects={projects} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /size/i }))
+
+    expect(screen.getByText('A')).toBeInTheDocument()
   })
 })
