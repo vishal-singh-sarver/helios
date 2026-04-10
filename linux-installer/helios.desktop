@@ -10,3 +10,8 @@ Terminal=false
 Categories=Utility;Development;
 StartupNotify=true
 StartupWMClass=Helios
+Actions=NewWindow
+
+[Desktop Action NewWindow]
+Name=New Window
+Exec=__INSTALL_DIR__/app/helios__NOSANDBOX__
