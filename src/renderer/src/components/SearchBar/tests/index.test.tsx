@@ -1,4 +1,3 @@
-// components/SearchBar/tests/index.test.tsx
 import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import SearchBar from '../index'
@@ -29,17 +28,21 @@ describe('<SearchBar />', () => {
     expect(screen.getByPlaceholderText('Search...')).toBeInTheDocument()
   })
 
-  // Verifies the search icon is rendered with correct src
+  // Verifies the search icon is rendered with correct src.
+  // NOTE: <img alt=""> has implicit role="presentation", not role="img",
+  // so we query by alt text instead of role.
   it('renders the search icon', () => {
     render(<SearchBar {...defaultProps} />)
-    const img = screen.getByRole('img')
+    const img = screen.getByAltText('')
     expect(img).toHaveAttribute('src', 'search.svg')
   })
 
-  // Verifies the icon has empty alt text (decorative image)
+  // Verifies the icon has empty alt text (decorative image).
+  // The presence of an <img> queryable via getByAltText('') confirms it.
   it('renders the icon as decorative (empty alt)', () => {
     render(<SearchBar {...defaultProps} />)
-    const img = screen.getByRole('img', { hidden: true })
+    const img = screen.getByAltText('')
+    expect(img.tagName).toBe('IMG')
     expect(img).toHaveAttribute('alt', '')
   })
 
@@ -74,4 +77,9 @@ describe('<SearchBar />', () => {
     const { container } = render(<SearchBar {...defaultProps} />)
     expect(container.firstChild).toMatchSnapshot()
   })
+
+  it('renders without placeholder when not provided', () => {
+  render(<SearchBar {...defaultProps} placeholder={undefined} />)
+  expect(screen.getByRole('textbox')).not.toHaveAttribute('placeholder')
+})
 })

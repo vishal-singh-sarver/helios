@@ -1,4 +1,4 @@
-// components/Dialog/tests/index.test.tsx
+
 import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import Dialog from '../index'

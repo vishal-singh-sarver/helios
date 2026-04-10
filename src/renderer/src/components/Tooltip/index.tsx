@@ -12,7 +12,7 @@ function Tooltip({ text, ariaLabel }: TooltipProps): React.JSX.Element {
        
         aria-label={ariaLabel}
         className="flex h-5 w-5 cursor-default items-center justify-center 
-  rounded-full border border-neutral-300 text-xs font-semibold text-white"
+        rounded-full border border-neutral-300 text-xs font-semibold text-white"
       >
         ?
       </span>
