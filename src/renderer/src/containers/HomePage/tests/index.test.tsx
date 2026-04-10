@@ -1,6 +1,5 @@
-// containers/HomePage/tests/index.test.tsx
 import React from 'react'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import HomePage from '../index'
 
 // ── Mock all child components to isolate HomePage logic ──
@@ -55,18 +54,8 @@ vi.mock('@renderer/components/Header', () => ({
 }))
 
 vi.mock('@renderer/components/SearchBar', () => ({
-  default: ({
-    value,
-    onChange
-  }: {
-    value: string
-    onChange: (val: string) => void
-  }) => (
-    <input
-      data-testid="searchbar"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-    />
+  default: ({ value, onChange }: { value: string; onChange: (val: string) => void }) => (
+    <input data-testid="searchbar" value={value} onChange={(e) => onChange(e.target.value)} />
   )
 }))
 
@@ -141,9 +130,7 @@ vi.mock('@renderer/components/FormField', () => ({
         onBlur={inputProps.onBlur}
         type={inputProps.type || 'text'}
       />
-      {inputProps.error && (
-        <span data-testid={`error-${inputProps.name}`}>{inputProps.error}</span>
-      )}
+      {inputProps.error && <span data-testid={`error-${inputProps.name}`}>{inputProps.error}</span>}
     </div>
   )
 }))
@@ -258,8 +245,9 @@ describe('<HomePage />', () => {
   it('renders Cancel and Create buttons in dialog', () => {
     render(<HomePage />)
     fireEvent.click(screen.getByTestId('menu-New Project'))
-    expect(screen.getByText('Cancel')).toBeInTheDocument()
-    expect(screen.getByText('Create')).toBeInTheDocument()
+    const dialog = screen.getByTestId('dialog')
+    expect(within(dialog).getByText('Cancel')).toBeInTheDocument()
+    expect(within(dialog).getByText('Create')).toBeInTheDocument()
   })
 
   // ── Dialog Cancel button ──
@@ -289,7 +277,8 @@ describe('<HomePage />', () => {
     fireEvent.click(screen.getByTestId('menu-New Project'))
     const input = screen.getByTestId('input-latitude')
     fireEvent.change(input, { target: { value: '45.5' } })
-    expect(input).toHaveValue('45.5')
+    // type="number" inputs return numeric value via jest-dom's toHaveValue
+    expect(input).toHaveValue(45.5)
   })
 
   // Verifies typing into longitude field updates its value
@@ -298,7 +287,8 @@ describe('<HomePage />', () => {
     fireEvent.click(screen.getByTestId('menu-New Project'))
     const input = screen.getByTestId('input-longitude')
     fireEvent.change(input, { target: { value: '-122.6' } })
-    expect(input).toHaveValue('-122.6')
+    // type="number" inputs return numeric value via jest-dom's toHaveValue
+    expect(input).toHaveValue(-122.6)
   })
 
   // ── Form validation — empty fields ──
@@ -310,9 +300,7 @@ describe('<HomePage />', () => {
     const input = screen.getByTestId('input-projectName')
     fireEvent.blur(input)
     await waitFor(() => {
-      expect(screen.getByTestId('error-projectName')).toHaveTextContent(
-        'Project name is required.'
-      )
+      expect(screen.getByTestId('error-projectName')).toHaveTextContent('Project name is required.')
     })
   })
 
@@ -378,17 +366,12 @@ describe('<HomePage />', () => {
     })
   })
 
-  // Verifies non-numeric latitude shows an error
-  it('shows error for non-numeric latitude', async () => {
-    render(<HomePage />)
-    fireEvent.click(screen.getByTestId('menu-New Project'))
-    const input = screen.getByTestId('input-latitude')
-    fireEvent.change(input, { target: { value: 'abc' } })
-    fireEvent.blur(input)
-    await waitFor(() => {
-      expect(screen.getByTestId('error-latitude')).toHaveTextContent('Invalid latitude')
-    })
-  })
+  // NOTE: A "non-numeric latitude" test was removed here.
+  // The latitude input is type="number", and jsdom (like real browsers) rejects
+  // non-numeric input — the value becomes an empty string before Formik sees it,
+  // so the "Invalid latitude" branch in the validator is unreachable through the DOM.
+  // If that validator branch needs coverage, test the validate function directly
+  // in a unit test rather than via fireEvent on a number input.
 
   // ── Form validation — valid values (no error) ──
 
@@ -446,8 +429,8 @@ describe('<HomePage />', () => {
       target: { value: '-122.0' }
     })
 
-    // Click Create
-    fireEvent.click(screen.getByText('Create'))
+    // Click Create (scoped to the dialog — ProjectsTable mock also has a "Create" button)
+    fireEvent.click(within(screen.getByTestId('dialog')).getByText('Create'))
 
     // Dialog should close
     await waitFor(() => {
@@ -460,8 +443,8 @@ describe('<HomePage />', () => {
     render(<HomePage />)
     fireEvent.click(screen.getByTestId('menu-New Project'))
 
-    // Leave all fields empty and click Create
-    fireEvent.click(screen.getByText('Create'))
+    // Leave all fields empty and click Create (scoped to dialog)
+    fireEvent.click(within(screen.getByTestId('dialog')).getByText('Create'))
 
     // Dialog should remain open because validation fails
     await waitFor(() => {

@@ -36,12 +36,17 @@ describe('<EmptyState />', () => {
 
   // Verifies the callback fires exactly once when user clicks the CTA
   it('calls onCreateNew when button is clicked', () => {
-    const onCreateNew = vi.fn()
-    render(<EmptyState {...defaultProps} onCreateNew={onCreateNew} />)
-    fireEvent.click(screen.getByText('+ Add New Project'))
-    expect(onCreateNew).toHaveBeenCalledTimes(1)
-  })
+  const onCreateNew = vi.fn()
 
+  render(<EmptyState {...defaultProps} onCreateNew={onCreateNew} />)
+
+  // Ensure it's NOT called initially
+  expect(onCreateNew).not.toHaveBeenCalled()
+
+  fireEvent.click(screen.getByText('+ Add New Project'))
+
+  expect(onCreateNew).toHaveBeenCalledTimes(1)
+})
   // Verifies the icon prop is passed to the img src correctly
   it('renders the icon image with correct src', () => {
     render(<EmptyState {...defaultProps} />)
