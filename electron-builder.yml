@@ -36,6 +36,8 @@ extraResources:
     to: backend
   - from: resources/Helios_splash.png
     to: Helios_splash.png
+  - from: build/icons/512x512.png
+    to: icon.png
 
 win:
   target:

@@ -7,6 +7,7 @@ yarn.lock
 dist/
 out/
 release/
+linux-installer/payload/Helios
 
 # Backend Python Build Artifacts
 backend-api/venv/
