@@ -13,3 +13,8 @@ export const CREATE_PROJECT         = 'app/HomePage/CREATE_PROJECT'         as c
 export const CREATE_PROJECT_SUCCESS = 'app/HomePage/CREATE_PROJECT_SUCCESS' as const
 export const CREATE_PROJECT_FAILURE = 'app/HomePage/CREATE_PROJECT_FAILURE' as const
 export const RESET_CREATE_PROJECT   = 'app/HomePage/RESET_CREATE_PROJECT'   as const
+
+// ── Recent projects ───────────────────────────────────────────────────────────
+export const FETCH_RECENT_PROJECTS         = 'app/HomePage/FETCH_RECENT_PROJECTS'         as const
+export const FETCH_RECENT_PROJECTS_SUCCESS = 'app/HomePage/FETCH_RECENT_PROJECTS_SUCCESS' as const
+export const FETCH_RECENT_PROJECTS_FAILURE = 'app/HomePage/FETCH_RECENT_PROJECTS_FAILURE' as const

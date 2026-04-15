@@ -18,27 +18,19 @@ import { useInjectSaga } from 'utils/injectSaga'
 import {
   FormValues,
   INITIAL_VALUES,
-  ProjectRecord,
   SidebarItem,
   TOOLBAR_ITEMS
 } from '../../types/project'
-import { createProject, resetCreateProject } from './actions'
+import { createProject, fetchRecentProjects, resetCreateProject } from './actions'
 import messages from './messages'
 import homePageReducer from './reducer'
 import homePageSaga from './saga'
 import {
   selectCreateProjectError,
   selectCreateProjectLoading,
-  selectCreateProjectSuccess
+  selectCreateProjectSuccess,
+  selectRecentProjectsData
 } from './selectors'
-
-const SAVED_PROJECTS: ProjectRecord[] = [
-  { name: 'Coastal Survey Alpha', lastUpdated: '2026-03-29 09:15', size: '128.4 MB' },
-  { name: 'Delta Wind Farm', lastUpdated: '2026-03-27 14:42', size: '86.1 MB' },
-  { name: 'Northern Grid Scan', lastUpdated: '2026-03-24 18:05', size: '214.9 MB' },
-  { name: 'River Basin Mapping', lastUpdated: '2026-03-20 11:30', size: '97.6 MB' },
-  { name: 'Urban Heat Island Study', lastUpdated: '2026-03-16 16:50', size: '142.3 MB' }
-]
 
 export function HomePage(): React.JSX.Element {
   useInjectReducer({ key: 'homePage', reducer: homePageReducer })
@@ -48,6 +40,14 @@ export function HomePage(): React.JSX.Element {
   const createLoading = useSelector(selectCreateProjectLoading)
   const createError   = useSelector(selectCreateProjectError)
   const createSuccess = useSelector(selectCreateProjectSuccess)
+  const recentProjects = useSelector(selectRecentProjectsData)
+
+  // Fetch the recent-projects list on mount. Re-fetch after a successful
+  // create is triggered from the saga (see createProjectWorker), so the
+  // component only needs to kick off the initial load here.
+  React.useEffect(() => {
+    dispatch(fetchRecentProjects())
+  }, [dispatch])
 
   const [searchText, setSearchText] = React.useState('')
   const [showNewProjectDialog, setShowNewProjectDialog] = React.useState(false)
@@ -136,11 +136,19 @@ export function HomePage(): React.JSX.Element {
       onAction: () => {}
     }
   ]
-  const filteredProjects = SAVED_PROJECTS.filter((project) =>
-    [project.name, project.lastUpdated, project.size].some((value) =>
-      value.toLowerCase().includes(searchText.trim().toLowerCase())
+  // useDeferredValue keeps the input responsive while the filter re-runs.
+  // useMemo ensures we only re-filter when the list or the deferred query
+  // actually change, not on every unrelated render.
+  const deferredSearch = React.useDeferredValue(searchText)
+  const filteredProjects = React.useMemo(() => {
+    const needle = deferredSearch.trim().toLowerCase()
+    if (!needle) return recentProjects
+    return recentProjects.filter(
+      (project) =>
+        project.name.toLowerCase().includes(needle) ||
+        project.last_updated.toLowerCase().includes(needle)
     )
-  )
+  }, [recentProjects, deferredSearch])
 
   return (
     <div className="flex h-full flex-col font-sans">

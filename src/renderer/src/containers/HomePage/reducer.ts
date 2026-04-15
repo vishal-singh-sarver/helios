@@ -3,13 +3,19 @@ import type { Reducer, UnknownAction } from 'redux'
 import {
   FETCH_STATUS, FETCH_STATUS_SUCCESS, FETCH_STATUS_FAILURE,
   SSE_CONNECT, SSE_EVENT, SSE_DISCONNECT,
-  CREATE_PROJECT, CREATE_PROJECT_SUCCESS, CREATE_PROJECT_FAILURE, RESET_CREATE_PROJECT
+  CREATE_PROJECT, CREATE_PROJECT_SUCCESS, CREATE_PROJECT_FAILURE, RESET_CREATE_PROJECT,
+  FETCH_RECENT_PROJECTS, FETCH_RECENT_PROJECTS_SUCCESS, FETCH_RECENT_PROJECTS_FAILURE
 } from './constants'
 import type { HomePageAction } from './actions'
 
-import type { AppStatus, StreamEvent, CreateProjectResponse } from './types'
+import type {
+  AppStatus,
+  StreamEvent,
+  CreateProjectResponse,
+  RecentProjectItem
+} from './types'
 
-export type { AppStatus, StreamEvent, CreateProjectResponse }
+export type { AppStatus, StreamEvent, CreateProjectResponse, RecentProjectItem }
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -18,6 +24,12 @@ export interface CreateProjectState {
   error: string | null
   success: boolean
   data: CreateProjectResponse | null
+}
+
+export interface RecentProjectsState {
+  loading: boolean
+  error: string | null
+  data: RecentProjectItem[]
 }
 
 export interface HomePageState {
@@ -30,6 +42,8 @@ export interface HomePageState {
   streamLog: StreamEvent[]
   // Create project
   createProject: CreateProjectState
+  // Recent projects
+  recentProjects: RecentProjectsState
 }
 
 export const initialCreateProjectState: CreateProjectState = {
@@ -39,13 +53,20 @@ export const initialCreateProjectState: CreateProjectState = {
   data: null
 }
 
+export const initialRecentProjectsState: RecentProjectsState = {
+  loading: false,
+  error: null,
+  data: []
+}
+
 export const initialState: HomePageState = {
   status: null,
   loading: false,
   error: null,
   streaming: false,
   streamLog: [],
-  createProject: initialCreateProjectState
+  createProject: initialCreateProjectState,
+  recentProjects: initialRecentProjectsState
 }
 
 // ── Reducer ───────────────────────────────────────────────────────────────────
@@ -104,6 +125,21 @@ const homePageReducer: Reducer<HomePageState> = (
 
       case RESET_CREATE_PROJECT:
         draft.createProject = { ...initialCreateProjectState }
+        break
+
+      case FETCH_RECENT_PROJECTS:
+        draft.recentProjects.loading = true
+        draft.recentProjects.error = null
+        break
+
+      case FETCH_RECENT_PROJECTS_SUCCESS:
+        draft.recentProjects.loading = false
+        draft.recentProjects.data = action.payload
+        break
+
+      case FETCH_RECENT_PROJECTS_FAILURE:
+        draft.recentProjects.loading = false
+        draft.recentProjects.error = action.payload
         break
     }
   })
