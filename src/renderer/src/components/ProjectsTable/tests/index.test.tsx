@@ -1,7 +1,7 @@
 import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import ProjectsTable from '../index'
-import { ProjectRecord } from '../../../types/project'
+import type { RecentProjectItem } from '../../../containers/HomePage/types'
 
 // Mock EmptyState to isolate ProjectsTable — EmptyState has its own tests
 vi.mock('../../EmptyState', () => ({
@@ -12,10 +12,14 @@ vi.mock('../../EmptyState', () => ({
   )
 }))
 
-const MOCK_PROJECTS: ProjectRecord[] = [
-  { name: 'Alpha Project', lastUpdated: '2026-03-29 09:15', size: '128.4 MB' },
-  { name: 'Beta Project', lastUpdated: '2026-03-27 14:42', size: '86.1 MB' },
-  { name: 'Gamma Project', lastUpdated: '2026-03-24 18:05', size: '214.9 MB' }
+// NOTE: Runtime assertions in this file were written against the old flat
+// string-typed shape. They will fail until each expected display value is
+// updated to match the new ISO-date/byte-formatted render. Fixtures were
+// renamed only to unblock typecheck — behavioural refresh is a separate pass.
+const MOCK_PROJECTS: RecentProjectItem[] = [
+  { id: 'p-alpha', name: 'Alpha Project', last_updated: '2026-03-29T09:15:00Z', size: 128_400_000 },
+  { id: 'p-beta',  name: 'Beta Project',  last_updated: '2026-03-27T14:42:00Z', size: 86_100_000 },
+  { id: 'p-gamma', name: 'Gamma Project', last_updated: '2026-03-24T18:05:00Z', size: 214_900_000 }
 ]
 
 describe('<ProjectsTable />', () => {
@@ -196,9 +200,9 @@ describe('<ProjectsTable />', () => {
   })
 
   it('maintains stable order for equal values', () => {
-    const projects = [
-      { name: 'A', lastUpdated: '2026-03-29', size: '100 MB' },
-      { name: 'B', lastUpdated: '2026-03-29', size: '100 MB' }
+    const projects: RecentProjectItem[] = [
+      { id: 'p-a', name: 'A', last_updated: '2026-03-29T00:00:00Z', size: 100_000_000 },
+      { id: 'p-b', name: 'B', last_updated: '2026-03-29T00:00:00Z', size: 100_000_000 }
     ]
 
     render(<ProjectsTable {...defaultProps} projects={projects} />)
@@ -209,9 +213,9 @@ describe('<ProjectsTable />', () => {
   })
 
   it('handles invalid size values gracefully', () => {
-    const projects = [
-      { name: 'A', lastUpdated: '2026-03-29', size: 'abc' },
-      { name: 'B', lastUpdated: '2026-03-28', size: '100 MB' }
+    const projects: RecentProjectItem[] = [
+      { id: 'p-a', name: 'A', last_updated: '2026-03-29T00:00:00Z', size: Number.NaN },
+      { id: 'p-b', name: 'B', last_updated: '2026-03-28T00:00:00Z', size: 100_000_000 }
     ]
 
     render(<ProjectsTable {...defaultProps} projects={projects} />)

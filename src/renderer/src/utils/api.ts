@@ -50,8 +50,9 @@ async function request<T>(
 ): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
-    headers: { 'Content-Type': 'application/json',
-           'X-Session-Id': getSessionId()
+    headers: {
+      'Content-Type': 'application/json',
+      'session-id': getSessionId()
     },
     ...(body !== undefined && { body: JSON.stringify(body) })
   })

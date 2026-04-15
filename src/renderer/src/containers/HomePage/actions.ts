@@ -1,9 +1,16 @@
 import {
   FETCH_STATUS, FETCH_STATUS_SUCCESS, FETCH_STATUS_FAILURE,
   SSE_CONNECT, SSE_EVENT, SSE_DISCONNECT,
-  CREATE_PROJECT, CREATE_PROJECT_SUCCESS, CREATE_PROJECT_FAILURE, RESET_CREATE_PROJECT
+  CREATE_PROJECT, CREATE_PROJECT_SUCCESS, CREATE_PROJECT_FAILURE, RESET_CREATE_PROJECT,
+  FETCH_RECENT_PROJECTS, FETCH_RECENT_PROJECTS_SUCCESS, FETCH_RECENT_PROJECTS_FAILURE
 } from './constants'
-import type { AppStatus, StreamEvent, CreateProjectPayload, CreateProjectResponse } from './types'
+import type {
+  AppStatus,
+  StreamEvent,
+  CreateProjectPayload,
+  CreateProjectResponse,
+  RecentProjectItem
+} from './types'
 
 // ── REST actions ──────────────────────────────────────────────────────────────
 
@@ -41,6 +48,17 @@ export const createProjectFailure = (error: string) =>
 export const resetCreateProject = () =>
   ({ type: RESET_CREATE_PROJECT })
 
+// ── Recent projects actions ───────────────────────────────────────────────────
+
+export const fetchRecentProjects = () =>
+  ({ type: FETCH_RECENT_PROJECTS })
+
+export const fetchRecentProjectsSuccess = (projects: RecentProjectItem[]) =>
+  ({ type: FETCH_RECENT_PROJECTS_SUCCESS, payload: projects })
+
+export const fetchRecentProjectsFailure = (error: string) =>
+  ({ type: FETCH_RECENT_PROJECTS_FAILURE, payload: error })
+
 // ── Union type ────────────────────────────────────────────────────────────────
 
 export type HomePageAction =
@@ -54,3 +72,6 @@ export type HomePageAction =
   | ReturnType<typeof createProjectSuccess>
   | ReturnType<typeof createProjectFailure>
   | ReturnType<typeof resetCreateProject>
+  | ReturnType<typeof fetchRecentProjects>
+  | ReturnType<typeof fetchRecentProjectsSuccess>
+  | ReturnType<typeof fetchRecentProjectsFailure>
