@@ -3,8 +3,9 @@ import { api } from 'utils/api'
 import { createSseChannel } from 'utils/sse'
 import type { SseMessage } from 'utils/sse'
 import * as actions from './actions'
-import { FETCH_STATUS, SSE_CONNECT, SSE_DISCONNECT } from './constants'
-import type { AppStatus } from './types'
+import { CREATE_PROJECT, FETCH_STATUS, SSE_CONNECT, SSE_DISCONNECT } from './constants'
+import { createProjectRequest } from './service'
+import type { AppStatus, CreateProjectResponse } from './types'
 
 // ── REST worker ───────────────────────────────────────────────────────────────
 
@@ -14,6 +15,19 @@ export function* fetchStatusWorker(): Generator {
     yield put(actions.fetchStatusSuccess(status))
   } catch (err) {
     yield put(actions.fetchStatusFailure((err as Error).message))
+  }
+}
+
+// ── Create project worker ─────────────────────────────────────────────────────
+
+export function* createProjectWorker(
+  action: ReturnType<typeof actions.createProject>
+): Generator {
+  try {
+    const response = (yield call(createProjectRequest, action.payload)) as CreateProjectResponse
+    yield put(actions.createProjectSuccess(response))
+  } catch (err) {
+    yield put(actions.createProjectFailure((err as Error).message))
   }
 }
 
@@ -52,4 +66,5 @@ export default function* homePageSaga(): Generator {
   // takeLatest cancels any running sseWorker first, triggering its
   // finally block which closes the channel before opening a new one.
   yield takeLatest(SSE_CONNECT, sseWorker)
+  yield takeLatest(CREATE_PROJECT, createProjectWorker)
 }

@@ -1,8 +1,9 @@
 import {
   FETCH_STATUS, FETCH_STATUS_SUCCESS, FETCH_STATUS_FAILURE,
-  SSE_CONNECT, SSE_EVENT, SSE_DISCONNECT
+  SSE_CONNECT, SSE_EVENT, SSE_DISCONNECT,
+  CREATE_PROJECT, CREATE_PROJECT_SUCCESS, CREATE_PROJECT_FAILURE, RESET_CREATE_PROJECT
 } from './constants'
-import type { AppStatus, StreamEvent } from './types'
+import type { AppStatus, StreamEvent, CreateProjectPayload, CreateProjectResponse } from './types'
 
 // ── REST actions ──────────────────────────────────────────────────────────────
 
@@ -26,6 +27,20 @@ export const sseEvent = (payload: StreamEvent) =>
 export const sseDisconnect = () =>
   ({ type: SSE_DISCONNECT })
 
+// ── Create project actions ────────────────────────────────────────────────────
+
+export const createProject = (payload: CreateProjectPayload) =>
+  ({ type: CREATE_PROJECT, payload })
+
+export const createProjectSuccess = (data: CreateProjectResponse) =>
+  ({ type: CREATE_PROJECT_SUCCESS, payload: data })
+
+export const createProjectFailure = (error: string) =>
+  ({ type: CREATE_PROJECT_FAILURE, payload: error })
+
+export const resetCreateProject = () =>
+  ({ type: RESET_CREATE_PROJECT })
+
 // ── Union type ────────────────────────────────────────────────────────────────
 
 export type HomePageAction =
@@ -35,3 +50,7 @@ export type HomePageAction =
   | ReturnType<typeof sseConnect>
   | ReturnType<typeof sseEvent>
   | ReturnType<typeof sseDisconnect>
+  | ReturnType<typeof createProject>
+  | ReturnType<typeof createProjectSuccess>
+  | ReturnType<typeof createProjectFailure>
+  | ReturnType<typeof resetCreateProject>
