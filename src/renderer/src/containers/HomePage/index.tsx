@@ -1,4 +1,5 @@
 import React from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import homeIcon from '@renderer/assets/home.svg'
 import newProjectIcon from '@renderer/assets/new_project.svg'
 import openProjectIcon from '@renderer/assets/open_project.svg'
@@ -11,6 +12,8 @@ import ProjectsTable from '@renderer/components/ProjectsTable'
 import SearchBar from '@renderer/components/SearchBar'
 import Sidebar from '@renderer/components/Sidebar'
 import { useFormik } from 'formik'
+import { useInjectReducer } from 'utils/injectReducer'
+import { useInjectSaga } from 'utils/injectSaga'
 import {
   FormValues,
   INITIAL_VALUES,
@@ -18,6 +21,15 @@ import {
   SidebarItem,
   TOOLBAR_ITEMS
 } from '../../types/project'
+import { createProject, resetCreateProject } from './actions'
+import messages from './messages'
+import homePageReducer from './reducer'
+import homePageSaga from './saga'
+import {
+  selectCreateProjectError,
+  selectCreateProjectLoading,
+  selectCreateProjectSuccess
+} from './selectors'
 
 const SAVED_PROJECTS: ProjectRecord[] = [
   { name: 'Coastal Survey Alpha', lastUpdated: '2026-03-29 09:15', size: '128.4 MB' },
@@ -28,9 +40,18 @@ const SAVED_PROJECTS: ProjectRecord[] = [
 ]
 
 export function HomePage(): React.JSX.Element {
+  useInjectReducer({ key: 'homePage', reducer: homePageReducer })
+  useInjectSaga({ key: 'homePage', saga: homePageSaga })
+
+  const dispatch = useDispatch()
+  const createLoading = useSelector(selectCreateProjectLoading)
+  const createError   = useSelector(selectCreateProjectError)
+  const createSuccess = useSelector(selectCreateProjectSuccess)
+
   const [searchText, setSearchText] = React.useState('')
   const [showNewProjectDialog, setShowNewProjectDialog] = React.useState(false)
   const [activeSidebar, setActiveSidebar] = React.useState('Home')
+
 
   const formik = useFormik<FormValues>({
     initialValues: INITIAL_VALUES,
@@ -39,9 +60,10 @@ export function HomePage(): React.JSX.Element {
     validate: (values) => {
       const errors: Partial<Record<keyof FormValues, string>> = {}
 
-      if (!values.projectName.trim()) {
+      const trimmedName = values.projectName.trim()
+      if (!trimmedName) {
         errors.projectName = 'Project name is required.'
-      } else if (values.projectName.length > 30) {
+      } else if (trimmedName.length > 30) {
         errors.projectName = 'Project name must be 30 characters or fewer.'
       }
 
@@ -67,19 +89,41 @@ export function HomePage(): React.JSX.Element {
 
       return errors
     },
-    onSubmit: (_values, { resetForm }) => {
-      resetForm()
-      setShowNewProjectDialog(false)
+    onSubmit: (values) => {
+      if (createLoading) return
+      dispatch(
+        createProject({
+          name: values.projectName,
+          latitude: Number.parseFloat(values.latitude),
+          longitude: Number.parseFloat(values.longitude)
+        })
+      )
     }
   })
 
+  const resetFormRef = React.useRef(formik.resetForm)
+  React.useEffect(() => {
+    resetFormRef.current = formik.resetForm
+  })
+
+  // Close the dialog and clear the slice once the backend confirms success.
+  React.useEffect(() => {
+    if (createSuccess) {
+      resetFormRef.current()
+      setShowNewProjectDialog(false)
+      dispatch(resetCreateProject())
+    }
+  }, [createSuccess, dispatch])
+
   const openNewProjectDialog = (): void => {
     formik.resetForm()
+    dispatch(resetCreateProject())
     setShowNewProjectDialog(true)
   }
 
   const closeNewProjectDialog = (): void => {
     formik.resetForm()
+    dispatch(resetCreateProject())
     setShowNewProjectDialog(false)
   }
   const sidebarItems: SidebarItem[] = [
@@ -136,7 +180,7 @@ export function HomePage(): React.JSX.Element {
         </main>
       </div>
 
-      <Dialog isOpen={showNewProjectDialog} title="New Project" onClose={closeNewProjectDialog}>
+      <Dialog isOpen={showNewProjectDialog} title={messages.createProject.dialogTitle} onClose={closeNewProjectDialog}>
         <FormField
           labelProps={{
             label: 'Project Name',
@@ -184,18 +228,26 @@ export function HomePage(): React.JSX.Element {
           }}
         />
 
+        {createError && (
+          <p role="alert" className="pt-2 text-sm text-red-600">
+            {createError}
+          </p>
+        )}
+
         <div className="flex justify-end gap-2 pt-2">
           <button
             onClick={closeNewProjectDialog}
-            className="rounded bg-neutral-200 px-3 py-1 text-sm text-black hover:bg-neutral-100"
+            disabled={createLoading}
+            className="rounded bg-neutral-200 px-3 py-1 text-sm text-black hover:bg-neutral-100 disabled:opacity-50"
           >
-            Cancel
+            {messages.createProject.cancelButton}
           </button>
           <button
             onClick={() => formik.submitForm()}
-            className="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-500"
+            disabled={createLoading}
+            className="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-500 disabled:opacity-50"
           >
-            Create
+            {createLoading ? messages.createProject.submitButtonBusy : messages.createProject.submitButton}
           </button>
         </div>
       </Dialog>
