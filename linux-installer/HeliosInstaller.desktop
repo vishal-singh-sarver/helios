@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Helios Installer
+GenericName=Install Helios
+Comment=Install Helios Desktop Application
+Exec=sh -c 'P="%k"; P="${P#file://}"; D="$(dirname "$P")"; exec "$D/HeliosInstaller-1.0.0.run"'
+Icon=system-software-install
+Terminal=false
+Categories=System;PackageManager;
+StartupNotify=true
+X-AppStream-Ignore=true
