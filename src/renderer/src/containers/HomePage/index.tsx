@@ -7,6 +7,7 @@ import searchIcon from '@renderer/assets/search.svg'
 import Dialog from '@renderer/components/Dialog'
 import FormField from '@renderer/components/FormField'
 import Header from '@renderer/components/Header'
+import { Spinner } from '@renderer/components/LoadingScreen/Spinner'
 import MenuBar from '@renderer/components/MenuBar'
 import ProjectsTable from '@renderer/components/ProjectsTable'
 import SearchBar from '@renderer/components/SearchBar'
@@ -247,7 +248,14 @@ export function HomePage(): React.JSX.Element {
             disabled={createLoading}
             className="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-500 disabled:opacity-50"
           >
-            {createLoading ? messages.createProject.submitButtonBusy : messages.createProject.submitButton}
+            {createLoading ? (
+              <span className="flex items-center gap-2">
+                <Spinner />
+                {messages.createProject.submitButtonBusy}
+              </span>
+            ) : (
+              messages.createProject.submitButton
+            )}
           </button>
         </div>
       </Dialog>
