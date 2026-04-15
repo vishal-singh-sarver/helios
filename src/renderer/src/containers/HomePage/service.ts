@@ -16,7 +16,7 @@ import type { CreateProjectPayload, CreateProjectResponse } from './types'
 
 const USE_MOCK_API = true
 
-const MOCK_LATENCY_MS = 500
+const MOCK_LATENCY_MS = 2000
 
 function delay<T>(ms: number, fn: () => T | Promise<T>): Promise<T> {
   return new Promise((resolve, reject) => {
