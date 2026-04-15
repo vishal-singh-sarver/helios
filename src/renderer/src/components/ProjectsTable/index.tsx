@@ -1,25 +1,43 @@
 import React, { useState } from 'react'
 import EmptyState from '../EmptyState'
-import { ProjectRecord } from '../../types/project'
+import type { RecentProjectItem } from '../../containers/HomePage/types'
 
 interface ProjectsTableProps {
-  projects: ProjectRecord[]
+  projects: RecentProjectItem[]
   emptyIcon: string
   onCreateNew: () => void
 }
 
-type SortKey = 'name' | 'lastUpdated' | 'size'
+type SortKey = 'name' | 'last_updated' | 'size'
 type SortOrder = 'asc' | 'desc'
 
 const COLUMN_LABELS: Record<SortKey, string> = {
   name: 'Name',
-  lastUpdated: 'Last Updated',
+  last_updated: 'Last Updated',
   size: 'Size'
 }
 
+function formatBytes(bytes: number): string {
+  if (!bytes) return '—'
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  let value = bytes
+  let unitIndex = 0
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024
+    unitIndex += 1
+  }
+  return `${value.toFixed(value >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`
+}
+
+function formatTimestamp(iso: string): string {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return iso
+  return date.toLocaleString()
+}
+
 function ProjectsTable({ projects, emptyIcon, onCreateNew }: ProjectsTableProps): React.JSX.Element {
-  const [sortKey, setSortKey] = useState<SortKey>('name')
-  const [sortOrder, setSortOrder] = useState<SortOrder>('asc')
+  const [sortKey, setSortKey] = useState<SortKey>('last_updated')
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
 
   const handleSort = (key: SortKey): void => {
     if (key === sortKey) {
@@ -30,25 +48,23 @@ function ProjectsTable({ projects, emptyIcon, onCreateNew }: ProjectsTableProps)
     }
   }
 
-  const sortedProjects = [...projects].sort((a, b) => {
-    let aValue: string | number = a[sortKey]
-    let bValue: string | number = b[sortKey]
-
-    if (sortKey === 'size') {
-  aValue = Number.parseFloat(a.size)
-  bValue = Number.parseFloat(b.size)
-}
-
-    if (sortKey === 'lastUpdated') {
-      return sortOrder === 'asc'
-        ? new Date(a.lastUpdated).getTime() - new Date(b.lastUpdated).getTime()
-        : new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime()
-    }
-
-    if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1
-    if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1
-    return 0
-  })
+  const sortedProjects = React.useMemo(() => {
+    const copy = [...projects]
+    copy.sort((a, b) => {
+      if (sortKey === 'size') {
+        return sortOrder === 'asc' ? a.size - b.size : b.size - a.size
+      }
+      if (sortKey === 'last_updated') {
+        return sortOrder === 'asc'
+          ? new Date(a.last_updated).getTime() - new Date(b.last_updated).getTime()
+          : new Date(b.last_updated).getTime() - new Date(a.last_updated).getTime()
+      }
+      if (a.name < b.name) return sortOrder === 'asc' ? -1 : 1
+      if (a.name > b.name) return sortOrder === 'asc' ? 1 : -1
+      return 0
+    })
+    return copy
+  }, [projects, sortKey, sortOrder])
 
   const getArrow = (key: SortKey): string => {
     if (key !== sortKey) return '↑↓'
@@ -63,7 +79,7 @@ function ProjectsTable({ projects, emptyIcon, onCreateNew }: ProjectsTableProps)
         <table className="w-full border-collapse">
           <thead>
             <tr className="border-b border-app-border">
-              {(['name', 'lastUpdated', 'size'] as SortKey[]).map((key) => (
+              {(['name', 'last_updated', 'size'] as SortKey[]).map((key) => (
                 <th
                   key={key}
                   scope="col"
@@ -93,12 +109,16 @@ function ProjectsTable({ projects, emptyIcon, onCreateNew }: ProjectsTableProps)
             ) : (
               sortedProjects.map((project) => (
                 <tr
-                  key={project.name}
+                  key={project.id}
                   className="border-b border-app-border/80 hover:bg-panel/40"
                 >
                   <td className="px-4 py-3 text-sm text-white">{project.name}</td>
-                  <td className="px-4 py-3 text-sm text-neutral-400">{project.lastUpdated}</td>
-                  <td className="px-4 py-3 text-sm text-neutral-300">{project.size}</td>
+                  <td className="px-4 py-3 text-sm text-neutral-400">
+                    {formatTimestamp(project.last_updated)}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-neutral-300">
+                    {formatBytes(project.size)}
+                  </td>
                 </tr>
               ))
             )}

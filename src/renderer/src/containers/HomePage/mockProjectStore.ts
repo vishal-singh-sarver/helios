@@ -38,17 +38,12 @@ export const mockProjectStore = {
     write([...read(), project])
   },
 
-  remove(projectId: number): boolean {
+  remove(projectId: string): boolean {
     const projects = read()
     const next = projects.filter((p) => p.project_id !== projectId)
     if (next.length === projects.length) return false
     write(next)
     return true
-  },
-
-  nextId(): number {
-    const projects = read()
-    return projects.reduce((max, p) => Math.max(max, p.project_id), 0) + 1
   },
 
   clear(): void {

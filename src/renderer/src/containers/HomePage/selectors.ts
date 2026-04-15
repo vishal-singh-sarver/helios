@@ -22,6 +22,12 @@ export const selectCreateProjectError   = createSelector(selectDomain, (s) => s.
 export const selectCreateProjectSuccess = createSelector(selectDomain, (s) => s.createProject.success)
 export const selectCreateProjectData    = createSelector(selectDomain, (s) => s.createProject.data)
 
+// ── Recent projects selectors ─────────────────────────────────────────────────
+
+export const selectRecentProjectsData    = createSelector(selectDomain, (s) => s.recentProjects.data)
+export const selectRecentProjectsLoading = createSelector(selectDomain, (s) => s.recentProjects.loading)
+export const selectRecentProjectsError   = createSelector(selectDomain, (s) => s.recentProjects.error)
+
 // ── Legacy factory (kept for test compatibility) ──────────────────────────────
 
 const makeSelectHomePage = () => createSelector(selectDomain, (s) => s)
