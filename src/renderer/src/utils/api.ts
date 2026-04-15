@@ -9,6 +9,38 @@ export class ApiError extends Error {
   }
 }
 
+// ── Error body parsing ───────────────────────────────────────────────────────
+
+// FastAPI shapes:
+//   HTTPException → { detail: "message" }
+//   Pydantic 422  → { detail: [{ loc, msg, type }, ...] }
+function extractErrorMessage(raw: string, contentType: string | null, fallback: string): string {
+  if (!raw) return fallback
+  if (!contentType?.includes('application/json')) return raw
+
+  try {
+    const body = JSON.parse(raw) as { detail?: unknown }
+    const detail = body?.detail
+
+    if (typeof detail === 'string') return detail
+
+    if (Array.isArray(detail)) {
+      const parts = detail
+        .map((d: { loc?: unknown[]; msg?: unknown }) => {
+          if (typeof d?.msg !== 'string') return null
+          const loc = Array.isArray(d.loc) && d.loc.length > 0 ? String(d.loc[d.loc.length - 1]) : null
+          return loc ? `${loc}: ${d.msg}` : d.msg
+        })
+        .filter((m): m is string => m !== null)
+      if (parts.length > 0) return parts.join('; ')
+    }
+  } catch {
+    // fall through: malformed JSON, use raw text
+  }
+
+  return raw
+}
+
 // ── Core request ─────────────────────────────────────────────────────────────
 
 async function request<T>(
@@ -25,8 +57,8 @@ async function request<T>(
   })
 
   if (!res.ok) {
-    const text = await res.text().catch(() => res.statusText)
-    throw new ApiError(res.status, text)
+    const raw = await res.text().catch(() => '')
+    throw new ApiError(res.status, extractErrorMessage(raw, res.headers.get('content-type'), res.statusText))
   }
 
   // 204 No Content or non-JSON responses return undefined

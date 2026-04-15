@@ -15,6 +15,13 @@ export const selectError       = createSelector(selectDomain, (s) => s.error)
 export const selectStreaming    = createSelector(selectDomain, (s) => s.streaming)
 export const selectStreamLog   = createSelector(selectDomain, (s) => s.streamLog)
 
+// ── Create project selectors ──────────────────────────────────────────────────
+
+export const selectCreateProjectLoading = createSelector(selectDomain, (s) => s.createProject.loading)
+export const selectCreateProjectError   = createSelector(selectDomain, (s) => s.createProject.error)
+export const selectCreateProjectSuccess = createSelector(selectDomain, (s) => s.createProject.success)
+export const selectCreateProjectData    = createSelector(selectDomain, (s) => s.createProject.data)
+
 // ── Legacy factory (kept for test compatibility) ──────────────────────────────
 
 const makeSelectHomePage = () => createSelector(selectDomain, (s) => s)
