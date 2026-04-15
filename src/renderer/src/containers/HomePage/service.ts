@@ -2,7 +2,11 @@ import { api, ApiError } from 'utils/api'
 import { API_ROUTES } from 'utils/constants'
 import messages from './messages'
 import { mockProjectStore, type StoredProject } from './mockProjectStore'
-import type { CreateProjectPayload, CreateProjectResponse } from './types'
+import type {
+  CreateProjectPayload,
+  CreateProjectResponse,
+  RecentProjectsResponse
+} from './types'
 
 // Service layer for the HomePage container.
 //
@@ -53,7 +57,7 @@ function createProjectMock(payload: CreateProjectPayload): Promise<CreateProject
 
     const project: StoredProject = {
       success: true,
-      project_id: mockProjectStore.nextId(),
+      project_id: crypto.randomUUID(),
       name: cleanName,
       latitude: payload.latitude,
       longitude: payload.longitude,
@@ -67,25 +71,35 @@ function createProjectMock(payload: CreateProjectPayload): Promise<CreateProject
   })
 }
 
-// ── Fetch (stub for future fetchProjects feature) ─────────────────────────────
+// ── Recent ────────────────────────────────────────────────────────────────────
 
-export function fetchProjectsRequest(): Promise<StoredProject[]> {
-  if (USE_MOCK_API) return fetchProjectsMock()
-  return api.get<StoredProject[]>(API_ROUTES.project.list)
+export function fetchRecentProjectsRequest(): Promise<RecentProjectsResponse> {
+  if (USE_MOCK_API) return fetchRecentProjectsMock()
+  return api.get<RecentProjectsResponse>(API_ROUTES.project.recent)
 }
 
-function fetchProjectsMock(): Promise<StoredProject[]> {
-  return delay(300, () => mockProjectStore.list())
+function fetchRecentProjectsMock(): Promise<RecentProjectsResponse> {
+  return delay(300, () => ({
+    projects: mockProjectStore
+      .list()
+      .map((p) => ({
+        id: p.project_id,
+        name: p.name,
+        last_updated: new Date(p.createdAt).toISOString(),
+        size: 0
+      }))
+      .sort((a, b) => b.last_updated.localeCompare(a.last_updated))
+  }))
 }
 
 // ── Delete (stub for future deleteProject feature) ────────────────────────────
 
-export function deleteProjectRequest(projectId: number): Promise<void> {
+export function deleteProjectRequest(projectId: string): Promise<void> {
   if (USE_MOCK_API) return deleteProjectMock(projectId)
   return api.delete<void>(API_ROUTES.project.delete(projectId))
 }
 
-function deleteProjectMock(projectId: number): Promise<void> {
+function deleteProjectMock(projectId: string): Promise<void> {
   return delay(300, () => {
     const removed = mockProjectStore.remove(projectId)
     if (!removed) {

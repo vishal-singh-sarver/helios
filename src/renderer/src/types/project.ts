@@ -11,12 +11,6 @@ export const INITIAL_VALUES: FormValues = {
   longitude: ''
 }
 
-export interface ProjectRecord {
-  name: string
-  lastUpdated: string
-  size: string
-}
-
 export interface SidebarItem {
   label: string
   icon: string

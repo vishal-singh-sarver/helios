@@ -11,9 +11,8 @@ export const BASE_URL = (window as any).__APP_BASE_URL__ ?? 'http://localhost:80
 export const API_ROUTES = {
   project: {
     create: '/api/project/create',
+    recent: '/api/project/recent',
     // Not yet implemented on the backend — see backend-api/app/routers/project.py
-    list:   '/api/project/list',
-    // Not yet implemented on the backend — see backend-api/app/routers/project.py
-    delete: (projectId: number) => `/api/project/${projectId}`
+    delete: (projectId: string) => `/api/project/${projectId}`
   }
 } as const
