@@ -26,7 +26,9 @@ describe('<ProjectsTable />', () => {
   const defaultProps = {
     projects: MOCK_PROJECTS,
     emptyIcon: 'search.svg',
-    onCreateNew: vi.fn()
+    onCreateNew: vi.fn(),
+    onDelete: vi.fn(),
+    deletingIds: [] as string[]
   }
 
   // ── Rendering ──

@@ -10,6 +10,8 @@ interface ProjectsTableProps {
   projects: RecentProjectItem[]
   emptyIcon: string
   onCreateNew: () => void
+  onDelete: (projectId: string) => void
+  deletingIds: string[]
 }
 
 type SortKey = 'name' | 'last_updated' | 'size'
@@ -29,7 +31,9 @@ const COLUMN_LABELS: Record<SortKey, string> = {
 function ProjectsTable({
   projects,
   emptyIcon,
-  onCreateNew
+  onCreateNew,
+  onDelete,
+  deletingIds
 }: ProjectsTableProps): React.JSX.Element {
   const [sortKey, setSortKey] = useState<SortKey>('last_updated')
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
@@ -156,43 +160,45 @@ function ProjectsTable({
                 </tr>
               )}
 
-              {visibleRows.map((project) => (
-                <tr
-                  key={project.id}
-                  className="hover:bg-app-panel/40 focus-within:bg-app-panel/40"
-                  style={{ height: ROW_HEIGHT }}
-                >
-                  <td className="border-b border-app-border/80 px-4 overflow-hidden">
-                    <button
-                      type="button"
-                      aria-label={`Open project ${project.name}`}
-                      onClick={() => handleOpenProject(project)}
-                      title={project.name}
-                      className="block w-full truncate text-left text-sm text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 rounded"
-                    >
-                      {project.name}
-                    </button>
-                  </td>
-                  <td className="border-b border-app-border/80 px-4 text-sm text-neutral-400">
-                    {formatRelativeDate(project.last_updated)}
-                  </td>
-                  <td className="border-b border-app-border/80 px-4 text-sm text-neutral-300">
-                    {formatBytes(project.size)}
-                  </td>
-                  <td className="border-b border-app-border/80 px-4">
-                    <button
-                      type="button"
-                      aria-label={`Delete project ${project.name}`}
-                      onClick={() => {
-                        // TODO: dispatch deleteProject(project.id)
-                      }}
-                      className="flex h-8 w-8 items-center justify-center rounded text-neutral-400 hover:bg-red-500/10 hover:text-red-400 focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500"
-                    >
-                      <img src={deleteIcon} alt="" aria-hidden="true" className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {visibleRows.map((project) => {
+                const isDeleting = deletingIds.includes(project.id)
+                return (
+                  <tr
+                    key={project.id}
+                    className="hover:bg-app-panel/40 focus-within:bg-app-panel/40"
+                    style={{ height: ROW_HEIGHT }}
+                  >
+                    <td className="border-b border-app-border/80 px-4 overflow-hidden">
+                      <button
+                        type="button"
+                        aria-label={`Open project ${project.name}`}
+                        onClick={() => handleOpenProject(project)}
+                        title={project.name}
+                        className="block w-full truncate text-left text-sm text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 rounded"
+                      >
+                        {project.name}
+                      </button>
+                    </td>
+                    <td className="border-b border-app-border/80 px-4 text-sm text-neutral-400">
+                      {formatRelativeDate(project.last_updated)}
+                    </td>
+                    <td className="border-b border-app-border/80 px-4 text-sm text-neutral-300">
+                      {formatBytes(project.size)}
+                    </td>
+                    <td className="border-b border-app-border/80 px-4">
+                      <button
+                        type="button"
+                        aria-label={`Delete project ${project.name}`}
+                        onClick={() => onDelete(project.id)}
+                        disabled={isDeleting}
+                        className="flex h-8 w-8 items-center justify-center rounded text-neutral-400 focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <img src={deleteIcon} alt="" aria-hidden="true" className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
 
               {paddingBottom > 0 && (
                 <tr aria-hidden="true" style={{ height: paddingBottom }}>

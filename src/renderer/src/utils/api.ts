@@ -5,38 +5,51 @@ import { getSessionId } from './session'
 // ── Error type ───────────────────────────────────────────────────────────────
 
 export class ApiError extends Error {
-  constructor(public readonly status: number, message: string) {
+  constructor(
+    public readonly status: number,
+    message: string,
+    public readonly fieldErrors: Record<string, string> = {}
+  ) {
     super(message)
     this.name = 'ApiError'
   }
 }
 
-// ── Error body parsing ───────────────────────────────────────────────────────
-//
-// FastAPI shapes:
-//   HTTPException → { detail: "message" }
-//   Pydantic 422  → { detail: [{ loc, msg, type }, ...] }
-function extractErrorMessage(data: unknown, fallback: string): string {
-  if (data == null) return fallback
-  if (typeof data === 'string') return data || fallback
+interface ParsedError {
+  message: string
+  fieldErrors: Record<string, string>
+}
+
+function parseErrorBody(data: unknown, fallback: string): ParsedError {
+  if (data == null) return { message: fallback, fieldErrors: {} }
+  if (typeof data === 'string') return { message: data || fallback, fieldErrors: {} }
 
   const detail = (data as { detail?: unknown })?.detail
 
-  if (typeof detail === 'string') return detail
+  if (typeof detail === 'string') return { message: detail, fieldErrors: {} }
 
   if (Array.isArray(detail)) {
-    const parts = detail
-      .map((d: { loc?: unknown[]; msg?: unknown }) => {
-        if (typeof d?.msg !== 'string') return null
-        const loc =
-          Array.isArray(d.loc) && d.loc.length > 0 ? String(d.loc[d.loc.length - 1]) : null
-        return loc ? `${loc}: ${d.msg}` : d.msg
-      })
-      .filter((m): m is string => m !== null)
-    if (parts.length > 0) return parts.join('; ')
+    const fieldErrors: Record<string, string> = {}
+    const parts: string[] = []
+
+    for (const d of detail as Array<{ loc?: unknown[]; msg?: unknown }>) {
+      if (typeof d?.msg !== 'string') continue
+      const loc =
+        Array.isArray(d.loc) && d.loc.length > 0 ? String(d.loc[d.loc.length - 1]) : null
+      if (loc) {
+        fieldErrors[loc] = d.msg
+        parts.push(`${loc}: ${d.msg}`)
+      } else {
+        parts.push(d.msg)
+      }
+    }
+
+    if (parts.length > 0) {
+      return { message: parts.join('; '), fieldErrors }
+    }
   }
 
-  return fallback
+  return { message: fallback, fieldErrors: {} }
 }
 
 // ── Axios instance ───────────────────────────────────────────────────────────
@@ -60,10 +73,11 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   } catch (err) {
     const axErr = err as AxiosError
     if (axErr.response) {
-      throw new ApiError(
-        axErr.response.status,
-        extractErrorMessage(axErr.response.data, axErr.response.statusText || axErr.message)
+      const parsed = parseErrorBody(
+        axErr.response.data,
+        axErr.response.statusText || axErr.message
       )
+      throw new ApiError(axErr.response.status, parsed.message, parsed.fieldErrors)
     }
     throw new ApiError(0, axErr.message || 'Network error')
   }

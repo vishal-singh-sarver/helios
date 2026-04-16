@@ -18,3 +18,8 @@ export const RESET_CREATE_PROJECT   = 'app/HomePage/RESET_CREATE_PROJECT'   as c
 export const FETCH_RECENT_PROJECTS         = 'app/HomePage/FETCH_RECENT_PROJECTS'         as const
 export const FETCH_RECENT_PROJECTS_SUCCESS = 'app/HomePage/FETCH_RECENT_PROJECTS_SUCCESS' as const
 export const FETCH_RECENT_PROJECTS_FAILURE = 'app/HomePage/FETCH_RECENT_PROJECTS_FAILURE' as const
+
+// ── Delete project ────────────────────────────────────────────────────────────
+export const DELETE_PROJECT         = 'app/HomePage/DELETE_PROJECT'         as const
+export const DELETE_PROJECT_SUCCESS = 'app/HomePage/DELETE_PROJECT_SUCCESS' as const
+export const DELETE_PROJECT_FAILURE = 'app/HomePage/DELETE_PROJECT_FAILURE' as const

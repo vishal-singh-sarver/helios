@@ -1,15 +1,20 @@
 import { combineReducers, Reducer, UnknownAction } from 'redux'
-import navigationReducer from './navigationReducer'
+import navigationReducer, { type NavigationState } from './navigationReducer'
+import type { HomePageState } from 'containers/HomePage/reducer'
+
+
+export interface RootState {
+  navigation: NavigationState
+  homePage?: HomePageState
+}
 
 function createReducer(
   injectedReducers: Record<string, Reducer> = {}
-): Reducer<unknown, UnknownAction> {
+): Reducer<RootState, UnknownAction> {
   return combineReducers({
     navigation: navigationReducer,
     ...injectedReducers
-  })
+  }) as unknown as Reducer<RootState, UnknownAction>
 }
-
-export type RootState = ReturnType<ReturnType<typeof createReducer>>
 
 export default createReducer
