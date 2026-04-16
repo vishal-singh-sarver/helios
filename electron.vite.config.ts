@@ -20,6 +20,14 @@ export default defineConfig({
         store: resolve('src/renderer/src/store')
       }
     },
+    server: {
+      proxy: {
+        '/api': {
+          target: 'http://192.168.3.191:8008',
+          changeOrigin: true
+        }
+      }
+    },
     plugins: [react(), tailwindcss()]
   }
 })
