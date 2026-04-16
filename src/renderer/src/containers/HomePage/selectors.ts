@@ -5,7 +5,7 @@ import { initialState, type HomePageState } from './reducer'
 // ── Domain ────────────────────────────────────────────────────────────────────
 
 const selectDomain = (state: RootState): HomePageState =>
-  (state as any).homePage ?? initialState
+  state.homePage ?? initialState
 
 // ── Memoised selectors ────────────────────────────────────────────────────────
 
@@ -27,6 +27,11 @@ export const selectCreateProjectData    = createSelector(selectDomain, (s) => s.
 export const selectRecentProjectsData    = createSelector(selectDomain, (s) => s.recentProjects.data)
 export const selectRecentProjectsLoading = createSelector(selectDomain, (s) => s.recentProjects.loading)
 export const selectRecentProjectsError   = createSelector(selectDomain, (s) => s.recentProjects.error)
+
+// ── Delete project selectors ──────────────────────────────────────────────────
+
+export const selectDeletingProjectIds = createSelector(selectDomain, (s) => s.deleteProject.inFlightIds)
+export const selectDeleteProjectError = createSelector(selectDomain, (s) => s.deleteProject.error)
 
 // ── Legacy factory (kept for test compatibility) ──────────────────────────────
 
