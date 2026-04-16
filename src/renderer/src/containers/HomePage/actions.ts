@@ -2,14 +2,17 @@ import {
   FETCH_STATUS, FETCH_STATUS_SUCCESS, FETCH_STATUS_FAILURE,
   SSE_CONNECT, SSE_EVENT, SSE_DISCONNECT,
   CREATE_PROJECT, CREATE_PROJECT_SUCCESS, CREATE_PROJECT_FAILURE, RESET_CREATE_PROJECT,
-  FETCH_RECENT_PROJECTS, FETCH_RECENT_PROJECTS_SUCCESS, FETCH_RECENT_PROJECTS_FAILURE
+  FETCH_RECENT_PROJECTS, FETCH_RECENT_PROJECTS_SUCCESS, FETCH_RECENT_PROJECTS_FAILURE,
+  DELETE_PROJECT, DELETE_PROJECT_SUCCESS, DELETE_PROJECT_FAILURE
 } from './constants'
 import type {
   AppStatus,
   StreamEvent,
   CreateProjectPayload,
   CreateProjectResponse,
-  RecentProjectItem
+  RecentProjectItem,
+  ApiErrorPayload,
+  DeleteProjectPayload
 } from './types'
 
 // ── REST actions ──────────────────────────────────────────────────────────────
@@ -42,7 +45,7 @@ export const createProject = (payload: CreateProjectPayload) =>
 export const createProjectSuccess = (data: CreateProjectResponse) =>
   ({ type: CREATE_PROJECT_SUCCESS, payload: data })
 
-export const createProjectFailure = (error: string) =>
+export const createProjectFailure = (error: ApiErrorPayload) =>
   ({ type: CREATE_PROJECT_FAILURE, payload: error })
 
 export const resetCreateProject = () =>
@@ -56,8 +59,19 @@ export const fetchRecentProjects = () =>
 export const fetchRecentProjectsSuccess = (projects: RecentProjectItem[]) =>
   ({ type: FETCH_RECENT_PROJECTS_SUCCESS, payload: projects })
 
-export const fetchRecentProjectsFailure = (error: string) =>
+export const fetchRecentProjectsFailure = (error: ApiErrorPayload) =>
   ({ type: FETCH_RECENT_PROJECTS_FAILURE, payload: error })
+
+// ── Delete project actions ────────────────────────────────────────────────────
+
+export const deleteProject = (payload: DeleteProjectPayload) =>
+  ({ type: DELETE_PROJECT, payload })
+
+export const deleteProjectSuccess = (projectId: string) =>
+  ({ type: DELETE_PROJECT_SUCCESS, payload: { projectId } })
+
+export const deleteProjectFailure = (projectId: string, error: ApiErrorPayload) =>
+  ({ type: DELETE_PROJECT_FAILURE, payload: { projectId, error } })
 
 // ── Union type ────────────────────────────────────────────────────────────────
 
@@ -75,3 +89,6 @@ export type HomePageAction =
   | ReturnType<typeof fetchRecentProjects>
   | ReturnType<typeof fetchRecentProjectsSuccess>
   | ReturnType<typeof fetchRecentProjectsFailure>
+  | ReturnType<typeof deleteProject>
+  | ReturnType<typeof deleteProjectSuccess>
+  | ReturnType<typeof deleteProjectFailure>

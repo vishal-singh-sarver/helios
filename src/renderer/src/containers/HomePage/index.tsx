@@ -15,13 +15,8 @@ import Sidebar from '@renderer/components/Sidebar'
 import { useFormik } from 'formik'
 import { useInjectReducer } from 'utils/injectReducer'
 import { useInjectSaga } from 'utils/injectSaga'
-import {
-  FormValues,
-  INITIAL_VALUES,
-  SidebarItem,
-  TOOLBAR_ITEMS
-} from '../../types/project'
-import { createProject, fetchRecentProjects, resetCreateProject } from './actions'
+import { FormValues, INITIAL_VALUES, SidebarItem, TOOLBAR_ITEMS } from '../../types/project'
+import { createProject, deleteProject, fetchRecentProjects, resetCreateProject } from './actions'
 import messages from './messages'
 import homePageReducer from './reducer'
 import homePageSaga from './saga'
@@ -29,6 +24,7 @@ import {
   selectCreateProjectError,
   selectCreateProjectLoading,
   selectCreateProjectSuccess,
+  selectDeletingProjectIds,
   selectRecentProjectsData
 } from './selectors'
 
@@ -38,13 +34,11 @@ export function HomePage(): React.JSX.Element {
 
   const dispatch = useDispatch()
   const createLoading = useSelector(selectCreateProjectLoading)
-  const createError   = useSelector(selectCreateProjectError)
+  const createError = useSelector(selectCreateProjectError)
   const createSuccess = useSelector(selectCreateProjectSuccess)
   const recentProjects = useSelector(selectRecentProjectsData)
+  const deletingIds = useSelector(selectDeletingProjectIds)
 
-  // Fetch the recent-projects list on mount. Re-fetch after a successful
-  // create is triggered from the saga (see createProjectWorker), so the
-  // component only needs to kick off the initial load here.
   React.useEffect(() => {
     dispatch(fetchRecentProjects())
   }, [dispatch])
@@ -52,7 +46,6 @@ export function HomePage(): React.JSX.Element {
   const [searchText, setSearchText] = React.useState('')
   const [showNewProjectDialog, setShowNewProjectDialog] = React.useState(false)
   const [activeSidebar, setActiveSidebar] = React.useState('Home')
-
 
   const formik = useFormik<FormValues>({
     initialValues: INITIAL_VALUES,
@@ -185,11 +178,17 @@ export function HomePage(): React.JSX.Element {
             projects={filteredProjects}
             emptyIcon={searchIcon}
             onCreateNew={openNewProjectDialog}
+            onDelete={(projectId) => dispatch(deleteProject({ projectId }))}
+            deletingIds={deletingIds}
           />
         </main>
       </div>
 
-      <Dialog isOpen={showNewProjectDialog} title={messages.createProject.dialogTitle} onClose={closeNewProjectDialog}>
+      <Dialog
+        isOpen={showNewProjectDialog}
+        title={messages.createProject.dialogTitle}
+        onClose={closeNewProjectDialog}
+      >
         <FormField
           labelProps={{
             label: 'Project Name',
@@ -237,9 +236,9 @@ export function HomePage(): React.JSX.Element {
           }}
         />
 
-        {createError && (
+        {createError && createError.status !== 422 && (
           <p role="alert" className="pt-2 text-sm text-red-600">
-            {createError}
+            {createError.message}
           </p>
         )}
 

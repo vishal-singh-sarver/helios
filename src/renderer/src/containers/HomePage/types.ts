@@ -27,6 +27,13 @@ export interface CreateProjectResponse {
   session_id: string
 }
 
+
+export interface ApiErrorPayload {
+  status: number              // HTTP status (0 = network failure)
+  message: string             // flat human-readable message
+  fieldErrors: Record<string, string>  // per-field detail (FastAPI 422 → loc-keyed)
+}
+
 // ── Recent projects ───────────────────────────────────────────────────────────
 
 export interface RecentProjectItem {
@@ -38,4 +45,10 @@ export interface RecentProjectItem {
 
 export interface RecentProjectsResponse {
   projects: RecentProjectItem[]
+}
+
+// ── Delete project ────────────────────────────────────────────────────────────
+
+export interface DeleteProjectPayload {
+  projectId: string
 }
