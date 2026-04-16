@@ -1,6 +1,10 @@
 // Base URL of your backend server.
-// For a local Electron-spawned process use a fixed port; for remote servers use an env var.
-export const BASE_URL = (window as any).__APP_BASE_URL__ ?? 'http://localhost:8008'
+// In dev, BASE_URL is empty — requests go to same-origin /api/* and are
+// proxied to the real backend by Vite (see electron.vite.config.ts → server.proxy).
+// In production, Electron loads from file:// and must hit the backend directly.
+export const BASE_URL =
+  (window as any).__APP_BASE_URL__ ??
+  (import.meta.env.DEV ? '' : 'http://192.168.3.191:8008')
 
 // ── Backend routes ────────────────────────────────────────────────────────────
 //
