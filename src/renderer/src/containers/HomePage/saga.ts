@@ -1,5 +1,6 @@
 import { call, put, race, take, takeLatest } from 'redux-saga/effects'
 import { api } from 'utils/api'
+import { API_ROUTES } from 'utils/constants'
 import { createSseChannel } from 'utils/sse'
 import type { SseMessage } from 'utils/sse'
 import * as actions from './actions'
@@ -10,7 +11,6 @@ import {
   SSE_CONNECT,
   SSE_DISCONNECT
 } from './constants'
-import { createProjectRequest, fetchRecentProjectsRequest } from './service'
 import type { AppStatus, CreateProjectResponse, RecentProjectsResponse } from './types'
 
 // ── REST worker ───────────────────────────────────────────────────────────────
@@ -30,7 +30,11 @@ export function* createProjectWorker(
   action: ReturnType<typeof actions.createProject>
 ): Generator {
   try {
-    const response = (yield call(createProjectRequest, action.payload)) as CreateProjectResponse
+    const response = (yield call(
+      api.post<CreateProjectResponse>,
+      API_ROUTES.project.create,
+      action.payload
+    )) as CreateProjectResponse
     yield put(actions.createProjectSuccess(response))
     // Refresh the Recent Projects list so the table reflects the new row
     // without the component having to orchestrate a follow-up dispatch.
@@ -44,7 +48,10 @@ export function* createProjectWorker(
 
 export function* fetchRecentProjectsWorker(): Generator {
   try {
-    const response = (yield call(fetchRecentProjectsRequest)) as RecentProjectsResponse
+    const response = (yield call(
+      api.get<RecentProjectsResponse>,
+      API_ROUTES.project.recent
+    )) as RecentProjectsResponse
     yield put(actions.fetchRecentProjectsSuccess(response.projects))
   } catch (err) {
     yield put(actions.fetchRecentProjectsFailure((err as Error).message))
