@@ -47,8 +47,8 @@ function writeEarlyLog(message: string): void {
 
 function createWindow(onReadyToShow?: () => void): BrowserWindow {
   const mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: 1000,
+    height: 600,
     show: false,
     autoHideMenuBar: true,
     webPreferences: {

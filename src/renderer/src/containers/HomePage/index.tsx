@@ -13,6 +13,7 @@ import ProjectsTable from '@renderer/components/ProjectsTable'
 import SearchBar from '@renderer/components/SearchBar'
 import Sidebar from '@renderer/components/Sidebar'
 import { useFormik } from 'formik'
+import { navigate } from 'store/navigationReducer'
 import { useInjectReducer } from 'utils/injectReducer'
 import { useInjectSaga } from 'utils/injectSaga'
 import {
@@ -133,7 +134,7 @@ export function HomePage(): React.JSX.Element {
     {
       label: 'Open project',
       icon: openProjectIcon,
-      onAction: () => {}
+      onAction: () => dispatch(navigate('project'))
     }
   ]
   // useDeferredValue keeps the input responsive while the filter re-runs.

@@ -19,8 +19,8 @@ function Tooltip({ text, ariaLabel }: TooltipProps): React.JSX.Element {
 
       <span
         role="tooltip"
-        className="pointer-events-none absolute left-full top-1/2 z-10 
-        ml-2 w-64 -translate-y-1/2 rounded border border-app-border 
+        className="pointer-events-none absolute left-0 top-full z-20
+        mt-2 w-56 rounded border border-app-border shadow-lg
         bg-[#2b2d33] px-2 py-1 text-[11px] leading-4 text-neutral-200
         opacity-0 group-hover:opacity-100"
       >
