@@ -34,8 +34,7 @@ function parseErrorBody(data: unknown, fallback: string): ParsedError {
 
     for (const d of detail as Array<{ loc?: unknown[]; msg?: unknown }>) {
       if (typeof d?.msg !== 'string') continue
-      const loc =
-        Array.isArray(d.loc) && d.loc.length > 0 ? String(d.loc[d.loc.length - 1]) : null
+      const loc = Array.isArray(d.loc) && d.loc.length > 0 ? String(d.loc[d.loc.length - 1]) : null
       if (loc) {
         fieldErrors[loc] = d.msg
         parts.push(`${loc}: ${d.msg}`)
@@ -72,10 +71,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   } catch (err) {
     const axErr = err as AxiosError
     if (axErr.response) {
-      const parsed = parseErrorBody(
-        axErr.response.data,
-        axErr.response.statusText || axErr.message
-      )
+      const parsed = parseErrorBody(axErr.response.data, axErr.response.statusText || axErr.message)
       throw new ApiError(axErr.response.status, parsed.message, parsed.fieldErrors)
     }
     throw new ApiError(0, axErr.message || 'Network error')
@@ -85,9 +81,9 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export const api = {
-  get:    <T>(path: string)                 => request<T>('GET', path),
-  post:   <T>(path: string, body?: unknown) => request<T>('POST', path, body),
-  put:    <T>(path: string, body?: unknown) => request<T>('PUT', path, body),
-  patch:  <T>(path: string, body?: unknown) => request<T>('PATCH', path, body),
-  delete: <T>(path: string)                 => request<T>('DELETE', path)
+  get: <T>(path: string) => request<T>('GET', path),
+  post: <T>(path: string, body?: unknown) => request<T>('POST', path, body),
+  put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body),
+  patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, body),
+  delete: <T>(path: string) => request<T>('DELETE', path)
 }

@@ -1,9 +1,11 @@
-import React from 'react'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import ProjectsTable from '../index'
+import { formatBytes } from 'utils/format'
 import type { RecentProjectItem } from '../../../containers/HomePage/types'
 
-// Mock EmptyState to isolate ProjectsTable — EmptyState has its own tests
+// ── Mocks ───────────────────────────────────────────────────────────────────
+
+// EmptyState has its own suite — shallow it here so we can verify wiring only.
 vi.mock('../../EmptyState', () => ({
   default: ({ onCreateNew }: { onCreateNew: () => void }) => (
     <div data-testid="empty-state">
@@ -12,13 +14,16 @@ vi.mock('../../EmptyState', () => ({
   )
 }))
 
-// NOTE: Runtime assertions in this file were written against the old flat
-// string-typed shape. They will fail until each expected display value is
-// updated to match the new ISO-date/byte-formatted render. Fixtures were
-// renamed only to unblock typecheck — behavioural refresh is a separate pass.
+// The table imports two SVG assets; stub them so the bundler does not choke
+// and so we can assert className changes on them in render output.
+vi.mock('@renderer/assets/delete.svg', () => ({ default: 'delete.svg' }))
+vi.mock('@renderer/assets/Sort 3.svg', () => ({ default: 'sort.svg' }))
+
+// ── Fixtures ────────────────────────────────────────────────────────────────
+
 const MOCK_PROJECTS: RecentProjectItem[] = [
   { id: 'p-alpha', name: 'Alpha Project', last_updated: '2026-03-29T09:15:00Z', size: 128_400_000 },
-  { id: 'p-beta',  name: 'Beta Project',  last_updated: '2026-03-27T14:42:00Z', size: 86_100_000 },
+  { id: 'p-beta', name: 'Beta Project', last_updated: '2026-03-27T14:42:00Z', size: 86_100_000 },
   { id: 'p-gamma', name: 'Gamma Project', last_updated: '2026-03-24T18:05:00Z', size: 214_900_000 }
 ]
 
@@ -31,177 +36,247 @@ describe('<ProjectsTable />', () => {
     deletingIds: [] as string[]
   }
 
-  // ── Rendering ──
+  afterEach(() => {
+    vi.clearAllMocks()
+    cleanup()
+  })
 
-  // Smoke test — component mounts without throwing
+  // ── Rendering ──────────────────────────────────────────────────────────────
+
   it('renders without error', () => {
     render(<ProjectsTable {...defaultProps} />)
   })
 
-  // Verifies the page heading is displayed
   it('renders the heading', () => {
     render(<ProjectsTable {...defaultProps} />)
     expect(screen.getByText('Recent Projects')).toBeInTheDocument()
   })
 
-  // Verifies all three column headers are present
-  it('renders all column headers', () => {
+  it('renders all three sortable column headers', () => {
     render(<ProjectsTable {...defaultProps} />)
-    expect(screen.getByText('Name')).toBeInTheDocument()
-    expect(screen.getByText('Last Updated')).toBeInTheDocument()
-    expect(screen.getByText('Size')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^name/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^last updated/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^size/i })).toBeInTheDocument()
   })
 
-  // Verifies every project name appears as a table row
-  it('renders all project rows', () => {
+  it('renders a row for every project', () => {
     render(<ProjectsTable {...defaultProps} />)
     expect(screen.getByText('Alpha Project')).toBeInTheDocument()
     expect(screen.getByText('Beta Project')).toBeInTheDocument()
     expect(screen.getByText('Gamma Project')).toBeInTheDocument()
   })
 
-  // Verifies date and size details are shown in the row
-  it('displays project details in each row', () => {
+  it('formats the size column with formatBytes', () => {
     render(<ProjectsTable {...defaultProps} />)
-    expect(screen.getByText('2026-03-29 09:15')).toBeInTheDocument()
-    expect(screen.getByText('128.4 MB')).toBeInTheDocument()
+    expect(screen.getByText(formatBytes(128_400_000))).toBeInTheDocument()
+    expect(screen.getByText(formatBytes(86_100_000))).toBeInTheDocument()
+    expect(screen.getByText(formatBytes(214_900_000))).toBeInTheDocument()
   })
 
-  // ── Empty state ──
+  // ── Row action buttons ────────────────────────────────────────────────────
 
-  // Verifies EmptyState is rendered when no projects are passed
+  it('exposes an "Open project" button for each row with an accessible label', () => {
+    render(<ProjectsTable {...defaultProps} />)
+    expect(screen.getByRole('button', { name: 'Open project Alpha Project' })).toBeInTheDocument()
+  })
+
+  it('exposes a "Delete project" button for each row with an accessible label', () => {
+    render(<ProjectsTable {...defaultProps} />)
+    expect(screen.getByRole('button', { name: 'Delete project Alpha Project' })).toBeInTheDocument()
+  })
+
+  it('calls onDelete with the project id when the delete button is clicked', () => {
+    const onDelete = vi.fn()
+    render(<ProjectsTable {...defaultProps} onDelete={onDelete} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Delete project Beta Project' }))
+    expect(onDelete).toHaveBeenCalledTimes(1)
+    expect(onDelete).toHaveBeenCalledWith('p-beta')
+  })
+
+  it('disables the delete button for projects listed in deletingIds', () => {
+    render(<ProjectsTable {...defaultProps} deletingIds={['p-alpha']} />)
+    const btn = screen.getByRole('button', { name: 'Delete project Alpha Project' })
+    expect(btn).toBeDisabled()
+  })
+
+  it('does not fire onDelete when a disabled delete button is clicked', () => {
+    const onDelete = vi.fn()
+    render(<ProjectsTable {...defaultProps} deletingIds={['p-alpha']} onDelete={onDelete} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Delete project Alpha Project' }))
+    expect(onDelete).not.toHaveBeenCalled()
+  })
+
+  // ── Empty state ──────────────────────────────────────────────────────────
+
   it('renders EmptyState when projects array is empty', () => {
     render(<ProjectsTable {...defaultProps} projects={[]} />)
     expect(screen.getByTestId('empty-state')).toBeInTheDocument()
   })
 
-  // Verifies onCreateNew fires when the EmptyState CTA is clicked
-  it('calls onCreateNew when EmptyState button is clicked', () => {
+  it('calls onCreateNew when EmptyState CTA is clicked', () => {
     const onCreateNew = vi.fn()
     render(<ProjectsTable {...defaultProps} projects={[]} onCreateNew={onCreateNew} />)
     fireEvent.click(screen.getByText('Add New'))
     expect(onCreateNew).toHaveBeenCalledTimes(1)
   })
 
-  // Verifies EmptyState is NOT rendered when projects exist
   it('does not render EmptyState when projects exist', () => {
     render(<ProjectsTable {...defaultProps} />)
     expect(screen.queryByTestId('empty-state')).not.toBeInTheDocument()
   })
 
-  // ── Sorting by name ──
+  // ── Default sort ─────────────────────────────────────────────────────────
 
-  // Verifies default sort is by name ascending (A → Z)
-  it('sorts by name ascending by default', () => {
+  // Default sort is `last_updated` descending — newest first.
+  it('defaults to sorting by Last Updated descending (newest first)', () => {
     render(<ProjectsTable {...defaultProps} />)
+    const header = screen.getByRole('columnheader', { name: /last updated/i })
+    expect(header).toHaveAttribute('aria-sort', 'descending')
+
+    const rows = screen.getAllByRole('row')
+    expect(rows[1]).toHaveTextContent('Alpha Project') // 2026-03-29
+    expect(rows[2]).toHaveTextContent('Beta Project') // 2026-03-27
+    expect(rows[3]).toHaveTextContent('Gamma Project') // 2026-03-24
+  })
+
+  // ── Sorting by name ───────────────────────────────────────────────────────
+
+  it('sorts by name ascending when the Name header is clicked', () => {
+    render(<ProjectsTable {...defaultProps} />)
+    fireEvent.click(screen.getByRole('button', { name: /^name/i }))
+
+    expect(screen.getByRole('columnheader', { name: /name/i })).toHaveAttribute(
+      'aria-sort',
+      'ascending'
+    )
+
     const rows = screen.getAllByRole('row')
     expect(rows[1]).toHaveTextContent('Alpha Project')
     expect(rows[2]).toHaveTextContent('Beta Project')
     expect(rows[3]).toHaveTextContent('Gamma Project')
   })
 
-  // Verifies clicking Name header toggles to descending (Z → A)
-  it('toggles name sort to descending on second click', () => {
+  it('toggles name sort to descending on the second click', () => {
     render(<ProjectsTable {...defaultProps} />)
-    fireEvent.click(screen.getByText('Name'))
+    const nameHeader = screen.getByRole('button', { name: /^name/i })
+    fireEvent.click(nameHeader)
+    fireEvent.click(nameHeader)
+
+    expect(screen.getByRole('columnheader', { name: /name/i })).toHaveAttribute(
+      'aria-sort',
+      'descending'
+    )
+
     const rows = screen.getAllByRole('row')
     expect(rows[1]).toHaveTextContent('Gamma Project')
     expect(rows[2]).toHaveTextContent('Beta Project')
     expect(rows[3]).toHaveTextContent('Alpha Project')
   })
 
-  // ── Sorting by date ──
+  // ── Sorting by date ──────────────────────────────────────────────────────
 
-  // Verifies clicking Last Updated sorts oldest first
-  it('sorts by Last Updated ascending when clicked', () => {
+  it('toggles Last Updated to ascending on click (oldest first)', () => {
     render(<ProjectsTable {...defaultProps} />)
-    fireEvent.click(screen.getByText('Last Updated'))
+    fireEvent.click(screen.getByRole('button', { name: /^last updated/i }))
+
+    expect(screen.getByRole('columnheader', { name: /last updated/i })).toHaveAttribute(
+      'aria-sort',
+      'ascending'
+    )
+
     const rows = screen.getAllByRole('row')
     expect(rows[1]).toHaveTextContent('Gamma Project') // Mar 24
     expect(rows[2]).toHaveTextContent('Beta Project') // Mar 27
     expect(rows[3]).toHaveTextContent('Alpha Project') // Mar 29
   })
 
-  // Verifies double-clicking Last Updated sorts newest first
-  it('sorts by Last Updated descending on second click', () => {
-    render(<ProjectsTable {...defaultProps} />)
-    fireEvent.click(screen.getByText('Last Updated'))
-    fireEvent.click(screen.getByText('Last Updated'))
-    const rows = screen.getAllByRole('row')
-    expect(rows[1]).toHaveTextContent('Alpha Project') // Mar 29
-    expect(rows[2]).toHaveTextContent('Beta Project') // Mar 27
-    expect(rows[3]).toHaveTextContent('Gamma Project') // Mar 24
-  })
+  // ── Sorting by size — must be numeric, not lexicographic ──────────────────
 
-  // ── Sorting by size (must be numeric, not lexicographic) ──
-
-  // Verifies size sort is numeric: 86.1 < 128.4 < 214.9
   it('sorts by Size numerically ascending', () => {
     render(<ProjectsTable {...defaultProps} />)
-    fireEvent.click(screen.getByText('Size'))
+    fireEvent.click(screen.getByRole('button', { name: /^size/i }))
+
+    expect(screen.getByRole('columnheader', { name: /size/i })).toHaveAttribute(
+      'aria-sort',
+      'ascending'
+    )
+
     const rows = screen.getAllByRole('row')
-    expect(rows[1]).toHaveTextContent('Beta Project') // 86.1
-    expect(rows[2]).toHaveTextContent('Alpha Project') // 128.4
-    expect(rows[3]).toHaveTextContent('Gamma Project') // 214.9
+    expect(rows[1]).toHaveTextContent('Beta Project') // 86.1M
+    expect(rows[2]).toHaveTextContent('Alpha Project') // 128.4M
+    expect(rows[3]).toHaveTextContent('Gamma Project') // 214.9M
   })
 
-  // Verifies double-clicking Size sorts largest first
-  it('sorts by Size numerically descending on second click', () => {
+  it('sorts by Size numerically descending on the second click', () => {
     render(<ProjectsTable {...defaultProps} />)
-    fireEvent.click(screen.getByText('Size'))
-    fireEvent.click(screen.getByText('Size'))
+    const sizeHeader = screen.getByRole('button', { name: /^size/i })
+    fireEvent.click(sizeHeader)
+    fireEvent.click(sizeHeader)
+
     const rows = screen.getAllByRole('row')
-    expect(rows[1]).toHaveTextContent('Gamma Project') // 214.9
-    expect(rows[2]).toHaveTextContent('Alpha Project') // 128.4
-    expect(rows[3]).toHaveTextContent('Beta Project') // 86.1
+    expect(rows[1]).toHaveTextContent('Gamma Project') // 214.9M
+    expect(rows[2]).toHaveTextContent('Alpha Project') // 128.4M
+    expect(rows[3]).toHaveTextContent('Beta Project') // 86.1M
   })
 
-  // ── Sort indicator arrows ──
+  // ── aria-sort on inactive columns ─────────────────────────────────────────
 
-  // Verifies active column shows directional arrow, others show neutral ↑↓
-  it('shows active sort arrow on the current sort column', () => {
+  it('reports aria-sort="none" on columns that are not the active sort key', () => {
     render(<ProjectsTable {...defaultProps} />)
-    const nameBtn = screen.getByText('Name').closest('button')
-    expect(nameBtn).toHaveTextContent('↑')
-
-    const sizeBtn = screen.getByText('Size').closest('button')
-    expect(sizeBtn).toHaveTextContent('↑↓')
+    // default sort is last_updated
+    expect(screen.getByRole('columnheader', { name: /name/i })).toHaveAttribute('aria-sort', 'none')
+    expect(screen.getByRole('columnheader', { name: /size/i })).toHaveAttribute('aria-sort', 'none')
   })
 
-  // Verifies arrow changes to ↓ after toggling sort direction
-  it('shows down arrow after toggling to descending', () => {
+  it('switches aria-sort back to "none" on the previously active column when sort key changes', () => {
     render(<ProjectsTable {...defaultProps} />)
-    fireEvent.click(screen.getByText('Name'))
-    const nameBtn = screen.getByText('Name').closest('button')
-    expect(nameBtn).toHaveTextContent('↓')
+    fireEvent.click(screen.getByRole('button', { name: /^size/i }))
+
+    expect(screen.getByRole('columnheader', { name: /size/i })).toHaveAttribute(
+      'aria-sort',
+      'ascending'
+    )
+    expect(screen.getByRole('columnheader', { name: /last updated/i })).toHaveAttribute(
+      'aria-sort',
+      'none'
+    )
   })
 
-  // Verifies switching to a different column resets arrow to ↑
-  it('resets arrow to ascending when switching columns', () => {
+  // ── Sort indicator arrow (visual class on the img) ───────────────────────
+
+  // The sort icon uses alt="" and aria-hidden="true", so it is accessibly
+  // a presentational img — we query the DOM element directly.
+  it('rotates the sort icon on the active column when sorted descending', () => {
     render(<ProjectsTable {...defaultProps} />)
-    fireEvent.click(screen.getByText('Size'))
-    const sizeBtn = screen.getByText('Size').closest('button')
-    expect(sizeBtn).toHaveTextContent('↑')
-
-    const nameBtn = screen.getByText('Name').closest('button')
-    expect(nameBtn).toHaveTextContent('↑↓')
+    const lastUpdatedHeader = screen.getByRole('columnheader', { name: /last updated/i })
+    // default is last_updated desc
+    const icon = lastUpdatedHeader.querySelector('img')
+    expect(icon).not.toBeNull()
+    expect(icon).toHaveClass('rotate-180')
+    expect(icon).toHaveClass('opacity-100')
   })
 
-  // ── Snapshots ──
-
-  // Snapshot regression guard — populated table
-  it('should match the snapshot with projects', () => {
-    const { container } = render(<ProjectsTable {...defaultProps} />)
-    expect(container.firstChild).toMatchSnapshot()
+  it('does not rotate the sort icon when sorted ascending', () => {
+    render(<ProjectsTable {...defaultProps} />)
+    fireEvent.click(screen.getByRole('button', { name: /^name/i }))
+    const nameHeader = screen.getByRole('columnheader', { name: /name/i })
+    const icon = nameHeader.querySelector('img')
+    expect(icon).not.toBeNull()
+    expect(icon).not.toHaveClass('rotate-180')
+    expect(icon).toHaveClass('opacity-100')
   })
 
-  // Snapshot regression guard — empty table
-  it('should match the snapshot with empty projects', () => {
-    const { container } = render(<ProjectsTable {...defaultProps} projects={[]} />)
-    expect(container.firstChild).toMatchSnapshot()
+  it('shows a dimmed (opacity-60) icon on inactive columns', () => {
+    render(<ProjectsTable {...defaultProps} />)
+    const nameHeader = screen.getByRole('columnheader', { name: /name/i })
+    const icon = nameHeader.querySelector('img')
+    expect(icon).not.toBeNull()
+    expect(icon).toHaveClass('opacity-60')
   })
 
-  it('maintains stable order for equal values', () => {
+  // ── Stable ordering & defensive cases ─────────────────────────────────────
+
+  it('preserves insertion order for rows with equal sort keys (stable sort)', () => {
     const projects: RecentProjectItem[] = [
       { id: 'p-a', name: 'A', last_updated: '2026-03-29T00:00:00Z', size: 100_000_000 },
       { id: 'p-b', name: 'B', last_updated: '2026-03-29T00:00:00Z', size: 100_000_000 }
@@ -210,20 +285,33 @@ describe('<ProjectsTable />', () => {
     render(<ProjectsTable {...defaultProps} projects={projects} />)
 
     const rows = screen.getAllByRole('row')
+    // default sort: last_updated desc. Equal timestamps → insertion order retained.
     expect(rows[1]).toHaveTextContent('A')
     expect(rows[2]).toHaveTextContent('B')
   })
 
-  it('handles invalid size values gracefully', () => {
+  it('does not throw when a size is NaN', () => {
     const projects: RecentProjectItem[] = [
       { id: 'p-a', name: 'A', last_updated: '2026-03-29T00:00:00Z', size: Number.NaN },
       { id: 'p-b', name: 'B', last_updated: '2026-03-28T00:00:00Z', size: 100_000_000 }
     ]
 
     render(<ProjectsTable {...defaultProps} projects={projects} />)
-
-    fireEvent.click(screen.getByRole('button', { name: /size/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^size/i }))
 
     expect(screen.getByText('A')).toBeInTheDocument()
+    expect(screen.getByText('B')).toBeInTheDocument()
+  })
+
+  // ── Snapshots ────────────────────────────────────────────────────────────
+
+  it('matches the snapshot when populated', () => {
+    const { container } = render(<ProjectsTable {...defaultProps} />)
+    expect(container.firstChild).toMatchSnapshot()
+  })
+
+  it('matches the snapshot when empty', () => {
+    const { container } = render(<ProjectsTable {...defaultProps} projects={[]} />)
+    expect(container.firstChild).toMatchSnapshot()
   })
 })

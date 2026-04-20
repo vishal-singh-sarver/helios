@@ -5,7 +5,11 @@ import tailwindcss from '@tailwindcss/vite'
 import { loadEnv } from 'vite'
 
 const env = loadEnv('', process.cwd(), 'VITE_')
-const backendUrl = env.VITE_BACKEND_URL ?? 'http://127.0.0.1:8008'
+const backendUrl = env.VITE_BACKEND_URL
+
+if (!backendUrl) {
+  throw new Error('VITE_BACKEND_URL is not set. Add it to .env at the project root.')
+}
 
 export default defineConfig({
   main: {

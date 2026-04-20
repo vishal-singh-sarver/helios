@@ -5,10 +5,15 @@ import makeSelectHomePage, {
   selectDeleteProject,
   selectStreaming
 } from '../selectors'
-import { initialState, initialCreateProjectState, initialRecentProjectsState, initialDeleteProjectState } from '../reducer'
+import {
+  initialState,
+  initialCreateProjectState,
+  initialRecentProjectsState,
+  initialDeleteProjectState
+} from '../reducer'
 
 const withHomePage = (partial: Partial<typeof initialState>) =>
-  ({ homePage: { ...initialState, ...partial } } as any)
+  ({ homePage: { ...initialState, ...partial } }) as any
 
 describe('selectHomePageDomain', () => {
   it('selects the homePage slice', () => {
@@ -44,7 +49,10 @@ describe('selectRecentProjects', () => {
   })
 
   it('reflects data', () => {
-    const rp = { ...initialRecentProjectsState, data: [{ id: '1', name: 'Test', last_updated: '2026-01-01', size: 1024 }] }
+    const rp = {
+      ...initialRecentProjectsState,
+      data: [{ id: '1', name: 'Test', last_updated: '2026-01-01', size: 1024 }]
+    }
     expect(selectRecentProjects(withHomePage({ recentProjects: rp }))).toEqual(rp)
   })
 })
