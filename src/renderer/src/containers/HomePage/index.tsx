@@ -186,6 +186,7 @@ export function HomePage(): React.JSX.Element {
         onClose={closeNewProjectDialog}
       >
         <FormField
+          key="projectName"
           labelProps={{
             label: 'Project Name',
             helpText: 'Enter a project name to identify your work.',
@@ -200,6 +201,7 @@ export function HomePage(): React.JSX.Element {
           }}
         />
         <FormField
+          key="latitude"
           labelProps={{
             label: 'Latitude',
             helpText:
@@ -216,6 +218,7 @@ export function HomePage(): React.JSX.Element {
           }}
         />
         <FormField
+          key="longitude"
           labelProps={{
             label: 'Longitude',
             helpText:
