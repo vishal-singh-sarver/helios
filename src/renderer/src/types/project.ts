@@ -1,4 +1,3 @@
-
 export interface FormValues {
   projectName: string
   latitude: string

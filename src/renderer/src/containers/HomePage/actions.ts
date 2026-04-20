@@ -1,9 +1,20 @@
 import {
-  FETCH_STATUS, FETCH_STATUS_SUCCESS, FETCH_STATUS_FAILURE,
-  SSE_CONNECT, SSE_EVENT, SSE_DISCONNECT,
-  CREATE_PROJECT, CREATE_PROJECT_SUCCESS, CREATE_PROJECT_FAILURE, RESET_CREATE_PROJECT,
-  FETCH_RECENT_PROJECTS, FETCH_RECENT_PROJECTS_SUCCESS, FETCH_RECENT_PROJECTS_FAILURE,
-  DELETE_PROJECT, DELETE_PROJECT_SUCCESS, DELETE_PROJECT_FAILURE
+  FETCH_STATUS,
+  FETCH_STATUS_SUCCESS,
+  FETCH_STATUS_FAILURE,
+  SSE_CONNECT,
+  SSE_EVENT,
+  SSE_DISCONNECT,
+  CREATE_PROJECT,
+  CREATE_PROJECT_SUCCESS,
+  CREATE_PROJECT_FAILURE,
+  RESET_CREATE_PROJECT,
+  FETCH_RECENT_PROJECTS,
+  FETCH_RECENT_PROJECTS_SUCCESS,
+  FETCH_RECENT_PROJECTS_FAILURE,
+  DELETE_PROJECT,
+  DELETE_PROJECT_SUCCESS,
+  DELETE_PROJECT_FAILURE
 } from './constants'
 import type {
   AppStatus,
@@ -17,61 +28,69 @@ import type {
 
 // ── REST actions ──────────────────────────────────────────────────────────────
 
-export const fetchStatus = () =>
-  ({ type: FETCH_STATUS })
+export const fetchStatus = () => ({ type: FETCH_STATUS })
 
-export const fetchStatusSuccess = (status: AppStatus) =>
-  ({ type: FETCH_STATUS_SUCCESS, payload: status })
+export const fetchStatusSuccess = (status: AppStatus) => ({
+  type: FETCH_STATUS_SUCCESS,
+  payload: status
+})
 
-export const fetchStatusFailure = (error: string) =>
-  ({ type: FETCH_STATUS_FAILURE, payload: error })
+export const fetchStatusFailure = (error: string) => ({
+  type: FETCH_STATUS_FAILURE,
+  payload: error
+})
 
 // ── SSE actions ───────────────────────────────────────────────────────────────
 
-export const sseConnect = () =>
-  ({ type: SSE_CONNECT })
+export const sseConnect = () => ({ type: SSE_CONNECT })
 
-export const sseEvent = (payload: StreamEvent) =>
-  ({ type: SSE_EVENT, payload })
+export const sseEvent = (payload: StreamEvent) => ({ type: SSE_EVENT, payload })
 
-export const sseDisconnect = () =>
-  ({ type: SSE_DISCONNECT })
+export const sseDisconnect = () => ({ type: SSE_DISCONNECT })
 
 // ── Create project actions ────────────────────────────────────────────────────
 
-export const createProject = (payload: CreateProjectPayload) =>
-  ({ type: CREATE_PROJECT, payload })
+export const createProject = (payload: CreateProjectPayload) => ({ type: CREATE_PROJECT, payload })
 
-export const createProjectSuccess = (data: CreateProjectResponse) =>
-  ({ type: CREATE_PROJECT_SUCCESS, payload: data })
+export const createProjectSuccess = (data: CreateProjectResponse) => ({
+  type: CREATE_PROJECT_SUCCESS,
+  payload: data
+})
 
-export const createProjectFailure = (error: ApiErrorPayload) =>
-  ({ type: CREATE_PROJECT_FAILURE, payload: error })
+export const createProjectFailure = (error: ApiErrorPayload) => ({
+  type: CREATE_PROJECT_FAILURE,
+  payload: error
+})
 
-export const resetCreateProject = () =>
-  ({ type: RESET_CREATE_PROJECT })
+export const resetCreateProject = () => ({ type: RESET_CREATE_PROJECT })
 
 // ── Recent projects actions ───────────────────────────────────────────────────
 
-export const fetchRecentProjects = () =>
-  ({ type: FETCH_RECENT_PROJECTS })
+export const fetchRecentProjects = () => ({ type: FETCH_RECENT_PROJECTS })
 
-export const fetchRecentProjectsSuccess = (projects: RecentProjectItem[]) =>
-  ({ type: FETCH_RECENT_PROJECTS_SUCCESS, payload: projects })
+export const fetchRecentProjectsSuccess = (projects: RecentProjectItem[]) => ({
+  type: FETCH_RECENT_PROJECTS_SUCCESS,
+  payload: projects
+})
 
-export const fetchRecentProjectsFailure = (error: ApiErrorPayload) =>
-  ({ type: FETCH_RECENT_PROJECTS_FAILURE, payload: error })
+export const fetchRecentProjectsFailure = (error: ApiErrorPayload) => ({
+  type: FETCH_RECENT_PROJECTS_FAILURE,
+  payload: error
+})
 
 // ── Delete project actions ────────────────────────────────────────────────────
 
-export const deleteProject = (payload: DeleteProjectPayload) =>
-  ({ type: DELETE_PROJECT, payload })
+export const deleteProject = (payload: DeleteProjectPayload) => ({ type: DELETE_PROJECT, payload })
 
-export const deleteProjectSuccess = (projectId: string) =>
-  ({ type: DELETE_PROJECT_SUCCESS, payload: { projectId } })
+export const deleteProjectSuccess = (projectId: string) => ({
+  type: DELETE_PROJECT_SUCCESS,
+  payload: { projectId }
+})
 
-export const deleteProjectFailure = (projectId: string, error: ApiErrorPayload) =>
-  ({ type: DELETE_PROJECT_FAILURE, payload: { projectId, error } })
+export const deleteProjectFailure = (projectId: string, error: ApiErrorPayload) => ({
+  type: DELETE_PROJECT_FAILURE,
+  payload: { projectId, error }
+})
 
 // ── Union type ────────────────────────────────────────────────────────────────
 

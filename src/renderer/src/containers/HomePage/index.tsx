@@ -20,18 +20,18 @@ import { createProject, deleteProject, fetchRecentProjects, resetCreateProject }
 import messages from './messages'
 import homePageReducer from './reducer'
 import homePageSaga from './saga'
-import {
-  selectCreateProject,
-  selectRecentProjects,
-  selectDeleteProject
-} from './selectors'
+import { selectCreateProject, selectRecentProjects, selectDeleteProject } from './selectors'
 
 export function HomePage(): React.JSX.Element {
   useInjectReducer({ key: 'homePage', reducer: homePageReducer })
   useInjectSaga({ key: 'homePage', saga: homePageSaga })
 
   const dispatch = useDispatch()
-  const { loading: createLoading, error: createError, success: createSuccess } = useSelector(selectCreateProject)
+  const {
+    loading: createLoading,
+    error: createError,
+    success: createSuccess
+  } = useSelector(selectCreateProject)
   const { data: recentProjects } = useSelector(selectRecentProjects)
   const { inFlightIds: deletingIds } = useSelector(selectDeleteProject)
 
@@ -103,7 +103,7 @@ export function HomePage(): React.JSX.Element {
       setShowNewProjectDialog(false)
       dispatch(resetCreateProject())
     }
-  }, [createSuccess])
+  }, [createSuccess, dispatch])
 
   const openNewProjectDialog = (): void => {
     formik.resetForm()
