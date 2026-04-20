@@ -1,4 +1,5 @@
 import { combineReducers, Reducer, UnknownAction } from 'redux'
+import activeProjectReducer from './activeProjectReducer'
 import navigationReducer from './navigationReducer'
 
 function createReducer(
@@ -6,6 +7,7 @@ function createReducer(
 ): Reducer<unknown, UnknownAction> {
   return combineReducers({
     navigation: navigationReducer,
+    activeProject: activeProjectReducer,
     ...injectedReducers
   })
 }

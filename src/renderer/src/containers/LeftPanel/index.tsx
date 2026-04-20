@@ -1,7 +1,18 @@
 import React from 'react'
-import CollapseButton from '../CollapseButton'
+import type { Reducer } from 'redux'
+import CollapseButton from '@renderer/components/CollapseButton'
+import { useInjectReducer } from 'utils/injectReducer'
+import { useInjectSaga } from 'utils/injectSaga'
+import reducer from './reducer'
+import saga from './saga'
 
-function LeftPanel(): React.JSX.Element {
+// To read state:  const value = useSelector((s: RootState) => s.leftPanel.someField)
+// To dispatch:    const dispatch = useDispatch()
+
+export function LeftPanel(): React.JSX.Element {
+  useInjectReducer({ key: 'leftPanel', reducer: reducer as Reducer })
+  useInjectSaga({ key: 'leftPanel', saga })
+
   const [collapsed, setCollapsed] = React.useState(false)
   const toggle = (): void => setCollapsed((prev) => !prev)
 

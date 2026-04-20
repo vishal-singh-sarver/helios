@@ -8,11 +8,14 @@ import Tooltip from '@renderer/components/Tooltip'
 import { useInjectReducer } from 'utils/injectReducer'
 import { useInjectSaga } from 'utils/injectSaga'
 import { TOOLBAR_ITEMS } from '../../types/project'
-import { setLatitude, setLongitude } from './actions'
-import CenterWorkspace from './CenterWorkspace'
-import LeftPanel from './LeftPanel'
+import CenterWorkspace from '@renderer/containers/CenterWorkspace'
+import LeftPanel from '@renderer/containers/LeftPanel'
+import RightPanel from '@renderer/containers/RightPanel'
+import { mockProjectStore } from '@renderer/containers/HomePage/mockProjectStore'
+import { selectActiveProjectId } from 'store/activeProjectReducer'
+import { navigate } from 'store/navigationReducer'
+import { setCoordinates, setLatitude, setLongitude } from './actions'
 import reducer from './reducer'
-import RightPanel from './RightPanel'
 import saga from './saga'
 import { selectLatitude, selectLongitude, selectUtcOffset } from './selectors'
 
@@ -49,6 +52,24 @@ export function ProjectScreen(): React.JSX.Element {
   const latitude = useSelector(selectLatitude)
   const longitude = useSelector(selectLongitude)
   const utcOffset = useSelector(selectUtcOffset)
+  const activeProjectId = useSelector(selectActiveProjectId)
+
+  // Hydrate the coordinate fields from the active project. Runs whenever the
+  // active project changes (including on initial mount). When the real backend
+  // is wired, swap this useEffect for a saga that fetches the project by id —
+  // the rest of the screen is already reading from the reducer.
+  React.useEffect(() => {
+    if (!activeProjectId) return
+    const project = mockProjectStore.findById(activeProjectId)
+    if (!project) return
+    dispatch(
+      setCoordinates({
+        latitude: String(project.latitude),
+        longitude: String(project.longitude),
+        utcOffset: String(project.utc_offset)
+      })
+    )
+  }, [activeProjectId, dispatch])
 
   // UTC Offset is computed from a mathematical formula (to be wired in
   // later). It is never edited manually, so default disabled: true. The
@@ -77,7 +98,7 @@ export function ProjectScreen(): React.JSX.Element {
 
   return (
     <div className="flex flex-col h-full">
-      <Header>
+      <Header onLogoClick={() => dispatch(navigate('home'))}>
         <MenuBar items={TOOLBAR_ITEMS} onItemSelect={() => {}} />
         <div className="flex items-center gap-2">
           <LabeledField
@@ -112,3 +133,4 @@ export function ProjectScreen(): React.JSX.Element {
 }
 
 export default ProjectScreen
+

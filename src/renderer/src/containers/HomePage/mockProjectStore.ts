@@ -34,6 +34,10 @@ export const mockProjectStore = {
     return read().find((p) => p.name.toLowerCase() === needle)
   },
 
+  findById(projectId: string): StoredProject | undefined {
+    return read().find((p) => p.project_id === projectId)
+  },
+
   insert(project: StoredProject): void {
     write([...read(), project])
   },

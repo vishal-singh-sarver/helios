@@ -16,6 +16,7 @@ exports[`<FormField /> > should match the snapshot 1`] = `
     </span>
     <span
       aria-label="Show project name help"
+      data-place=""
       data-testid="tooltip"
     >
       Enter a project name.
@@ -50,13 +51,14 @@ exports[`<FormField /> > should match the snapshot with error 1`] = `
     </span>
     <span
       aria-label="Show project name help"
+      data-place=""
       data-testid="tooltip"
     >
       Enter a project name.
     </span>
   </label>
   <input
-    aria-describedby="_r_h_"
+    aria-describedby="_r_j_"
     aria-invalid="true"
     class="mt-1 h-9 w-full rounded border border-app-border bg-dark 
         px-3 text-sm text-white outline-none focus:border-neutral-500"
@@ -68,7 +70,7 @@ exports[`<FormField /> > should match the snapshot with error 1`] = `
   />
   <p
     class="mt-1 text-xs text-red-400"
-    id="_r_h_"
+    id="_r_j_"
     role="alert"
   >
     Required

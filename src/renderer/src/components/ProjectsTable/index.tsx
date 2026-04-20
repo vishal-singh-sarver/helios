@@ -7,6 +7,7 @@ interface ProjectsTableProps {
   projects: RecentProjectItem[]
   emptyIcon: string
   onCreateNew: () => void
+  onRowClick?: (projectId: string) => void
 }
 
 type SortKey = 'name' | 'last_updated' | 'size'
@@ -98,7 +99,7 @@ function useVirtualRows({
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-function ProjectsTable({ projects, emptyIcon, onCreateNew }: ProjectsTableProps): React.JSX.Element {
+function ProjectsTable({ projects, emptyIcon, onCreateNew, onRowClick }: ProjectsTableProps): React.JSX.Element {
   const [sortKey, setSortKey] = useState<SortKey>('last_updated')
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
   const containerRef = React.useRef<HTMLDivElement>(null)
@@ -113,9 +114,7 @@ function ProjectsTable({ projects, emptyIcon, onCreateNew }: ProjectsTableProps)
   }
 
   const handleOpenProject = (project: RecentProjectItem): void => {
-    // TODO: wire to open-project action in the open-project feature pass
-    // For now just log the id so the stub is verifiable in the console.
-    console.log('[ProjectsTable] open project', project.id, project.name)
+    onRowClick?.(project.id)
   }
 
   const sortedProjects = React.useMemo(() => {

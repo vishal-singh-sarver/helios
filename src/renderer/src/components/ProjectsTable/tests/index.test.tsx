@@ -36,6 +36,24 @@ describe('<ProjectsTable />', () => {
     render(<ProjectsTable {...defaultProps} />)
   })
 
+  // ── onRowClick ──
+
+  // Verifies clicking a row button fires onRowClick with that project's id
+  it('fires onRowClick with the project id when a row is clicked', () => {
+    const onRowClick = vi.fn()
+    render(<ProjectsTable {...defaultProps} onRowClick={onRowClick} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Open project Alpha Project' }))
+    expect(onRowClick).toHaveBeenCalledWith('p-alpha')
+  })
+
+  // Verifies the component does not throw when no onRowClick is provided
+  it('does not throw when clicking a row with no onRowClick prop', () => {
+    render(<ProjectsTable {...defaultProps} />)
+    expect(() =>
+      fireEvent.click(screen.getByRole('button', { name: 'Open project Alpha Project' }))
+    ).not.toThrow()
+  })
+
   // Verifies the page heading is displayed
   it('renders the heading', () => {
     render(<ProjectsTable {...defaultProps} />)

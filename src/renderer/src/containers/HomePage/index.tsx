@@ -13,6 +13,7 @@ import ProjectsTable from '@renderer/components/ProjectsTable'
 import SearchBar from '@renderer/components/SearchBar'
 import Sidebar from '@renderer/components/Sidebar'
 import { useFormik } from 'formik'
+import { setActiveProject } from 'store/activeProjectReducer'
 import { navigate } from 'store/navigationReducer'
 import { useInjectReducer } from 'utils/injectReducer'
 import { useInjectSaga } from 'utils/injectSaga'
@@ -186,6 +187,10 @@ export function HomePage(): React.JSX.Element {
             projects={filteredProjects}
             emptyIcon={searchIcon}
             onCreateNew={openNewProjectDialog}
+            onRowClick={(projectId) => {
+              dispatch(setActiveProject(projectId))
+              dispatch(navigate('project'))
+            }}
           />
         </main>
       </div>
@@ -195,7 +200,8 @@ export function HomePage(): React.JSX.Element {
           labelProps={{
             label: 'Project Name',
             helpText: 'Enter a project name to identify your work.',
-            helpAriaLabel: 'Show project name help'
+            helpAriaLabel: 'Show project name help',
+            helpPlace: 'right'
           }}
           inputProps={{
             ...formik.getFieldProps('projectName'),
