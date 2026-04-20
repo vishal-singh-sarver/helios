@@ -2,6 +2,10 @@ import { resolve } from 'path'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { loadEnv } from 'vite'
+
+const env = loadEnv('', process.cwd(), 'VITE_')
+const backendUrl = env.VITE_BACKEND_URL ?? 'http://127.0.0.1:8008'
 
 export default defineConfig({
   main: {
@@ -23,7 +27,7 @@ export default defineConfig({
     server: {
       proxy: {
         '/api': {
-          target: 'http://192.168.3.191:8008',
+          target: backendUrl,
           changeOrigin: true
         }
       }
