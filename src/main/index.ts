@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from 'electron'
 import { promises as fs, mkdirSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join, resolve } from 'path'
@@ -138,6 +138,93 @@ function createSplashWindow(): BrowserWindow {
 }
 
 /**
+ * Install an application menu so users can open new windows via Cmd+N / Ctrl+N.
+ * autoHideMenuBar on main windows keeps the menu visually hidden on Linux/Windows
+ * while still making accelerators work. On macOS the menu lives at the top of
+ * the screen as usual.
+ */
+function buildAppMenu(): void {
+  const isMac = process.platform === 'darwin'
+  const template: Electron.MenuItemConstructorOptions[] = [
+    ...(isMac
+      ? [{
+          label: app.name,
+          submenu: [
+            { role: 'about' as const },
+            { type: 'separator' as const },
+            { role: 'services' as const },
+            { type: 'separator' as const },
+            { role: 'hide' as const },
+            { role: 'hideOthers' as const },
+            { role: 'unhide' as const },
+            { type: 'separator' as const },
+            { role: 'quit' as const }
+          ]
+        }]
+      : []),
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'New Window',
+          accelerator: 'CmdOrCtrl+N',
+          click: () => createWindow()
+        },
+        { type: 'separator' },
+        isMac ? { role: 'close' as const } : { role: 'quit' as const }
+      ]
+    },
+    { role: 'editMenu' },
+    { role: 'viewMenu' },
+    { role: 'windowMenu' }
+  ]
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+}
+
+/**
+ * Configure platform-specific shortcuts shown in the OS shell:
+ * - macOS: dock icon right-click menu (app.dock.setMenu)
+ * - Windows: taskbar jump list (app.setUserTasks)
+ * - Linux: handled via .desktop file Actions (see linux-installer/helios.desktop)
+ *
+ * On Windows, the jump list item re-launches the Helios executable. The new
+ * process hits the single-instance lock, which triggers the 'second-instance'
+ * handler in the running instance, which then calls createWindow().
+ */
+function configurePlatformShortcuts(): void {
+  if (process.platform === 'darwin') {
+    const dockMenu = Menu.buildFromTemplate([
+      {
+        label: 'New Window',
+        click: () => createWindow()
+      }
+    ])
+    app.dock?.setMenu(dockMenu)
+    writeEarlyLog('macOS dock menu configured with "New Window" item')
+    return
+  }
+
+  if (process.platform === 'win32') {
+    try {
+      app.setUserTasks([
+        {
+          program: process.execPath,
+          arguments: '',
+          iconPath: process.execPath,
+          iconIndex: 0,
+          title: 'New Window',
+          description: 'Open a new Helios window'
+        }
+      ])
+      writeEarlyLog('Windows jump list configured with "New Window" task')
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error)
+      writeEarlyLog(`Failed to configure Windows jump list: ${msg}`)
+    }
+  }
+}
+
+/**
  * Set userData path using Electron APIs (not environment variables).
  * This ensures the path is correct even when launched from Finder in packaged mode.
  * Must be called BEFORE app.whenReady() to prevent Electron from creating
@@ -159,6 +246,27 @@ function setUserDataPath(): void {
 writeEarlyLog('='.repeat(80))
 writeEarlyLog(`App startup initiated [packaged=${app.isPackaged}, platform=${process.platform}]`)
 setUserDataPath()
+
+// Acquire single-instance lock AFTER setUserDataPath so the lock file uses
+// the correct userData directory. If another Helios is already running, this
+// process quits immediately — but before it does, Electron notifies the
+// running instance via the 'second-instance' event (which we handle below
+// to open a new window instead of starting a second backend).
+const gotSingleInstanceLock = app.requestSingleInstanceLock()
+
+if (!gotSingleInstanceLock) {
+  writeEarlyLog('Another Helios instance is already running — quitting this process')
+  app.quit()
+  process.exit(0)
+}
+
+// Only the first (and only) instance reaches this point.
+// When another Helios is launched, Electron fires 'second-instance' here
+// instead of spawning a new OS process.
+app.on('second-instance', () => {
+  writeEarlyLog('second-instance event received — opening a new window')
+  createWindow()
+})
 
 // --- File dialog IPC handlers ---
 
@@ -225,6 +333,8 @@ app.whenReady().then(async () => {
   if (SKIP_BACKEND) {
     writeEarlyLog('HELIOS_SKIP_BACKEND=1 set - skipping backend startup')
     console.log('HELIOS_SKIP_BACKEND=1 set - skipping backend startup')
+    buildAppMenu()
+    configurePlatformShortcuts()
     createWindow(() => {
       if (!splash.isDestroyed()) {
         splash.destroy()
@@ -271,6 +381,9 @@ app.whenReady().then(async () => {
     // This avoids a zero-window gap that would trigger window-all-closed on Linux/Windows.
     writeEarlyLog(`Backend started successfully [PID=${status.pid}, port=${status.port}]`)
     console.log(`Backend started (PID: ${status.pid}, Port: ${status.port})`)
+
+    buildAppMenu()
+    configurePlatformShortcuts()
 
     createWindow(() => {
       if (!splash.isDestroyed()) {
