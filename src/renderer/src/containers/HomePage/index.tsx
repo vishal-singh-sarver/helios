@@ -21,11 +21,9 @@ import messages from './messages'
 import homePageReducer from './reducer'
 import homePageSaga from './saga'
 import {
-  selectCreateProjectError,
-  selectCreateProjectLoading,
-  selectCreateProjectSuccess,
-  selectDeletingProjectIds,
-  selectRecentProjectsData
+  selectCreateProject,
+  selectRecentProjects,
+  selectDeleteProject
 } from './selectors'
 
 export function HomePage(): React.JSX.Element {
@@ -33,11 +31,9 @@ export function HomePage(): React.JSX.Element {
   useInjectSaga({ key: 'homePage', saga: homePageSaga })
 
   const dispatch = useDispatch()
-  const createLoading = useSelector(selectCreateProjectLoading)
-  const createError = useSelector(selectCreateProjectError)
-  const createSuccess = useSelector(selectCreateProjectSuccess)
-  const recentProjects = useSelector(selectRecentProjectsData)
-  const deletingIds = useSelector(selectDeletingProjectIds)
+  const { loading: createLoading, error: createError, success: createSuccess } = useSelector(selectCreateProject)
+  const { data: recentProjects } = useSelector(selectRecentProjects)
+  const { inFlightIds: deletingIds } = useSelector(selectDeleteProject)
 
   React.useEffect(() => {
     dispatch(fetchRecentProjects())
@@ -107,7 +103,7 @@ export function HomePage(): React.JSX.Element {
       setShowNewProjectDialog(false)
       dispatch(resetCreateProject())
     }
-  }, [createSuccess, dispatch])
+  }, [createSuccess])
 
   const openNewProjectDialog = (): void => {
     formik.resetForm()
@@ -236,7 +232,7 @@ export function HomePage(): React.JSX.Element {
           }}
         />
 
-        {createError && createError.status !== 422 && (
+        {createError && (
           <p role="alert" className="pt-2 text-sm text-red-600">
             {createError.message}
           </p>
