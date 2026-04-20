@@ -4,7 +4,7 @@
 // In production, Electron loads from file:// and must hit the backend directly.
 export const BASE_URL =
   (window as any).__APP_BASE_URL__ ??
-  (import.meta.env.DEV ? '' : 'http://192.168.3.191:8008')
+  (import.meta.env.DEV ? '' : import.meta.env.VITE_BACKEND_URL)
 
 // ── Backend routes ────────────────────────────────────────────────────────────
 //
