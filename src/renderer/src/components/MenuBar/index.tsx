@@ -3,7 +3,7 @@ import { ToolbarMap } from '../../types/project'
 
 interface MenuBarProps {
   items: ToolbarMap
- onItemSelect: (menuItem: string) => void
+  onItemSelect: (menuItem: string) => void
 }
 
 function MenuBar({ items, onItemSelect }: MenuBarProps): React.JSX.Element {

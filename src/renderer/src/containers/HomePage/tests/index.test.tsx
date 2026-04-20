@@ -1,9 +1,41 @@
 import React from 'react'
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within, cleanup } from '@testing-library/react'
 import HomePage from '../index'
+import * as actions from '../actions'
+import type { RecentProjectItem } from '../types'
+import { initialState, type HomePageState } from '../reducer'
 
-// ── Mock all child components to isolate HomePage logic ──
-// Each child has its own test file — we only care about how HomePage orchestrates them
+// ── Redux & injection hooks — mocked so the container runs without a real store ─
+//
+// We drive behaviour through a hand-rolled mockState and a mockDispatch spy.
+// This keeps each test hermetic: we can assert what the component dispatched
+// without depending on the saga or the real Redux plumbing.
+
+const mockDispatch = vi.fn()
+let mockState: { homePage: HomePageState }
+
+function setHomePageState(partial: Partial<HomePageState> = {}): void {
+  mockState = {
+    homePage: {
+      ...initialState,
+      ...partial,
+      // Spread nested slices to keep overrides composable without losing defaults.
+      createProject: { ...initialState.createProject, ...(partial.createProject ?? {}) },
+      recentProjects: { ...initialState.recentProjects, ...(partial.recentProjects ?? {}) },
+      deleteProject: { ...initialState.deleteProject, ...(partial.deleteProject ?? {}) }
+    }
+  }
+}
+
+vi.mock('react-redux', () => ({
+  useDispatch: () => mockDispatch,
+  useSelector: (selector: (state: unknown) => unknown) => selector(mockState)
+}))
+
+vi.mock('utils/injectReducer', () => ({ useInjectReducer: vi.fn() }))
+vi.mock('utils/injectSaga', () => ({ useInjectSaga: vi.fn() }))
+
+// ── Child components — mocked so HomePage is the only unit under test ────────
 
 vi.mock('@renderer/components/MenuBar', () => ({
   default: ({
@@ -87,22 +119,30 @@ vi.mock('@renderer/components/Sidebar', () => ({
 vi.mock('@renderer/components/ProjectsTable', () => ({
   default: ({
     projects,
-    onCreateNew
+    onCreateNew,
+    onDelete,
+    deletingIds
   }: {
-    projects: { name: string }[]
+    projects: RecentProjectItem[]
     onCreateNew: () => void
+    onDelete: (projectId: string) => void
+    deletingIds: string[]
   }) => (
-    <div data-testid="projects-table">
+    <div data-testid="projects-table" data-deleting={deletingIds.join(',')}>
       {projects.map((p) => (
-        <span key={p.name} data-testid={`project-${p.name}`}>
+        <button key={p.id} data-testid={`row-${p.id}`} onClick={() => onDelete(p.id)}>
           {p.name}
-        </span>
+        </button>
       ))}
       <button data-testid="table-create-new" onClick={onCreateNew}>
         Create
       </button>
     </div>
   )
+}))
+
+vi.mock('@renderer/components/LoadingScreen/Spinner', () => ({
+  Spinner: () => <span data-testid="spinner" />
 }))
 
 vi.mock('@renderer/components/FormField', () => ({
@@ -135,21 +175,51 @@ vi.mock('@renderer/components/FormField', () => ({
   )
 }))
 
-// Mock all SVG imports so they resolve to plain strings
+// Resolve SVG imports to plain strings so bundler imports don't blow up.
 vi.mock('@renderer/assets/home.svg', () => ({ default: 'home.svg' }))
 vi.mock('@renderer/assets/new_project.svg', () => ({ default: 'new_project.svg' }))
 vi.mock('@renderer/assets/open_project.svg', () => ({ default: 'open_project.svg' }))
 vi.mock('@renderer/assets/search.svg', () => ({ default: 'search.svg' }))
 
+// ── Fixtures ─────────────────────────────────────────────────────────────────
+
+const MOCK_PROJECTS: RecentProjectItem[] = [
+  {
+    id: 'p-coastal',
+    name: 'Coastal Survey Alpha',
+    last_updated: '2026-03-29T00:00:00Z',
+    size: 128_400_000
+  },
+  {
+    id: 'p-delta',
+    name: 'Delta Wind Farm',
+    last_updated: '2026-03-27T00:00:00Z',
+    size: 86_100_000
+  },
+  {
+    id: 'p-north',
+    name: 'Northern Grid Scan',
+    last_updated: '2026-03-24T00:00:00Z',
+    size: 214_900_000
+  }
+]
+
 describe('<HomePage />', () => {
+  beforeEach(() => {
+    mockDispatch.mockClear()
+    setHomePageState({ recentProjects: { loading: false, error: null, data: MOCK_PROJECTS } })
+  })
+
+  afterEach(() => {
+    cleanup()
+  })
+
   // ── Basic rendering ──
 
-  // Smoke test — the full container mounts without throwing
   it('renders without error', () => {
     render(<HomePage />)
   })
 
-  // Verifies Header, MenuBar, SearchBar, Sidebar, and ProjectsTable all mount
   it('renders all major child components', () => {
     render(<HomePage />)
     expect(screen.getByTestId('header')).toBeInTheDocument()
@@ -159,15 +229,20 @@ describe('<HomePage />', () => {
     expect(screen.getByTestId('projects-table')).toBeInTheDocument()
   })
 
-  // Verifies the dialog is NOT shown on initial render
-  it('does not show dialog on initial render', () => {
+  it('does not show the dialog on initial render', () => {
     render(<HomePage />)
     expect(screen.queryByTestId('dialog')).not.toBeInTheDocument()
   })
 
-  // ── Sidebar rendering ──
+  // ── Redux lifecycle ──
 
-  // Verifies all three sidebar items are rendered
+  it('dispatches fetchRecentProjects once on mount', () => {
+    render(<HomePage />)
+    expect(mockDispatch).toHaveBeenCalledWith(actions.fetchRecentProjects())
+  })
+
+  // ── Sidebar ──
+
   it('renders all sidebar items', () => {
     render(<HomePage />)
     expect(screen.getByTestId('sidebar-Home')).toBeInTheDocument()
@@ -175,15 +250,11 @@ describe('<HomePage />', () => {
     expect(screen.getByTestId('sidebar-Open project')).toBeInTheDocument()
   })
 
-  // Verifies "Home" is the default active sidebar item
   it('sets Home as the default active sidebar item', () => {
     render(<HomePage />)
     expect(screen.getByTestId('sidebar-Home')).toHaveAttribute('data-active', 'true')
   })
 
-  // ── Sidebar interaction ──
-
-  // Verifies clicking a sidebar item updates the active state
   it('updates active sidebar when a different item is clicked', () => {
     render(<HomePage />)
     fireEvent.click(screen.getByTestId('sidebar-Open project'))
@@ -191,49 +262,60 @@ describe('<HomePage />', () => {
     expect(screen.getByTestId('sidebar-Home')).toHaveAttribute('data-active', 'false')
   })
 
-  // ── Open dialog via sidebar ──
+  // ── Opening the dialog ──
 
-  // Verifies clicking "New Project" in sidebar opens the new project dialog
-  it('opens dialog when New Project sidebar item is clicked', () => {
+  it('opens the dialog when the sidebar New Project item is clicked', () => {
     render(<HomePage />)
     fireEvent.click(screen.getByTestId('sidebar-New Project'))
     expect(screen.getByTestId('dialog')).toBeInTheDocument()
   })
 
-  // ── Open dialog via menu bar ──
-
-  // Verifies clicking "New Project" in the menu bar dropdown opens the dialog
-  it('opens dialog when New Project menu item is clicked', () => {
+  it('opens the dialog when the menu bar New Project item is clicked', () => {
     render(<HomePage />)
     fireEvent.click(screen.getByTestId('menu-New Project'))
     expect(screen.getByTestId('dialog')).toBeInTheDocument()
   })
 
-  // ── Open dialog via projects table empty state ──
-
-  // Verifies clicking the create button in ProjectsTable opens the dialog
-  it('opens dialog when ProjectsTable create new is clicked', () => {
+  it('opens the dialog when the ProjectsTable create button is clicked', () => {
     render(<HomePage />)
     fireEvent.click(screen.getByTestId('table-create-new'))
     expect(screen.getByTestId('dialog')).toBeInTheDocument()
   })
 
-  // ── Close dialog ──
+  // ── Closing the dialog ──
 
-  // Verifies clicking the close button in the dialog closes it
-  it('closes dialog when close button is clicked', () => {
+  it('closes the dialog when the close button is clicked', () => {
     render(<HomePage />)
     fireEvent.click(screen.getByTestId('menu-New Project'))
-    expect(screen.getByTestId('dialog')).toBeInTheDocument()
-
     fireEvent.click(screen.getByTestId('dialog-close'))
     expect(screen.queryByTestId('dialog')).not.toBeInTheDocument()
   })
 
-  // ── Dialog form fields ──
+  it('closes the dialog when the Cancel button is clicked', () => {
+    render(<HomePage />)
+    fireEvent.click(screen.getByTestId('menu-New Project'))
+    fireEvent.click(screen.getByText('Cancel'))
+    expect(screen.queryByTestId('dialog')).not.toBeInTheDocument()
+  })
 
-  // Verifies all three form fields are rendered inside the dialog
-  it('renders all form fields when dialog is open', () => {
+  it('dispatches resetCreateProject when the dialog is opened', () => {
+    render(<HomePage />)
+    mockDispatch.mockClear()
+    fireEvent.click(screen.getByTestId('menu-New Project'))
+    expect(mockDispatch).toHaveBeenCalledWith(actions.resetCreateProject())
+  })
+
+  it('dispatches resetCreateProject when the dialog is cancelled', () => {
+    render(<HomePage />)
+    fireEvent.click(screen.getByTestId('menu-New Project'))
+    mockDispatch.mockClear()
+    fireEvent.click(screen.getByText('Cancel'))
+    expect(mockDispatch).toHaveBeenCalledWith(actions.resetCreateProject())
+  })
+
+  // ── Form rendering ──
+
+  it('renders all form fields when the dialog is open', () => {
     render(<HomePage />)
     fireEvent.click(screen.getByTestId('menu-New Project'))
     expect(screen.getByTestId('formfield-projectName')).toBeInTheDocument()
@@ -241,8 +323,7 @@ describe('<HomePage />', () => {
     expect(screen.getByTestId('formfield-longitude')).toBeInTheDocument()
   })
 
-  // Verifies the Cancel and Create buttons are rendered in the dialog
-  it('renders Cancel and Create buttons in dialog', () => {
+  it('renders Cancel and Create buttons inside the dialog', () => {
     render(<HomePage />)
     fireEvent.click(screen.getByTestId('menu-New Project'))
     const dialog = screen.getByTestId('dialog')
@@ -250,20 +331,9 @@ describe('<HomePage />', () => {
     expect(within(dialog).getByText('Create')).toBeInTheDocument()
   })
 
-  // ── Dialog Cancel button ──
-
-  // Verifies clicking Cancel closes the dialog
-  it('closes dialog when Cancel button is clicked', () => {
-    render(<HomePage />)
-    fireEvent.click(screen.getByTestId('menu-New Project'))
-    fireEvent.click(screen.getByText('Cancel'))
-    expect(screen.queryByTestId('dialog')).not.toBeInTheDocument()
-  })
-
   // ── Form input ──
 
-  // Verifies typing into the project name field updates its value
-  it('updates project name field on input', () => {
+  it('updates project name on input', () => {
     render(<HomePage />)
     fireEvent.click(screen.getByTestId('menu-New Project'))
     const input = screen.getByTestId('input-projectName')
@@ -271,280 +341,297 @@ describe('<HomePage />', () => {
     expect(input).toHaveValue('My Project')
   })
 
-  // Verifies typing into latitude field updates its value
-  it('updates latitude field on input', () => {
+  it('updates latitude on input', () => {
     render(<HomePage />)
     fireEvent.click(screen.getByTestId('menu-New Project'))
     const input = screen.getByTestId('input-latitude')
     fireEvent.change(input, { target: { value: '45.5' } })
-    // type="number" inputs return numeric value via jest-dom's toHaveValue
     expect(input).toHaveValue(45.5)
   })
 
-  // Verifies typing into longitude field updates its value
-  it('updates longitude field on input', () => {
+  it('updates longitude on input', () => {
     render(<HomePage />)
     fireEvent.click(screen.getByTestId('menu-New Project'))
     const input = screen.getByTestId('input-longitude')
     fireEvent.change(input, { target: { value: '-122.6' } })
-    // type="number" inputs return numeric value via jest-dom's toHaveValue
     expect(input).toHaveValue(-122.6)
   })
 
-  // ── Form validation — empty fields ──
+  // ── Form validation — required ──
 
-  // Verifies project name shows error when left empty and blurred
-  it('shows error for empty project name after blur', async () => {
+  it('shows a required error for empty project name after blur', async () => {
     render(<HomePage />)
     fireEvent.click(screen.getByTestId('menu-New Project'))
-    const input = screen.getByTestId('input-projectName')
-    fireEvent.blur(input)
-    await waitFor(() => {
+    fireEvent.blur(screen.getByTestId('input-projectName'))
+    await waitFor(() =>
       expect(screen.getByTestId('error-projectName')).toHaveTextContent('Project name is required.')
-    })
+    )
   })
 
-  // Verifies latitude shows error when left empty and blurred
-  it('shows error for empty latitude after blur', async () => {
+  it('shows a required error for empty latitude after blur', async () => {
     render(<HomePage />)
     fireEvent.click(screen.getByTestId('menu-New Project'))
-    const input = screen.getByTestId('input-latitude')
-    fireEvent.blur(input)
-    await waitFor(() => {
+    fireEvent.blur(screen.getByTestId('input-latitude'))
+    await waitFor(() =>
       expect(screen.getByTestId('error-latitude')).toHaveTextContent('Latitude is required.')
-    })
+    )
   })
 
-  // Verifies longitude shows error when left empty and blurred
-  it('shows error for empty longitude after blur', async () => {
+  it('shows a required error for empty longitude after blur', async () => {
     render(<HomePage />)
     fireEvent.click(screen.getByTestId('menu-New Project'))
-    const input = screen.getByTestId('input-longitude')
-    fireEvent.blur(input)
-    await waitFor(() => {
+    fireEvent.blur(screen.getByTestId('input-longitude'))
+    await waitFor(() =>
       expect(screen.getByTestId('error-longitude')).toHaveTextContent('Longitude is required.')
-    })
+    )
   })
 
-  // ── Form validation — invalid values ──
+  // ── Form validation — ranges ──
 
-  // Verifies project name over 30 characters shows a length error
-  it('shows error when project name exceeds 30 characters', async () => {
+  it('shows a length error when project name exceeds 30 characters', async () => {
     render(<HomePage />)
     fireEvent.click(screen.getByTestId('menu-New Project'))
     const input = screen.getByTestId('input-projectName')
     fireEvent.change(input, { target: { value: 'A'.repeat(31) } })
     fireEvent.blur(input)
-    await waitFor(() => {
+    await waitFor(() =>
       expect(screen.getByTestId('error-projectName')).toHaveTextContent(
         'Project name must be 30 characters or fewer.'
       )
-    })
+    )
   })
 
-  // Verifies latitude outside -90 to 90 range shows a range error
-  it('shows error for latitude out of range', async () => {
+  it('shows a range error for latitude > 90', async () => {
     render(<HomePage />)
     fireEvent.click(screen.getByTestId('menu-New Project'))
     const input = screen.getByTestId('input-latitude')
     fireEvent.change(input, { target: { value: '100' } })
     fireEvent.blur(input)
-    await waitFor(() => {
+    await waitFor(() =>
       expect(screen.getByTestId('error-latitude')).toHaveTextContent('Invalid latitude')
-    })
+    )
   })
 
-  // Verifies longitude outside -180 to 180 range shows a range error
-  it('shows error for longitude out of range', async () => {
+  it('shows a range error for longitude > 180', async () => {
     render(<HomePage />)
     fireEvent.click(screen.getByTestId('menu-New Project'))
     const input = screen.getByTestId('input-longitude')
     fireEvent.change(input, { target: { value: '200' } })
     fireEvent.blur(input)
-    await waitFor(() => {
+    await waitFor(() =>
       expect(screen.getByTestId('error-longitude')).toHaveTextContent('Invalid longitude')
-    })
+    )
   })
 
-  // NOTE: A "non-numeric latitude" test was removed here.
-  // The latitude input is type="number", and jsdom (like real browsers) rejects
-  // non-numeric input — the value becomes an empty string before Formik sees it,
-  // so the "Invalid latitude" branch in the validator is unreachable through the DOM.
-  // If that validator branch needs coverage, test the validate function directly
-  // in a unit test rather than via fireEvent on a number input.
+  // NOTE: The latitude / longitude inputs are type="number". jsdom (like real
+  // browsers) rejects non-numeric text, so the "Invalid latitude" branch cannot
+  // be reached through the DOM. Cover that branch via a direct unit test on
+  // the validator if extra coverage is needed.
 
-  // ── Form validation — valid values (no error) ──
+  // ── Form validation — valid boundary values ──
 
-  // Verifies no error is shown when project name is valid
-  it('shows no error for valid project name', async () => {
-    render(<HomePage />)
-    fireEvent.click(screen.getByTestId('menu-New Project'))
-    const input = screen.getByTestId('input-projectName')
-    fireEvent.change(input, { target: { value: 'Valid Name' } })
-    fireEvent.blur(input)
-    await waitFor(() => {
-      expect(screen.queryByTestId('error-projectName')).not.toBeInTheDocument()
-    })
-  })
-
-  // Verifies no error for latitude at boundary value -90
-  it('shows no error for latitude at -90', async () => {
+  it('accepts latitude at the boundary value -90', async () => {
     render(<HomePage />)
     fireEvent.click(screen.getByTestId('menu-New Project'))
     const input = screen.getByTestId('input-latitude')
     fireEvent.change(input, { target: { value: '-90' } })
     fireEvent.blur(input)
-    await waitFor(() => {
-      expect(screen.queryByTestId('error-latitude')).not.toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.queryByTestId('error-latitude')).not.toBeInTheDocument())
   })
 
-  // Verifies no error for longitude at boundary value 180
-  it('shows no error for longitude at 180', async () => {
+  it('accepts longitude at the boundary value 180', async () => {
     render(<HomePage />)
     fireEvent.click(screen.getByTestId('menu-New Project'))
     const input = screen.getByTestId('input-longitude')
     fireEvent.change(input, { target: { value: '180' } })
     fireEvent.blur(input)
-    await waitFor(() => {
-      expect(screen.queryByTestId('error-longitude')).not.toBeInTheDocument()
-    })
+    await waitFor(() => expect(screen.queryByTestId('error-longitude')).not.toBeInTheDocument())
   })
 
   // ── Form submission ──
 
-  // Verifies successful form submission closes the dialog and resets form
-  it('closes dialog and resets form on valid submission', async () => {
+  it('dispatches createProject with the parsed form values on valid submit', async () => {
     render(<HomePage />)
     fireEvent.click(screen.getByTestId('menu-New Project'))
 
-    // Fill all fields with valid values
-    fireEvent.change(screen.getByTestId('input-projectName'), {
-      target: { value: 'Test Project' }
-    })
-    fireEvent.change(screen.getByTestId('input-latitude'), {
-      target: { value: '45.0' }
-    })
-    fireEvent.change(screen.getByTestId('input-longitude'), {
-      target: { value: '-122.0' }
-    })
+    fireEvent.change(screen.getByTestId('input-projectName'), { target: { value: 'Alpha' } })
+    fireEvent.change(screen.getByTestId('input-latitude'), { target: { value: '45.0' } })
+    fireEvent.change(screen.getByTestId('input-longitude'), { target: { value: '-122.0' } })
 
-    // Click Create (scoped to the dialog — ProjectsTable mock also has a "Create" button)
     fireEvent.click(within(screen.getByTestId('dialog')).getByText('Create'))
 
-    // Dialog should close
-    await waitFor(() => {
-      expect(screen.queryByTestId('dialog')).not.toBeInTheDocument()
-    })
+    await waitFor(() =>
+      expect(mockDispatch).toHaveBeenCalledWith(
+        actions.createProject({ name: 'Alpha', latitude: 45, longitude: -122 })
+      )
+    )
   })
 
-  // Verifies form does NOT submit when validation errors exist
-  it('does not close dialog when form has validation errors', async () => {
+  it('does not dispatch createProject when the form has validation errors', async () => {
     render(<HomePage />)
     fireEvent.click(screen.getByTestId('menu-New Project'))
+    mockDispatch.mockClear()
 
-    // Leave all fields empty and click Create (scoped to dialog)
     fireEvent.click(within(screen.getByTestId('dialog')).getByText('Create'))
 
-    // Dialog should remain open because validation fails
-    await waitFor(() => {
-      expect(screen.getByTestId('dialog')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByTestId('dialog')).toBeInTheDocument())
+
+    const dispatchedCreate = mockDispatch.mock.calls.some(
+      ([action]) =>
+        (action as { type: string }).type ===
+        actions.createProject({
+          name: '',
+          latitude: 0,
+          longitude: 0
+        }).type
+    )
+    expect(dispatchedCreate).toBe(false)
+  })
+
+  it('renders the busy spinner and disables buttons while createProject is loading', () => {
+    setHomePageState({
+      recentProjects: { loading: false, error: null, data: MOCK_PROJECTS },
+      createProject: { loading: true, error: null, success: false, data: null }
     })
+    render(<HomePage />)
+    fireEvent.click(screen.getByTestId('menu-New Project'))
+    const dialog = screen.getByTestId('dialog')
+    expect(within(dialog).getByTestId('spinner')).toBeInTheDocument()
+  })
+
+  it('renders a server-side error message when createProject fails', () => {
+    setHomePageState({
+      recentProjects: { loading: false, error: null, data: MOCK_PROJECTS },
+      createProject: {
+        loading: false,
+        error: { status: 409, message: 'A project with this name already exists', fieldErrors: {} },
+        success: false,
+        data: null
+      }
+    })
+    render(<HomePage />)
+    fireEvent.click(screen.getByTestId('menu-New Project'))
+    expect(screen.getByText('A project with this name already exists')).toBeInTheDocument()
+  })
+
+  // ── Success flow — dialog closes, form resets, resetCreateProject dispatched ──
+
+  it('closes the dialog and dispatches resetCreateProject when createProject.success flips to true', () => {
+    const { rerender } = render(<HomePage />)
+    fireEvent.click(screen.getByTestId('menu-New Project'))
+    expect(screen.getByTestId('dialog')).toBeInTheDocument()
+
+    setHomePageState({
+      recentProjects: { loading: false, error: null, data: MOCK_PROJECTS },
+      createProject: {
+        loading: false,
+        error: null,
+        success: true,
+        data: {
+          success: true,
+          project_id: 'new-uuid',
+          name: 'Alpha',
+          latitude: 10,
+          longitude: 20,
+          utc_offset: 0,
+          session_id: 's'
+        }
+      }
+    })
+    mockDispatch.mockClear()
+    rerender(<HomePage />)
+
+    expect(screen.queryByTestId('dialog')).not.toBeInTheDocument()
+    expect(mockDispatch).toHaveBeenCalledWith(actions.resetCreateProject())
+  })
+
+  // ── Delete wiring ──
+
+  it('dispatches deleteProject when a row fires onDelete', () => {
+    render(<HomePage />)
+    mockDispatch.mockClear()
+    fireEvent.click(screen.getByTestId('row-p-coastal'))
+    expect(mockDispatch).toHaveBeenCalledWith(actions.deleteProject({ projectId: 'p-coastal' }))
+  })
+
+  it('forwards inFlightIds to ProjectsTable as deletingIds', () => {
+    setHomePageState({
+      recentProjects: { loading: false, error: null, data: MOCK_PROJECTS },
+      deleteProject: { inFlightIds: ['p-delta'], error: null }
+    })
+    render(<HomePage />)
+    expect(screen.getByTestId('projects-table')).toHaveAttribute('data-deleting', 'p-delta')
   })
 
   // ── Form reset on reopen ──
 
-  // Verifies form fields are reset when dialog is closed and reopened
-  it('resets form fields when dialog is closed and reopened', async () => {
+  it('resets form fields when the dialog is closed and reopened', () => {
     render(<HomePage />)
 
-    // Open dialog and fill in a value
     fireEvent.click(screen.getByTestId('menu-New Project'))
     fireEvent.change(screen.getByTestId('input-projectName'), {
       target: { value: 'Leftover Value' }
     })
-
-    // Close dialog via Cancel
     fireEvent.click(screen.getByText('Cancel'))
 
-    // Reopen dialog
     fireEvent.click(screen.getByTestId('menu-New Project'))
-
-    // Field should be empty — form was reset on reopen
     expect(screen.getByTestId('input-projectName')).toHaveValue('')
   })
 
   // ── Search filtering ──
 
-  // Verifies all 5 hardcoded projects are shown initially
-  it('shows all projects initially', () => {
+  it('renders every project from the Redux slice initially', () => {
     render(<HomePage />)
-    expect(screen.getByTestId('project-Coastal Survey Alpha')).toBeInTheDocument()
-    expect(screen.getByTestId('project-Delta Wind Farm')).toBeInTheDocument()
-    expect(screen.getByTestId('project-Northern Grid Scan')).toBeInTheDocument()
-    expect(screen.getByTestId('project-River Basin Mapping')).toBeInTheDocument()
-    expect(screen.getByTestId('project-Urban Heat Island Study')).toBeInTheDocument()
+    expect(screen.getByTestId('row-p-coastal')).toBeInTheDocument()
+    expect(screen.getByTestId('row-p-delta')).toBeInTheDocument()
+    expect(screen.getByTestId('row-p-north')).toBeInTheDocument()
   })
 
-  // Verifies typing in searchbar filters projects by name
   it('filters projects by name when searching', () => {
     render(<HomePage />)
     fireEvent.change(screen.getByTestId('searchbar'), { target: { value: 'Coastal' } })
-    expect(screen.getByTestId('project-Coastal Survey Alpha')).toBeInTheDocument()
-    expect(screen.queryByTestId('project-Delta Wind Farm')).not.toBeInTheDocument()
+    expect(screen.getByTestId('row-p-coastal')).toBeInTheDocument()
+    expect(screen.queryByTestId('row-p-delta')).not.toBeInTheDocument()
   })
 
-  // Verifies search is case-insensitive
-  it('filters projects case-insensitively', () => {
+  it('filters case-insensitively', () => {
     render(<HomePage />)
     fireEvent.change(screen.getByTestId('searchbar'), { target: { value: 'coastal' } })
-    expect(screen.getByTestId('project-Coastal Survey Alpha')).toBeInTheDocument()
+    expect(screen.getByTestId('row-p-coastal')).toBeInTheDocument()
   })
 
-  // Verifies search matches against size values
-  it('filters projects by size', () => {
-    render(<HomePage />)
-    fireEvent.change(screen.getByTestId('searchbar'), { target: { value: '214.9' } })
-    expect(screen.getByTestId('project-Northern Grid Scan')).toBeInTheDocument()
-    expect(screen.queryByTestId('project-Coastal Survey Alpha')).not.toBeInTheDocument()
-  })
-
-  // Verifies search matches against date values
-  it('filters projects by date', () => {
+  it('matches against the last_updated ISO string', () => {
     render(<HomePage />)
     fireEvent.change(screen.getByTestId('searchbar'), { target: { value: '2026-03-29' } })
-    expect(screen.getByTestId('project-Coastal Survey Alpha')).toBeInTheDocument()
-    expect(screen.queryByTestId('project-Delta Wind Farm')).not.toBeInTheDocument()
+    expect(screen.getByTestId('row-p-coastal')).toBeInTheDocument()
+    expect(screen.queryByTestId('row-p-delta')).not.toBeInTheDocument()
   })
 
-  // Verifies no projects are shown when search matches nothing
-  it('shows no projects when search matches nothing', () => {
+  it('renders no rows when the search matches nothing', () => {
     render(<HomePage />)
     fireEvent.change(screen.getByTestId('searchbar'), { target: { value: 'zzzzz' } })
-    expect(screen.queryByTestId('project-Coastal Survey Alpha')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('project-Delta Wind Farm')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('row-p-coastal')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('row-p-delta')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('row-p-north')).not.toBeInTheDocument()
   })
 
-  // Verifies clearing the search restores all projects
-  it('restores all projects when search is cleared', () => {
+  it('restores all rows when the search is cleared', () => {
     render(<HomePage />)
     fireEvent.change(screen.getByTestId('searchbar'), { target: { value: 'Coastal' } })
     fireEvent.change(screen.getByTestId('searchbar'), { target: { value: '' } })
-    expect(screen.getByTestId('project-Coastal Survey Alpha')).toBeInTheDocument()
-    expect(screen.getByTestId('project-Delta Wind Farm')).toBeInTheDocument()
+    expect(screen.getByTestId('row-p-coastal')).toBeInTheDocument()
+    expect(screen.getByTestId('row-p-delta')).toBeInTheDocument()
   })
 
-  // Verifies search trims whitespace before filtering
-  it('trims whitespace from search input', () => {
+  it('trims whitespace from the search input', () => {
     render(<HomePage />)
     fireEvent.change(screen.getByTestId('searchbar'), { target: { value: '  Coastal  ' } })
-    expect(screen.getByTestId('project-Coastal Survey Alpha')).toBeInTheDocument()
+    expect(screen.getByTestId('row-p-coastal')).toBeInTheDocument()
   })
 
   // ── Snapshot ──
 
-  // Snapshot regression guard — initial state with dialog closed
-  it('should match the snapshot', () => {
+  it('matches the snapshot', () => {
     const { container } = render(<HomePage />)
     expect(container.firstChild).toMatchSnapshot()
   })

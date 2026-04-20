@@ -1,53 +1,220 @@
-import { call, put, takeLatest } from 'redux-saga/effects'
-import homePageSaga, { fetchStatusWorker } from '../saga'
-import { api } from 'utils/api'
+import { call, put, takeEvery, takeLatest, takeLeading } from 'redux-saga/effects'
+import homePageSaga, {
+  fetchStatusWorker,
+  createProjectWorker,
+  fetchRecentProjectsWorker,
+  deleteProjectWorker
+} from '../saga'
+import { api, ApiError } from 'utils/api'
+import { API_ROUTES } from 'utils/constants'
 import * as actions from '../actions'
-import { FETCH_STATUS, SSE_CONNECT } from '../constants'
+import {
+  FETCH_STATUS,
+  SSE_CONNECT,
+  CREATE_PROJECT,
+  FETCH_RECENT_PROJECTS,
+  DELETE_PROJECT
+} from '../constants'
+import type { CreateProjectPayload, CreateProjectResponse } from '../types'
 
-// ── fetchStatusWorker ──────────────────────────────────────────────────────────
+// ── fetchStatusWorker ─────────────────────────────────────────────────────────
 
 describe('fetchStatusWorker', () => {
   it('calls GET /api/status then puts fetchStatusSuccess', () => {
     const gen = fetchStatusWorker()
 
-    // step 1: call effect
     expect(gen.next().value).toEqual(call(api.get, '/api/status'))
 
-    // step 2: success put
     const status = { version: '1.0.0', uptime: 30 }
     expect(gen.next(status).value).toEqual(put(actions.fetchStatusSuccess(status)))
 
-    // done
     expect(gen.next().done).toBe(true)
   })
 
   it('puts fetchStatusFailure when fetch throws', () => {
     const gen = fetchStatusWorker()
-
-    gen.next() // advance to call
+    gen.next()
 
     const error = new Error('Network error')
-    expect(gen.throw(error).value).toEqual(
-      put(actions.fetchStatusFailure('Network error'))
+    expect(gen.throw(error).value).toEqual(put(actions.fetchStatusFailure('Network error')))
+  })
+})
+
+// ── createProjectWorker ──────────────────────────────────────────────────────
+
+describe('createProjectWorker', () => {
+  const payload: CreateProjectPayload = { name: 'Alpha', latitude: 10, longitude: 20 }
+  const response: CreateProjectResponse = {
+    success: true,
+    project_id: 'uuid-1',
+    name: 'Alpha',
+    latitude: 10,
+    longitude: 20,
+    utc_offset: 0,
+    session_id: 'sess-1'
+  }
+
+  it('POSTs to project/create, then puts success and refreshes the recent list', () => {
+    const gen = createProjectWorker(actions.createProject(payload))
+
+    // 1) call the API with the configured route and the action payload
+    expect(gen.next().value).toEqual(call(api.post, API_ROUTES.project.create, payload))
+
+    // 2) success put
+    expect(gen.next(response).value).toEqual(put(actions.createProjectSuccess(response)))
+
+    // 3) and the saga pipelines a re-fetch so the table stays in sync
+    expect(gen.next().value).toEqual(put(actions.fetchRecentProjects()))
+
+    expect(gen.next().done).toBe(true)
+  })
+
+  it('converts an ApiError into a structured createProjectFailure payload', () => {
+    const gen = createProjectWorker(actions.createProject(payload))
+    gen.next() // advance past the call
+
+    const apiErr = new ApiError(409, 'duplicate name', { name: 'already exists' })
+    expect(gen.throw(apiErr).value).toEqual(
+      put(
+        actions.createProjectFailure({
+          status: 409,
+          message: 'duplicate name',
+          fieldErrors: { name: 'already exists' }
+        })
+      )
+    )
+    expect(gen.next().done).toBe(true)
+  })
+
+  it('falls back to status=0 for non-Api errors', () => {
+    const gen = createProjectWorker(actions.createProject(payload))
+    gen.next()
+
+    const err = new Error('offline')
+    expect(gen.throw(err).value).toEqual(
+      put(
+        actions.createProjectFailure({
+          status: 0,
+          message: 'offline',
+          fieldErrors: {}
+        })
+      )
     )
   })
 })
 
-// ── root watcher ───────────────────────────────────────────────────────────────
+// ── fetchRecentProjectsWorker ────────────────────────────────────────────────
 
-describe('homePageSaga', () => {
+describe('fetchRecentProjectsWorker', () => {
+  it('GETs the recent projects route and unwraps `.projects` into success', () => {
+    const gen = fetchRecentProjectsWorker()
+
+    expect(gen.next().value).toEqual(call(api.get, API_ROUTES.project.recent))
+
+    const response = {
+      projects: [{ id: 'a', name: 'Alpha', last_updated: '2026-03-29T00:00:00Z', size: 1024 }]
+    }
+    expect(gen.next(response).value).toEqual(
+      put(actions.fetchRecentProjectsSuccess(response.projects))
+    )
+
+    expect(gen.next().done).toBe(true)
+  })
+
+  it('puts fetchRecentProjectsFailure on error', () => {
+    const gen = fetchRecentProjectsWorker()
+    gen.next()
+
+    const apiErr = new ApiError(500, 'boom')
+    expect(gen.throw(apiErr).value).toEqual(
+      put(
+        actions.fetchRecentProjectsFailure({
+          status: 500,
+          message: 'boom',
+          fieldErrors: {}
+        })
+      )
+    )
+  })
+})
+
+// ── deleteProjectWorker ──────────────────────────────────────────────────────
+
+describe('deleteProjectWorker', () => {
+  it('DELETEs the project route and puts success with projectId', () => {
+    const gen = deleteProjectWorker(actions.deleteProject({ projectId: 'uuid-1' }))
+
+    expect(gen.next().value).toEqual(call(api.delete, API_ROUTES.project.delete('uuid-1')))
+    expect(gen.next().value).toEqual(put(actions.deleteProjectSuccess('uuid-1')))
+    expect(gen.next().done).toBe(true)
+  })
+
+  it('puts deleteProjectFailure carrying the projectId when the call fails', () => {
+    const gen = deleteProjectWorker(actions.deleteProject({ projectId: 'uuid-1' }))
+    gen.next()
+
+    const apiErr = new ApiError(404, 'not found')
+    expect(gen.throw(apiErr).value).toEqual(
+      put(
+        actions.deleteProjectFailure('uuid-1', {
+          status: 404,
+          message: 'not found',
+          fieldErrors: {}
+        })
+      )
+    )
+  })
+})
+
+// ── Root watcher ─────────────────────────────────────────────────────────────
+
+describe('homePageSaga (root watcher)', () => {
   it('watches FETCH_STATUS with takeLatest', () => {
     const gen = homePageSaga()
     expect(gen.next().value).toEqual(takeLatest(FETCH_STATUS, fetchStatusWorker))
   })
 
-  it('watches SSE_CONNECT with takeLatest as second effect', () => {
+  it('watches SSE_CONNECT as the second effect', () => {
     const gen = homePageSaga()
-    gen.next() // FETCH_STATUS watcher
-    // The value type check: it should be a takeLatest effect for SSE_CONNECT
-    const secondEffect = gen.next().value as any
-    expect(secondEffect).toBeDefined()
-    // takeLatest compiles to a fork with a pattern — check the pattern
-    expect(JSON.stringify(secondEffect)).toContain(SSE_CONNECT)
+    gen.next()
+    // redux-saga compiles takeLatest into a FORK effect; just verify the
+    // pattern is wired into the effect description.
+    const second = JSON.stringify(gen.next().value)
+    expect(second).toContain(SSE_CONNECT)
+    expect(second).toContain('"FORK"')
+  })
+
+  it('watches CREATE_PROJECT with takeLeading (prevents double-submit races)', () => {
+    const gen = homePageSaga()
+    gen.next() // FETCH_STATUS
+    gen.next() // SSE_CONNECT
+    expect(gen.next().value).toEqual(takeLeading(CREATE_PROJECT, createProjectWorker))
+  })
+
+  it('watches FETCH_RECENT_PROJECTS with takeLatest', () => {
+    const gen = homePageSaga()
+    gen.next()
+    gen.next()
+    gen.next()
+    expect(gen.next().value).toEqual(takeLatest(FETCH_RECENT_PROJECTS, fetchRecentProjectsWorker))
+  })
+
+  it('watches DELETE_PROJECT with takeEvery so deletes run concurrently', () => {
+    const gen = homePageSaga()
+    gen.next()
+    gen.next()
+    gen.next()
+    gen.next()
+    expect(gen.next().value).toEqual(takeEvery(DELETE_PROJECT, deleteProjectWorker))
+  })
+
+  it('has no more effects after the five watchers', () => {
+    const gen = homePageSaga()
+    gen.next()
+    gen.next()
+    gen.next()
+    gen.next()
+    gen.next()
+    expect(gen.next().done).toBe(true)
   })
 })

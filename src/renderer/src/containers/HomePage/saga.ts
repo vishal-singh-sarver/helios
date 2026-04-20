@@ -19,7 +19,6 @@ import type {
   ApiErrorPayload
 } from './types'
 
-
 function toErrorPayload(err: unknown): ApiErrorPayload {
   if (err instanceof ApiError) {
     return { status: err.status, message: err.message, fieldErrors: err.fieldErrors }
@@ -41,9 +40,7 @@ export function* fetchStatusWorker(): Generator {
 
 // ── Create project worker ─────────────────────────────────────────────────────
 
-export function* createProjectWorker(
-  action: ReturnType<typeof actions.createProject>
-): Generator {
+export function* createProjectWorker(action: ReturnType<typeof actions.createProject>): Generator {
   try {
     const response = (yield call(
       api.post<CreateProjectResponse>,
@@ -61,9 +58,7 @@ export function* createProjectWorker(
 
 // ── Delete project worker ─────────────────────────────────────────────────────
 
-export function* deleteProjectWorker(
-  action: ReturnType<typeof actions.deleteProject>
-): Generator {
+export function* deleteProjectWorker(action: ReturnType<typeof actions.deleteProject>): Generator {
   const { projectId } = action.payload
   try {
     yield call(api.delete<string>, API_ROUTES.project.delete(projectId))
@@ -90,23 +85,27 @@ export function* fetchRecentProjectsWorker(): Generator {
 // ── SSE worker ────────────────────────────────────────────────────────────────
 
 function* sseWorker(): Generator {
-  const channel = (yield call(createSseChannel, '/api/events')) as ReturnType<typeof createSseChannel>
+  const channel = (yield call(createSseChannel, '/api/events')) as ReturnType<
+    typeof createSseChannel
+  >
 
   try {
     while (true) {
       const result = (yield race({
-        msg:  take(channel),
+        msg: take(channel),
         stop: take(SSE_DISCONNECT)
       })) as { msg?: SseMessage; stop?: unknown }
 
       if (result.stop) break
 
       if (result.msg) {
-        yield put(actions.sseEvent({
-          type:      result.msg.type,
-          data:      result.msg.data,
-          timestamp: Date.now()
-        }))
+        yield put(
+          actions.sseEvent({
+            type: result.msg.type,
+            data: result.msg.data,
+            timestamp: Date.now()
+          })
+        )
       }
     }
   } finally {

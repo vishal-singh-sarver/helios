@@ -9,9 +9,15 @@ const localStorageMock = (() => {
   let store: Record<string, string> = {}
   return {
     getItem: (key: string) => store[key] ?? null,
-    setItem: (key: string, value: string) => { store[key] = value },
-    removeItem: (key: string) => { delete store[key] },
-    clear: () => { store = {} }
+    setItem: (key: string, value: string) => {
+      store[key] = value
+    },
+    removeItem: (key: string) => {
+      delete store[key]
+    },
+    clear: () => {
+      store = {}
+    }
   }
 })()
 
@@ -75,7 +81,9 @@ describe('clearSessionId', () => {
     const first = getSessionId()
 
     clearSessionId()
-    vi.mocked(crypto.randomUUID).mockReturnValueOnce(SECOND_UUID as `${string}-${string}-${string}-${string}-${string}`)
+    vi.mocked(crypto.randomUUID).mockReturnValueOnce(
+      SECOND_UUID as `${string}-${string}-${string}-${string}-${string}`
+    )
     const second = getSessionId()
 
     expect(first).toBe(MOCK_UUID)

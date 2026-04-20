@@ -26,8 +26,6 @@ const COLUMN_LABELS: Record<SortKey, string> = {
   size: 'Size'
 }
 
-
-
 function ProjectsTable({
   projects,
   emptyIcon,
