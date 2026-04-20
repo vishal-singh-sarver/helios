@@ -56,12 +56,11 @@ function parseErrorBody(data: unknown, fallback: string): ParsedError {
 
 const client: AxiosInstance = axios.create({
   baseURL: BASE_URL,
-  headers: { 'Content-Type': 'application/json', accept: 'application/json' }
-})
-
-client.interceptors.request.use((config) => {
-  config.headers.set('session-id', getSessionId())
-  return config
+  headers: {
+    'Content-Type': 'application/json',
+    accept: 'application/json',
+    'session-id': getSessionId()
+  }
 })
 
 // ── Core request ─────────────────────────────────────────────────────────────
