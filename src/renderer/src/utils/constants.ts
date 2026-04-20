@@ -3,8 +3,7 @@
 // proxied to the real backend by Vite (see electron.vite.config.ts → server.proxy).
 // In production, Electron loads from file:// and must hit the backend directly.
 export const BASE_URL =
-  (window as any).__APP_BASE_URL__ ??
-  (import.meta.env.DEV ? '' : import.meta.env.VITE_BACKEND_URL)
+  (window as any).__APP_BASE_URL__ ?? (import.meta.env.DEV ? '' : import.meta.env.VITE_BACKEND_URL)
 
 // ── Backend routes ────────────────────────────────────────────────────────────
 //
@@ -16,7 +15,6 @@ export const API_ROUTES = {
   project: {
     create: '/api/project/create',
     recent: '/api/project/recent',
-    // Not yet implemented on the backend — see backend-api/app/routers/project.py
     delete: (projectId: string) => `/api/project/${projectId}`
   }
 } as const

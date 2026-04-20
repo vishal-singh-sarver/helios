@@ -1,11 +1,22 @@
 import { produce } from 'immer'
 import type { Reducer, UnknownAction } from 'redux'
 import {
-  FETCH_STATUS, FETCH_STATUS_SUCCESS, FETCH_STATUS_FAILURE,
-  SSE_CONNECT, SSE_EVENT, SSE_DISCONNECT,
-  CREATE_PROJECT, CREATE_PROJECT_SUCCESS, CREATE_PROJECT_FAILURE, RESET_CREATE_PROJECT,
-  FETCH_RECENT_PROJECTS, FETCH_RECENT_PROJECTS_SUCCESS, FETCH_RECENT_PROJECTS_FAILURE,
-  DELETE_PROJECT, DELETE_PROJECT_SUCCESS, DELETE_PROJECT_FAILURE
+  FETCH_STATUS,
+  FETCH_STATUS_SUCCESS,
+  FETCH_STATUS_FAILURE,
+  SSE_CONNECT,
+  SSE_EVENT,
+  SSE_DISCONNECT,
+  CREATE_PROJECT,
+  CREATE_PROJECT_SUCCESS,
+  CREATE_PROJECT_FAILURE,
+  RESET_CREATE_PROJECT,
+  FETCH_RECENT_PROJECTS,
+  FETCH_RECENT_PROJECTS_SUCCESS,
+  FETCH_RECENT_PROJECTS_FAILURE,
+  DELETE_PROJECT,
+  DELETE_PROJECT_SUCCESS,
+  DELETE_PROJECT_FAILURE
 } from './constants'
 import type { HomePageAction } from './actions'
 
@@ -86,10 +97,7 @@ export const initialState: HomePageState = {
 
 // ── Reducer ───────────────────────────────────────────────────────────────────
 
-const homePageReducer: Reducer<HomePageState> = (
-  state = initialState,
-  rawAction: UnknownAction
-) =>
+const homePageReducer: Reducer<HomePageState> = (state = initialState, rawAction: UnknownAction) =>
   produce(state, (draft) => {
     const action = rawAction as HomePageAction
     switch (action.type) {
@@ -171,9 +179,7 @@ const homePageReducer: Reducer<HomePageState> = (
         draft.deleteProject.inFlightIds = draft.deleteProject.inFlightIds.filter(
           (id) => id !== projectId
         )
-        draft.recentProjects.data = draft.recentProjects.data.filter(
-          (p) => p.id !== projectId
-        )
+        draft.recentProjects.data = draft.recentProjects.data.filter((p) => p.id !== projectId)
         break
       }
 

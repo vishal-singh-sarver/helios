@@ -19,7 +19,7 @@ export interface CreateProjectPayload {
 
 export interface CreateProjectResponse {
   success: boolean
-  project_id: string   // UUID
+  project_id: string // UUID
   name: string
   latitude: number
   longitude: number
@@ -27,20 +27,19 @@ export interface CreateProjectResponse {
   session_id: string
 }
 
-
 export interface ApiErrorPayload {
-  status: number              // HTTP status (0 = network failure)
-  message: string             // flat human-readable message
-  fieldErrors: Record<string, string>  // per-field detail (FastAPI 422 → loc-keyed)
+  status: number // HTTP status (0 = network failure)
+  message: string // flat human-readable message
+  fieldErrors: Record<string, string> // per-field detail (FastAPI 422 → loc-keyed)
 }
 
 // ── Recent projects ───────────────────────────────────────────────────────────
 
 export interface RecentProjectItem {
-  id: string              // UUID
+  id: string // UUID
   name: string
-  last_updated: string    // ISO 8601
-  size: number            // bytes
+  last_updated: string // ISO 8601
+  size: number // bytes
 }
 
 export interface RecentProjectsResponse {

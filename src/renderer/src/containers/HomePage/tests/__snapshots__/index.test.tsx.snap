@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`<HomePage /> > should match the snapshot 1`] = `
+exports[`<HomePage /> > matches the snapshot 1`] = `
 <div
   class="flex h-full flex-col font-sans"
 >
@@ -97,7 +97,7 @@ exports[`<HomePage /> > should match the snapshot 1`] = `
     />
   </header>
   <div
-    class="flex flex-1"
+    class="flex min-h-0 flex-1"
   >
     <aside
       data-testid="sidebar"
@@ -122,36 +122,27 @@ exports[`<HomePage /> > should match the snapshot 1`] = `
       </button>
     </aside>
     <main
-      class="flex-1 p-6"
+      class="flex min-h-0 flex-1 flex-col overflow-hidden p-6"
     >
       <div
+        data-deleting=""
         data-testid="projects-table"
       >
-        <span
-          data-testid="project-Coastal Survey Alpha"
+        <button
+          data-testid="row-p-coastal"
         >
           Coastal Survey Alpha
-        </span>
-        <span
-          data-testid="project-Delta Wind Farm"
+        </button>
+        <button
+          data-testid="row-p-delta"
         >
           Delta Wind Farm
-        </span>
-        <span
-          data-testid="project-Northern Grid Scan"
+        </button>
+        <button
+          data-testid="row-p-north"
         >
           Northern Grid Scan
-        </span>
-        <span
-          data-testid="project-River Basin Mapping"
-        >
-          River Basin Mapping
-        </span>
-        <span
-          data-testid="project-Urban Heat Island Study"
-        >
-          Urban Heat Island Study
-        </span>
+        </button>
         <button
           data-testid="table-create-new"
         >

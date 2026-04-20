@@ -12,13 +12,7 @@ describe('<MenuBar />', () => {
   const setup = (props = {}) => {
     const onItemSelect = vi.fn()
 
-    render(
-      <MenuBar
-        items={MOCK_ITEMS}
-        onItemSelect={onItemSelect}
-        {...props}
-      />
-    )
+    render(<MenuBar items={MOCK_ITEMS} onItemSelect={onItemSelect} {...props} />)
 
     return { onItemSelect }
   }
@@ -131,9 +125,7 @@ describe('<MenuBar />', () => {
 
   //  Snapshot (kept minimal importance)
   it('matches snapshot', () => {
-    const { container } = render(
-      <MenuBar items={MOCK_ITEMS} onItemSelect={vi.fn()} />
-    )
+    const { container } = render(<MenuBar items={MOCK_ITEMS} onItemSelect={vi.fn()} />)
     expect(container.firstChild).toMatchSnapshot()
   })
 })
