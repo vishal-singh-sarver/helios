@@ -5,37 +5,155 @@ import {
   FETCH_STATUS_FAILURE,
   SSE_CONNECT,
   SSE_EVENT,
-  SSE_DISCONNECT
+  SSE_DISCONNECT,
+  CREATE_PROJECT,
+  CREATE_PROJECT_SUCCESS,
+  CREATE_PROJECT_FAILURE,
+  RESET_CREATE_PROJECT,
+  FETCH_RECENT_PROJECTS,
+  FETCH_RECENT_PROJECTS_SUCCESS,
+  FETCH_RECENT_PROJECTS_FAILURE,
+  DELETE_PROJECT,
+  DELETE_PROJECT_SUCCESS,
+  DELETE_PROJECT_FAILURE
 } from '../constants'
-import type { AppStatus, StreamEvent } from '../types'
+import type {
+  AppStatus,
+  StreamEvent,
+  CreateProjectPayload,
+  CreateProjectResponse,
+  RecentProjectItem,
+  ApiErrorPayload
+} from '../types'
 
 describe('HomePage actions', () => {
-  it('fetchStatus has correct type', () => {
-    expect(actions.fetchStatus()).toEqual({ type: FETCH_STATUS })
-  })
+  // ── REST ────────────────────────────────────────────────────────────────────
 
-  it('fetchStatusSuccess carries payload', () => {
-    const payload: AppStatus = { version: '1.2.3', uptime: 42 }
-    expect(actions.fetchStatusSuccess(payload)).toEqual({ type: FETCH_STATUS_SUCCESS, payload })
-  })
+  describe('status', () => {
+    it('fetchStatus has correct type', () => {
+      expect(actions.fetchStatus()).toEqual({ type: FETCH_STATUS })
+    })
 
-  it('fetchStatusFailure carries error message', () => {
-    expect(actions.fetchStatusFailure('timeout')).toEqual({
-      type: FETCH_STATUS_FAILURE,
-      payload: 'timeout'
+    it('fetchStatusSuccess carries payload', () => {
+      const payload: AppStatus = { version: '1.2.3', uptime: 42 }
+      expect(actions.fetchStatusSuccess(payload)).toEqual({ type: FETCH_STATUS_SUCCESS, payload })
+    })
+
+    it('fetchStatusFailure carries error message', () => {
+      expect(actions.fetchStatusFailure('timeout')).toEqual({
+        type: FETCH_STATUS_FAILURE,
+        payload: 'timeout'
+      })
     })
   })
 
-  it('sseConnect has correct type', () => {
-    expect(actions.sseConnect()).toEqual({ type: SSE_CONNECT })
+  // ── SSE ─────────────────────────────────────────────────────────────────────
+
+  describe('SSE', () => {
+    it('sseConnect has correct type', () => {
+      expect(actions.sseConnect()).toEqual({ type: SSE_CONNECT })
+    })
+
+    it('sseEvent carries payload', () => {
+      const payload: StreamEvent = { type: 'ping', data: { ok: true }, timestamp: 1000 }
+      expect(actions.sseEvent(payload)).toEqual({ type: SSE_EVENT, payload })
+    })
+
+    it('sseDisconnect has correct type', () => {
+      expect(actions.sseDisconnect()).toEqual({ type: SSE_DISCONNECT })
+    })
   })
 
-  it('sseEvent carries payload', () => {
-    const payload: StreamEvent = { type: 'ping', data: { ok: true }, timestamp: 1000 }
-    expect(actions.sseEvent(payload)).toEqual({ type: SSE_EVENT, payload })
+  // ── Create project ──────────────────────────────────────────────────────────
+
+  describe('create project', () => {
+    it('createProject carries the payload', () => {
+      const payload: CreateProjectPayload = { name: 'Alpha', latitude: 10, longitude: 20 }
+      expect(actions.createProject(payload)).toEqual({ type: CREATE_PROJECT, payload })
+    })
+
+    it('createProjectSuccess carries the response data', () => {
+      const data: CreateProjectResponse = {
+        success: true,
+        project_id: 'uuid-1',
+        name: 'Alpha',
+        latitude: 10,
+        longitude: 20,
+        utc_offset: 0,
+        session_id: 'sess-1'
+      }
+      expect(actions.createProjectSuccess(data)).toEqual({
+        type: CREATE_PROJECT_SUCCESS,
+        payload: data
+      })
+    })
+
+    it('createProjectFailure carries an ApiErrorPayload', () => {
+      const err: ApiErrorPayload = {
+        status: 409,
+        message: 'duplicate',
+        fieldErrors: { name: 'dup' }
+      }
+      expect(actions.createProjectFailure(err)).toEqual({
+        type: CREATE_PROJECT_FAILURE,
+        payload: err
+      })
+    })
+
+    it('resetCreateProject has correct type and no payload', () => {
+      expect(actions.resetCreateProject()).toEqual({ type: RESET_CREATE_PROJECT })
+    })
   })
 
-  it('sseDisconnect has correct type', () => {
-    expect(actions.sseDisconnect()).toEqual({ type: SSE_DISCONNECT })
+  // ── Recent projects ─────────────────────────────────────────────────────────
+
+  describe('recent projects', () => {
+    it('fetchRecentProjects has correct type', () => {
+      expect(actions.fetchRecentProjects()).toEqual({ type: FETCH_RECENT_PROJECTS })
+    })
+
+    it('fetchRecentProjectsSuccess carries the list', () => {
+      const list: RecentProjectItem[] = [
+        { id: 'a', name: 'Alpha', last_updated: '2026-03-29T00:00:00Z', size: 1024 }
+      ]
+      expect(actions.fetchRecentProjectsSuccess(list)).toEqual({
+        type: FETCH_RECENT_PROJECTS_SUCCESS,
+        payload: list
+      })
+    })
+
+    it('fetchRecentProjectsFailure carries an ApiErrorPayload', () => {
+      const err: ApiErrorPayload = { status: 500, message: 'boom', fieldErrors: {} }
+      expect(actions.fetchRecentProjectsFailure(err)).toEqual({
+        type: FETCH_RECENT_PROJECTS_FAILURE,
+        payload: err
+      })
+    })
+  })
+
+  // ── Delete project ──────────────────────────────────────────────────────────
+
+  describe('delete project', () => {
+    it('deleteProject carries the projectId in payload', () => {
+      expect(actions.deleteProject({ projectId: 'uuid-1' })).toEqual({
+        type: DELETE_PROJECT,
+        payload: { projectId: 'uuid-1' }
+      })
+    })
+
+    it('deleteProjectSuccess carries the projectId', () => {
+      expect(actions.deleteProjectSuccess('uuid-1')).toEqual({
+        type: DELETE_PROJECT_SUCCESS,
+        payload: { projectId: 'uuid-1' }
+      })
+    })
+
+    it('deleteProjectFailure carries the projectId and error', () => {
+      const err: ApiErrorPayload = { status: 404, message: 'not found', fieldErrors: {} }
+      expect(actions.deleteProjectFailure('uuid-1', err)).toEqual({
+        type: DELETE_PROJECT_FAILURE,
+        payload: { projectId: 'uuid-1', error: err }
+      })
+    })
   })
 })

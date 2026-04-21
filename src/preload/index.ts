@@ -21,21 +21,17 @@ const api = {
     ipcRenderer.invoke('dialog:saveFile', filters, defaultPath),
 
   // File system
-  readFile: (filePath: string): Promise<string> =>
-    ipcRenderer.invoke('fs:readFile', filePath),
+  readFile: (filePath: string): Promise<string> => ipcRenderer.invoke('fs:readFile', filePath),
 
   writeFile: (filePath: string, content: string): Promise<void> =>
     ipcRenderer.invoke('fs:writeFile', filePath, content),
 
   // Backend session
-  getBackendStatus: (): Promise<BackendStatus> =>
-    ipcRenderer.invoke('backend:getStatus'),
+  getBackendStatus: (): Promise<BackendStatus> => ipcRenderer.invoke('backend:getStatus'),
 
-  startBackend: (): Promise<{ ok: boolean }> =>
-    ipcRenderer.invoke('backend:start'),
+  startBackend: (): Promise<{ ok: boolean }> => ipcRenderer.invoke('backend:start'),
 
-  stopBackend: (): Promise<{ ok: boolean }> =>
-    ipcRenderer.invoke('backend:stop')
+  stopBackend: (): Promise<{ ok: boolean }> => ipcRenderer.invoke('backend:stop')
 }
 
 if (process.contextIsolated) {

@@ -1,4 +1,4 @@
-import React,{ useId } from 'react'
+import React, { useId } from 'react'
 import Tooltip from '../Tooltip'
 
 export interface FormFieldLabelProps {
@@ -25,7 +25,13 @@ interface FormFieldProps {
 
 function FormField({ labelProps, inputProps }: FormFieldProps): React.JSX.Element {
   const { label, helpText, helpAriaLabel } = labelProps
-  const { error, type = 'text', placeholder = 'Enter', disabled = false, ...restInputProps } = inputProps
+  const {
+    error,
+    type = 'text',
+    placeholder = 'Enter',
+    disabled = false,
+    ...restInputProps
+  } = inputProps
   const errorId = useId()
 
   return (
@@ -33,10 +39,7 @@ function FormField({ labelProps, inputProps }: FormFieldProps): React.JSX.Elemen
       <label htmlFor={restInputProps.name} className="flex items-center gap-1">
         {label}
         <span className="text-red-400">*</span>
-        <Tooltip
-          text={helpText}
-          ariaLabel={helpAriaLabel}
-        />
+        <Tooltip text={helpText} ariaLabel={helpAriaLabel} />
       </label>
 
       <input

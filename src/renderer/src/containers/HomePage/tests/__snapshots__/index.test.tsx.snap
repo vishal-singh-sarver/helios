@@ -1,0 +1,155 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`<HomePage /> > matches the snapshot 1`] = `
+<div
+  class="flex h-full flex-col font-sans"
+>
+  <header
+    data-testid="header"
+  >
+    <div
+      data-testid="menubar"
+    >
+      <button
+        data-testid="menu-New Project"
+      >
+        New Project
+      </button>
+      <button
+        data-testid="menu-Open Project"
+      >
+        Open Project
+      </button>
+      <button
+        data-testid="menu-Import Project"
+      >
+        Import Project
+      </button>
+      <button
+        data-testid="menu-Exit"
+      >
+        Exit
+      </button>
+      <button
+        data-testid="menu-Undo"
+      >
+        Undo
+      </button>
+      <button
+        data-testid="menu-Redo"
+      >
+        Redo
+      </button>
+      <button
+        data-testid="menu-Preferences"
+      >
+        Preferences
+      </button>
+      <button
+        data-testid="menu-Zoom In"
+      >
+        Zoom In
+      </button>
+      <button
+        data-testid="menu-Zoom Out"
+      >
+        Zoom Out
+      </button>
+      <button
+        data-testid="menu-Reset Layout"
+      >
+        Reset Layout
+      </button>
+      <button
+        data-testid="menu-Scripting Console"
+      >
+        Scripting Console
+      </button>
+      <button
+        data-testid="menu-Extensions"
+      >
+        Extensions
+      </button>
+      <button
+        data-testid="menu-Diagnostics"
+      >
+        Diagnostics
+      </button>
+      <button
+        data-testid="menu-Documentation"
+      >
+        Documentation
+      </button>
+      <button
+        data-testid="menu-Shortcuts"
+      >
+        Shortcuts
+      </button>
+      <button
+        data-testid="menu-About Helios"
+      >
+        About Helios
+      </button>
+    </div>
+    <input
+      data-testid="searchbar"
+      value=""
+    />
+  </header>
+  <div
+    class="flex min-h-0 flex-1"
+  >
+    <aside
+      data-testid="sidebar"
+    >
+      <button
+        data-active="true"
+        data-testid="sidebar-Home"
+      >
+        Home
+      </button>
+      <button
+        data-active="false"
+        data-testid="sidebar-New Project"
+      >
+        New Project
+      </button>
+      <button
+        data-active="false"
+        data-testid="sidebar-Open project"
+      >
+        Open project
+      </button>
+    </aside>
+    <main
+      class="flex min-h-0 flex-1 flex-col overflow-hidden p-6"
+    >
+      <div
+        data-deleting=""
+        data-testid="projects-table"
+      >
+        <button
+          data-testid="row-p-coastal"
+        >
+          Coastal Survey Alpha
+        </button>
+        <button
+          data-testid="row-p-delta"
+        >
+          Delta Wind Farm
+        </button>
+        <button
+          data-testid="row-p-north"
+        >
+          Northern Grid Scan
+        </button>
+        <button
+          data-testid="table-create-new"
+        >
+          Create
+        </button>
+      </div>
+    </main>
+  </div>
+</div>
+`;

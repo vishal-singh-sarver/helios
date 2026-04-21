@@ -1,0 +1,24 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`<Header /> > should match the snapshot 1`] = `
+<header
+  class="border-b border-app-border"
+>
+  <div
+    class="flex h-11 items-center border-b border-app-border px-4"
+  >
+    <img
+      alt="Helios logo"
+      class="h-5 w-auto"
+      src="helios-logo.svg"
+    />
+  </div>
+  <div
+    class="flex h-11 items-center justify-between px-3"
+  >
+    <span>
+      child content
+    </span>
+  </div>
+</header>
+`;

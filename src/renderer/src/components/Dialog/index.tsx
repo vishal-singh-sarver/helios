@@ -37,14 +37,16 @@ function Dialog({ isOpen, title, onClose, children }: DialogProps): React.JSX.El
     >
       <header className="flex items-center justify-between bg-neutral-200 px-4 py-2">
         <h2 className="text-md font-medium text-black">{title}</h2>
-        <button aria-label="Close dialog" onClick={onClose} className="px-2 py-1 text-sm text-black hover:bg-neutral-300">
+        <button
+          aria-label="Close dialog"
+          onClick={onClose}
+          className="px-2 py-1 text-sm text-black hover:bg-neutral-300"
+        >
           ×
         </button>
       </header>
 
-      <div className="space-y-3 p-4">
-        {children}
-      </div>
+      <div className="space-y-3 p-4">{children}</div>
     </dialog>
   )
 }
