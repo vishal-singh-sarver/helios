@@ -32,7 +32,7 @@ describe('<ProjectsTable />', () => {
     projects: MOCK_PROJECTS,
     emptyIcon: 'search.svg',
     onCreateNew: vi.fn(),
-    onDelete: vi.fn(),
+    onRequestDelete: vi.fn(),
     deletingIds: [] as string[]
   }
 
@@ -85,12 +85,14 @@ describe('<ProjectsTable />', () => {
     expect(screen.getByRole('button', { name: 'Delete project Alpha Project' })).toBeInTheDocument()
   })
 
-  it('calls onDelete with the project id when the delete button is clicked', () => {
-    const onDelete = vi.fn()
-    render(<ProjectsTable {...defaultProps} onDelete={onDelete} />)
+  it('calls onRequestDelete with the project when the delete button is clicked', () => {
+    const onRequestDelete = vi.fn()
+    render(<ProjectsTable {...defaultProps} onRequestDelete={onRequestDelete} />)
     fireEvent.click(screen.getByRole('button', { name: 'Delete project Beta Project' }))
-    expect(onDelete).toHaveBeenCalledTimes(1)
-    expect(onDelete).toHaveBeenCalledWith('p-beta')
+    expect(onRequestDelete).toHaveBeenCalledTimes(1)
+    expect(onRequestDelete).toHaveBeenCalledWith(
+      MOCK_PROJECTS.find((p) => p.id === 'p-beta')
+    )
   })
 
   it('disables the delete button for projects listed in deletingIds', () => {
@@ -99,11 +101,17 @@ describe('<ProjectsTable />', () => {
     expect(btn).toBeDisabled()
   })
 
-  it('does not fire onDelete when a disabled delete button is clicked', () => {
-    const onDelete = vi.fn()
-    render(<ProjectsTable {...defaultProps} deletingIds={['p-alpha']} onDelete={onDelete} />)
+  it('does not fire onRequestDelete when a disabled delete button is clicked', () => {
+    const onRequestDelete = vi.fn()
+    render(
+      <ProjectsTable
+        {...defaultProps}
+        deletingIds={['p-alpha']}
+        onRequestDelete={onRequestDelete}
+      />
+    )
     fireEvent.click(screen.getByRole('button', { name: 'Delete project Alpha Project' }))
-    expect(onDelete).not.toHaveBeenCalled()
+    expect(onRequestDelete).not.toHaveBeenCalled()
   })
 
   // ── Empty state ──────────────────────────────────────────────────────────

@@ -21,6 +21,7 @@ import messages from './messages'
 import homePageReducer from './reducer'
 import homePageSaga from './saga'
 import { selectCreateProject, selectRecentProjects, selectDeleteProject } from './selectors'
+import type { RecentProjectItem } from './types'
 
 export function HomePage(): React.JSX.Element {
   useInjectReducer({ key: 'homePage', reducer: homePageReducer })
@@ -41,7 +42,32 @@ export function HomePage(): React.JSX.Element {
 
   const [searchText, setSearchText] = React.useState('')
   const [showNewProjectDialog, setShowNewProjectDialog] = React.useState(false)
+  const [pendingDelete, setPendingDelete] = React.useState<RecentProjectItem | null>(null)
   const [activeSidebar, setActiveSidebar] = React.useState('Home')
+
+  const pendingDeleteInFlight = pendingDelete ? deletingIds.includes(pendingDelete.id) : false
+
+  const prevInFlightRef = React.useRef(false)
+  React.useEffect(() => {
+    if (prevInFlightRef.current && !pendingDeleteInFlight) {
+      setPendingDelete(null)
+    }
+    prevInFlightRef.current = pendingDeleteInFlight
+  }, [pendingDeleteInFlight])
+
+  const handleRequestDelete = (project: RecentProjectItem): void => {
+    setPendingDelete(project)
+  }
+
+  const handleConfirmDelete = (): void => {
+    if (!pendingDelete || pendingDeleteInFlight) return
+    dispatch(deleteProject({ projectId: pendingDelete.id }))
+  }
+
+  const handleCancelDelete = (): void => {
+    if (pendingDeleteInFlight) return
+    setPendingDelete(null)
+  }
 
   const formik = useFormik<FormValues>({
     initialValues: INITIAL_VALUES,
@@ -174,7 +200,7 @@ export function HomePage(): React.JSX.Element {
             projects={filteredProjects}
             emptyIcon={searchIcon}
             onCreateNew={openNewProjectDialog}
-            onDelete={(projectId) => dispatch(deleteProject({ projectId }))}
+            onRequestDelete={handleRequestDelete}
             deletingIds={deletingIds}
           />
         </main>
@@ -261,6 +287,41 @@ export function HomePage(): React.JSX.Element {
               </span>
             ) : (
               messages.createProject.submitButton
+            )}
+          </button>
+        </div>
+      </Dialog>
+
+      <Dialog
+        isOpen={pendingDelete !== null}
+        title={messages.deleteProject.dialogTitle}
+        onClose={handleCancelDelete}
+      >
+        <h3 className="text-base font-medium text-white">
+          {pendingDelete ? messages.deleteProject.heading(pendingDelete.name) : ''}
+        </h3>
+        <p className="text-sm text-neutral-400">{messages.deleteProject.body}</p>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <button
+            onClick={handleCancelDelete}
+            disabled={pendingDeleteInFlight}
+            className="rounded bg-neutral-200 px-3 py-1 text-sm text-black hover:bg-neutral-100 disabled:opacity-50"
+          >
+            {messages.deleteProject.cancelButton}
+          </button>
+          <button
+            onClick={handleConfirmDelete}
+            disabled={pendingDeleteInFlight}
+            className="rounded bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-500 disabled:opacity-50"
+          >
+            {pendingDeleteInFlight ? (
+              <span className="flex items-center gap-2">
+                <Spinner />
+                {messages.deleteProject.confirmButton}
+              </span>
+            ) : (
+              messages.deleteProject.confirmButton
             )}
           </button>
         </div>

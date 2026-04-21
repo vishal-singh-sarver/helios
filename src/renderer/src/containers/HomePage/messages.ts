@@ -12,6 +12,14 @@ const messages = {
       serverError: 'Failed to create project',
       notFound: 'Project not found'
     }
+  },
+
+  deleteProject: {
+    dialogTitle: 'Delete',
+    heading: (name: string) => `Delete ${name}`,
+    body: 'Are you sure you want to delete this? This action cannot be undone.',
+    confirmButton: 'Delete',
+    cancelButton: 'Cancel'
   }
 } as const
 

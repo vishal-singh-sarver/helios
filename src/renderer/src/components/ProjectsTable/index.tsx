@@ -10,7 +10,7 @@ interface ProjectsTableProps {
   projects: RecentProjectItem[]
   emptyIcon: string
   onCreateNew: () => void
-  onDelete: (projectId: string) => void
+  onRequestDelete: (project: RecentProjectItem) => void
   deletingIds: string[]
 }
 
@@ -30,7 +30,7 @@ function ProjectsTable({
   projects,
   emptyIcon,
   onCreateNew,
-  onDelete,
+  onRequestDelete,
   deletingIds
 }: ProjectsTableProps): React.JSX.Element {
   const [sortKey, setSortKey] = useState<SortKey>('last_updated')
@@ -187,7 +187,7 @@ function ProjectsTable({
                       <button
                         type="button"
                         aria-label={`Delete project ${project.name}`}
-                        onClick={() => onDelete(project.id)}
+                        onClick={() => onRequestDelete(project)}
                         disabled={isDeleting}
                         className="flex h-8 w-8 items-center justify-center rounded text-neutral-400 focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
