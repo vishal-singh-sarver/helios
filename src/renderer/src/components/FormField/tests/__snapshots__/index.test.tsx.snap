@@ -1,0 +1,77 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`<FormField /> > should match the snapshot 1`] = `
+<div
+  class="block text-sm text-neutral-300"
+>
+  <label
+    class="flex items-center gap-1"
+    for="projectName"
+  >
+    Project Name
+    <span
+      class="text-red-400"
+    >
+      *
+    </span>
+    <span
+      aria-label="Show project name help"
+      data-testid="tooltip"
+    >
+      Enter a project name.
+    </span>
+  </label>
+  <input
+    aria-invalid="false"
+    class="mt-1 h-9 w-full rounded border border-app-border bg-dark 
+        px-3 text-sm text-white outline-none focus:border-neutral-500"
+    id="projectName"
+    name="projectName"
+    placeholder="Enter"
+    type="text"
+    value=""
+  />
+</div>
+`;
+
+exports[`<FormField /> > should match the snapshot with error 1`] = `
+<div
+  class="block text-sm text-neutral-300"
+>
+  <label
+    class="flex items-center gap-1"
+    for="projectName"
+  >
+    Project Name
+    <span
+      class="text-red-400"
+    >
+      *
+    </span>
+    <span
+      aria-label="Show project name help"
+      data-testid="tooltip"
+    >
+      Enter a project name.
+    </span>
+  </label>
+  <input
+    aria-describedby="_r_h_"
+    aria-invalid="true"
+    class="mt-1 h-9 w-full rounded border border-app-border bg-dark 
+        px-3 text-sm text-white outline-none focus:border-neutral-500"
+    id="projectName"
+    name="projectName"
+    placeholder="Enter"
+    type="text"
+    value=""
+  />
+  <p
+    class="mt-1 text-xs text-red-400"
+    id="_r_h_"
+    role="alert"
+  >
+    Required
+  </p>
+</div>
+`;

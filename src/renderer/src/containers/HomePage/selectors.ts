@@ -4,16 +4,17 @@ import { initialState, type HomePageState } from './reducer'
 
 // ── Domain ────────────────────────────────────────────────────────────────────
 
-const selectDomain = (state: RootState): HomePageState =>
-  (state as any).homePage ?? initialState
+const selectDomain = (state: RootState): HomePageState => state.homePage ?? initialState
 
-// ── Memoised selectors ────────────────────────────────────────────────────────
+// ── Grouped selectors ─────────────────────────────────────────────────────────
 
-export const selectStatus      = createSelector(selectDomain, (s) => s.status)
-export const selectLoading     = createSelector(selectDomain, (s) => s.loading)
-export const selectError       = createSelector(selectDomain, (s) => s.error)
-export const selectStreaming    = createSelector(selectDomain, (s) => s.streaming)
-export const selectStreamLog   = createSelector(selectDomain, (s) => s.streamLog)
+export const selectCreateProject = createSelector(selectDomain, (s) => s.createProject)
+export const selectRecentProjects = createSelector(selectDomain, (s) => s.recentProjects)
+export const selectDeleteProject = createSelector(selectDomain, (s) => s.deleteProject)
+export const selectStreaming = createSelector(selectDomain, (s) => ({
+  streaming: s.streaming,
+  streamLog: s.streamLog
+}))
 
 // ── Legacy factory (kept for test compatibility) ──────────────────────────────
 

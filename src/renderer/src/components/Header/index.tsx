@@ -12,9 +12,7 @@ function Header({ children }: HeaderProps): React.JSX.Element {
         <img src={heliosLogo} alt="Helios logo" className="h-5 w-auto" />
       </div>
 
-      <div className="flex h-11 items-center justify-between px-3">
-        {children}
-      </div>
+      <div className="flex h-11 items-center justify-between px-3">{children}</div>
     </header>
   )
 }

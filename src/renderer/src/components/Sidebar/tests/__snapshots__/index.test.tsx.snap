@@ -1,0 +1,30 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`<Sidebar /> > should match the snapshot 1`] = `
+<aside
+  class="w-56 border-r border-app-border p-4"
+>
+  <nav
+    class="flex flex-col gap-2"
+  >
+    <button
+      data-active="true"
+      data-testid="sidebar-btn-Home"
+    >
+      Home
+    </button>
+    <button
+      data-active="false"
+      data-testid="sidebar-btn-New Project"
+    >
+      New Project
+    </button>
+    <button
+      data-active="false"
+      data-testid="sidebar-btn-Open project"
+    >
+      Open project
+    </button>
+  </nav>
+</aside>
+`;

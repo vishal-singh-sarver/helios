@@ -1,33 +1,90 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { render, screen, fireEvent } from '@testing-library/react'
 import Sidebar from '../index'
+import { SidebarItem } from '../../../types/project'
 
-const items = [
-  { label: 'Home', icon: 'home.svg' },
-  { label: 'New Project', icon: 'new-project.svg' },
-  { label: 'Open project', icon: 'open-project.svg' }
+// Mock SidebarButton to isolate Sidebar — SidebarButton has its own tests
+vi.mock('@renderer/components/SidebarButton', () => ({
+  default: ({
+    label,
+    icon,
+    isActive,
+    onClick
+  }: {
+    label: string
+    icon: string
+    isActive: boolean
+    onClick: () => void
+  }) => (
+    <button data-testid={`sidebar-btn-${label}`} data-active={isActive} onClick={onClick}>
+      {label}
+    </button>
+  )
+}))
+
+const MOCK_ITEMS: SidebarItem[] = [
+  { label: 'Home', icon: 'home.svg', onAction: vi.fn() },
+  { label: 'New Project', icon: 'new.svg', onAction: vi.fn() },
+  { label: 'Open project', icon: 'open.svg', onAction: vi.fn() }
 ]
 
 describe('<Sidebar />', () => {
-  it('renders all sidebar actions', () => {
-    render(<Sidebar items={items} onSelect={vi.fn()} />)
+  const defaultProps = {
+    items: MOCK_ITEMS,
+    activeLabel: 'Home',
+    onSelect: vi.fn()
+  }
 
-    expect(screen.getByRole('button', { name: 'Sidebar Home' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Sidebar New Project' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Sidebar Open project' })).toBeInTheDocument()
+  // Smoke test — component mounts without throwing
+  it('renders without error', () => {
+    render(<Sidebar {...defaultProps} />)
   })
 
-  it('calls onSelect only for the New Project action', async () => {
-    const user = userEvent.setup()
+  // Verifies all sidebar items are rendered
+  it('renders all sidebar items', () => {
+    render(<Sidebar {...defaultProps} />)
+    expect(screen.getByTestId('sidebar-btn-Home')).toBeInTheDocument()
+    expect(screen.getByTestId('sidebar-btn-New Project')).toBeInTheDocument()
+    expect(screen.getByTestId('sidebar-btn-Open project')).toBeInTheDocument()
+  })
+
+  // Verifies the active item receives isActive=true based on activeLabel prop
+  it('marks the correct item as active', () => {
+    render(<Sidebar {...defaultProps} />)
+    expect(screen.getByTestId('sidebar-btn-Home')).toHaveAttribute('data-active', 'true')
+    expect(screen.getByTestId('sidebar-btn-New Project')).toHaveAttribute('data-active', 'false')
+  })
+
+  // Verifies onSelect is called with the full SidebarItem object when clicked
+  it('calls onSelect with the clicked item', () => {
     const onSelect = vi.fn()
+    render(<Sidebar {...defaultProps} onSelect={onSelect} />)
+    fireEvent.click(screen.getByTestId('sidebar-btn-New Project'))
+    expect(onSelect).toHaveBeenCalledWith(MOCK_ITEMS[1])
+  })
 
-    render(<Sidebar items={items} onSelect={onSelect} />)
+  // Verifies a different activeLabel marks the correct item as active
+  it('updates active state when activeLabel changes', () => {
+    render(<Sidebar {...defaultProps} activeLabel="New Project" />)
+    expect(screen.getByTestId('sidebar-btn-Home')).toHaveAttribute('data-active', 'false')
+    expect(screen.getByTestId('sidebar-btn-New Project')).toHaveAttribute('data-active', 'true')
+  })
 
-    await user.click(screen.getByRole('button', { name: 'Sidebar Home' }))
-    expect(onSelect).not.toHaveBeenCalled()
+  // Verifies the sidebar uses an <aside> element for semantic structure
+  it('renders inside an aside element', () => {
+    render(<Sidebar {...defaultProps} />)
+    expect(screen.getByRole('complementary')).toBeInTheDocument()
+  })
 
-    await user.click(screen.getByRole('button', { name: 'Sidebar New Project' }))
-    expect(onSelect).toHaveBeenCalledTimes(1)
+  // Verifies the sidebar contains a <nav> for keyboard/screen-reader navigation
+  it('contains a nav element', () => {
+    render(<Sidebar {...defaultProps} />)
+    expect(screen.getByRole('navigation')).toBeInTheDocument()
+  })
+
+  // Snapshot regression guard
+  it('should match the snapshot', () => {
+    const { container } = render(<Sidebar {...defaultProps} />)
+    expect(container.firstChild).toMatchSnapshot()
   })
 })

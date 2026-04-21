@@ -1,0 +1,73 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`<MenuBar /> > matches snapshot 1`] = `
+<nav
+  class="flex items-center gap-2 text-sm font-medium text-neutral-300"
+>
+  <div
+    class="group relative"
+  >
+    <button
+      class="rounded px-2 py-1 group-hover:bg-panel group-hover:text-white"
+    >
+      File
+    </button>
+    <div
+      class="invisible absolute top-7 left-0 z-20 min-w-44 group-hover:visible"
+    >
+      <div
+        class="h-2 w-full"
+      />
+      <div
+        class="rounded border border-app-border bg-[#181a1f] py-1 shadow-lg"
+      >
+        <button
+          class="block w-full px-3 py-1.5 text-left text-sm text-neutral-200 hover:bg-app-border"
+        >
+          New Project
+        </button>
+        <button
+          class="block w-full px-3 py-1.5 text-left text-sm text-neutral-200 hover:bg-app-border"
+        >
+          Open Project
+        </button>
+        <button
+          class="block w-full px-3 py-1.5 text-left text-sm text-neutral-200 hover:bg-app-border"
+        >
+          Save
+        </button>
+      </div>
+    </div>
+  </div>
+  <div
+    class="group relative"
+  >
+    <button
+      class="rounded px-2 py-1 group-hover:bg-panel group-hover:text-white"
+    >
+      Edit
+    </button>
+    <div
+      class="invisible absolute top-7 left-0 z-20 min-w-44 group-hover:visible"
+    >
+      <div
+        class="h-2 w-full"
+      />
+      <div
+        class="rounded border border-app-border bg-[#181a1f] py-1 shadow-lg"
+      >
+        <button
+          class="block w-full px-3 py-1.5 text-left text-sm text-neutral-200 hover:bg-app-border"
+        >
+          Undo
+        </button>
+        <button
+          class="block w-full px-3 py-1.5 text-left text-sm text-neutral-200 hover:bg-app-border"
+        >
+          Redo
+        </button>
+      </div>
+    </div>
+  </div>
+</nav>
+`;

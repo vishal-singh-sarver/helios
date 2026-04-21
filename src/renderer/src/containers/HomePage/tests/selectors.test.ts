@@ -1,15 +1,19 @@
 import makeSelectHomePage, {
   selectHomePageDomain,
-  selectStatus,
-  selectLoading,
-  selectError,
-  selectStreaming,
-  selectStreamLog
+  selectCreateProject,
+  selectRecentProjects,
+  selectDeleteProject,
+  selectStreaming
 } from '../selectors'
-import { initialState } from '../reducer'
+import {
+  initialState,
+  initialCreateProjectState,
+  initialRecentProjectsState,
+  initialDeleteProjectState
+} from '../reducer'
 
 const withHomePage = (partial: Partial<typeof initialState>) =>
-  ({ homePage: { ...initialState, ...partial } } as any)
+  ({ homePage: { ...initialState, ...partial } }) as any
 
 describe('selectHomePageDomain', () => {
   it('selects the homePage slice', () => {
@@ -28,28 +32,53 @@ describe('makeSelectHomePage', () => {
   })
 })
 
-describe('individual selectors', () => {
-  it('selectStatus', () => {
-    const status = { version: '1.0', uptime: 5 }
-    expect(selectStatus(withHomePage({ status }))).toEqual(status)
+describe('selectCreateProject', () => {
+  it('returns the createProject sub-state', () => {
+    expect(selectCreateProject(withHomePage({}))).toEqual(initialCreateProjectState)
   })
 
-  it('selectLoading', () => {
-    expect(selectLoading(withHomePage({ loading: true }))).toBe(true)
-    expect(selectLoading(withHomePage({ loading: false }))).toBe(false)
+  it('reflects loading and success', () => {
+    const cp = { ...initialCreateProjectState, loading: true, success: false }
+    expect(selectCreateProject(withHomePage({ createProject: cp }))).toEqual(cp)
+  })
+})
+
+describe('selectRecentProjects', () => {
+  it('returns the recentProjects sub-state', () => {
+    expect(selectRecentProjects(withHomePage({}))).toEqual(initialRecentProjectsState)
   })
 
-  it('selectError', () => {
-    expect(selectError(withHomePage({ error: 'bad' }))).toBe('bad')
-    expect(selectError(withHomePage({ error: null }))).toBeNull()
+  it('reflects data', () => {
+    const rp = {
+      ...initialRecentProjectsState,
+      data: [{ id: '1', name: 'Test', last_updated: '2026-01-01', size: 1024 }]
+    }
+    expect(selectRecentProjects(withHomePage({ recentProjects: rp }))).toEqual(rp)
+  })
+})
+
+describe('selectDeleteProject', () => {
+  it('returns the deleteProject sub-state', () => {
+    expect(selectDeleteProject(withHomePage({}))).toEqual(initialDeleteProjectState)
   })
 
-  it('selectStreaming', () => {
-    expect(selectStreaming(withHomePage({ streaming: true }))).toBe(true)
+  it('reflects inFlightIds', () => {
+    const dp = { ...initialDeleteProjectState, inFlightIds: ['abc'] }
+    expect(selectDeleteProject(withHomePage({ deleteProject: dp }))).toEqual(dp)
+  })
+})
+
+describe('selectStreaming', () => {
+  it('returns streaming state', () => {
+    const result = selectStreaming(withHomePage({ streaming: true, streamLog: [] }))
+    expect(result.streaming).toBe(true)
+    expect(result.streamLog).toEqual([])
   })
 
-  it('selectStreamLog', () => {
+  it('includes streamLog entries', () => {
     const log = [{ type: 'ping', data: null, timestamp: 1 }]
-    expect(selectStreamLog(withHomePage({ streamLog: log }))).toEqual(log)
+    const result = selectStreaming(withHomePage({ streaming: false, streamLog: log }))
+    expect(result.streaming).toBe(false)
+    expect(result.streamLog).toEqual(log)
   })
 })
