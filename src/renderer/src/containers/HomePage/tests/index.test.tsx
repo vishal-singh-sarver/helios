@@ -120,17 +120,17 @@ vi.mock('@renderer/components/ProjectsTable', () => ({
   default: ({
     projects,
     onCreateNew,
-    onRequestDelete,
+    onDelete,
     deletingIds
   }: {
     projects: RecentProjectItem[]
     onCreateNew: () => void
-    onRequestDelete: (project: RecentProjectItem) => void
+    onDelete: (projectId: string) => void
     deletingIds: string[]
   }) => (
     <div data-testid="projects-table" data-deleting={deletingIds.join(',')}>
       {projects.map((p) => (
-        <button key={p.id} data-testid={`row-${p.id}`} onClick={() => onRequestDelete(p)}>
+        <button key={p.id} data-testid={`row-${p.id}`} onClick={() => onDelete(p.id)}>
           {p.name}
         </button>
       ))}
@@ -304,6 +304,8 @@ describe('<HomePage />', () => {
     fireEvent.click(screen.getByTestId('menu-New Project'))
     expect(mockDispatch).toHaveBeenCalledWith(actions.resetCreateProject())
   })
+
+  // ── Form input ──
 
   it('dispatches resetCreateProject when the dialog is cancelled', () => {
     render(<HomePage />)
@@ -547,63 +549,11 @@ describe('<HomePage />', () => {
 
   // ── Delete wiring ──
 
-  it('opens the confirm dialog when a row requests delete (no dispatch yet)', () => {
+  it('dispatches deleteProject when a row fires onDelete', () => {
     render(<HomePage />)
     mockDispatch.mockClear()
     fireEvent.click(screen.getByTestId('row-p-coastal'))
-
-    const dialog = screen.getByTestId('dialog')
-    expect(dialog).toBeInTheDocument()
-    expect(dialog).toHaveAttribute('aria-label', 'Delete')
-    expect(within(dialog).getByText('Delete Coastal Survey Alpha')).toBeInTheDocument()
-    expect(mockDispatch).not.toHaveBeenCalledWith(
-      actions.deleteProject({ projectId: 'p-coastal' })
-    )
-  })
-
-  it('dispatches deleteProject when the confirm dialog Delete button is clicked', () => {
-    render(<HomePage />)
-    fireEvent.click(screen.getByTestId('row-p-coastal'))
-    mockDispatch.mockClear()
-
-    fireEvent.click(within(screen.getByTestId('dialog')).getByText('Delete'))
-
     expect(mockDispatch).toHaveBeenCalledWith(actions.deleteProject({ projectId: 'p-coastal' }))
-  })
-
-  it('closes the confirm dialog without dispatching when Cancel is clicked', () => {
-    render(<HomePage />)
-    fireEvent.click(screen.getByTestId('row-p-coastal'))
-    mockDispatch.mockClear()
-
-    fireEvent.click(within(screen.getByTestId('dialog')).getByText('Cancel'))
-
-    expect(screen.queryByTestId('dialog')).not.toBeInTheDocument()
-    expect(mockDispatch).not.toHaveBeenCalledWith(
-      actions.deleteProject({ projectId: 'p-coastal' })
-    )
-  })
-
-  it('closes the confirm dialog once the delete settles (inFlight clears)', () => {
-    const { rerender } = render(<HomePage />)
-    fireEvent.click(screen.getByTestId('row-p-coastal'))
-
-    // Simulate the saga accepting the delete — inFlightIds now contains the id.
-    setHomePageState({
-      recentProjects: { loading: false, error: null, data: MOCK_PROJECTS },
-      deleteProject: { inFlightIds: ['p-coastal'], error: null }
-    })
-    rerender(<HomePage />)
-    expect(screen.getByTestId('dialog')).toBeInTheDocument()
-
-    // Now the saga settles and removes the id.
-    setHomePageState({
-      recentProjects: { loading: false, error: null, data: MOCK_PROJECTS },
-      deleteProject: { inFlightIds: [], error: null }
-    })
-    rerender(<HomePage />)
-
-    expect(screen.queryByTestId('dialog')).not.toBeInTheDocument()
   })
 
   it('forwards inFlightIds to ProjectsTable as deletingIds', () => {
