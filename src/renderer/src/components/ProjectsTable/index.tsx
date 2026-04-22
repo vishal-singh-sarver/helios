@@ -1,21 +1,18 @@
-import React, { useState } from 'react'
 import deleteIcon from '@renderer/assets/delete.svg'
 import sortIcon from '@renderer/assets/Sort 3.svg'
+import React, { useState } from 'react'
 import { formatBytes, formatRelativeDate } from 'utils/format'
 import { useVirtualRows } from 'utils/useVirtualRows'
-import EmptyState from '../EmptyState'
 import type { RecentProjectItem } from '../../containers/HomePage/types'
+import EmptyState from '../EmptyState'
 
 interface ProjectsTableProps {
   projects: RecentProjectItem[]
   emptyIcon: string
   onCreateNew: () => void
-<<<<<<< HEAD
   onRowClick?: (projectId: string) => void
-=======
   onRequestDelete: (project: RecentProjectItem) => void
   deletingIds: string[]
->>>>>>> develop
 }
 
 type SortKey = 'name' | 'last_updated' | 'size'
@@ -30,93 +27,15 @@ const COLUMN_LABELS: Record<SortKey, string> = {
   size: 'Size'
 }
 
-<<<<<<< HEAD
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function formatBytes(bytes: number): string {
-  if (Number.isNaN(bytes) || bytes < 0) return '—'
-  if (bytes === 0) return '0 B'
-  const units = ['B', 'KB', 'MB', 'GB', 'TB']
-  let value = bytes
-  let unitIndex = 0
-  while (value >= 1024 && unitIndex < units.length - 1) {
-    value /= 1024
-    unitIndex += 1
-  }
-  return `${value.toFixed(value >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`
-}
-
-function formatRelativeDate(iso: string): string {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return iso
-  const diffMs = Date.now() - d.getTime()
-  const diffDays = Math.floor(diffMs / 86_400_000)
-  if (diffDays < 1) return 'today'
-  if (diffDays <= 6) return `${diffDays} day ago`
-  // Locale-independent M/D/YYYY to match the design exactly regardless of the
-  // user's browser locale (toLocaleDateString would drift to D/M/YYYY in EU).
-  return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`
-}
-
-// ── Hand-rolled virtualizer ───────────────────────────────────────────────────
-
-interface UseVirtualRowsArgs {
-  rowCount: number
-  rowHeight: number
-  containerRef: React.RefObject<HTMLDivElement | null>
-  overscan?: number
-}
-
-function useVirtualRows({
-  rowCount,
-  rowHeight,
-  containerRef,
-  overscan = 5
-}: UseVirtualRowsArgs): { startIndex: number; endIndex: number; paddingTop: number } {
-  const [scrollTop, setScrollTop] = React.useState(0)
-  const [viewportHeight, setViewportHeight] = React.useState(0)
-
-  React.useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-
-    const onScroll = (): void => setScrollTop(el.scrollTop)
-    const measure = (): void => setViewportHeight(el.clientHeight)
-
-    measure()
-    el.addEventListener('scroll', onScroll, { passive: true })
-    const ro = new ResizeObserver(measure)
-    ro.observe(el)
-
-    return () => {
-      el.removeEventListener('scroll', onScroll)
-      ro.disconnect()
-    }
-  }, [containerRef])
-
-  const startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan)
-  const visibleCount = Math.ceil(viewportHeight / rowHeight) + overscan * 2
-  const endIndex = Math.min(rowCount, startIndex + visibleCount)
-
-  return {
-    startIndex,
-    endIndex,
-    paddingTop: startIndex * rowHeight
-  }
-}
-
 // ── Component ─────────────────────────────────────────────────────────────────
-
-function ProjectsTable({ projects, emptyIcon, onCreateNew, onRowClick }: ProjectsTableProps): React.JSX.Element {
-=======
 function ProjectsTable({
   projects,
   emptyIcon,
   onCreateNew,
   onRequestDelete,
-  deletingIds
+  deletingIds,
+  onRowClick
 }: ProjectsTableProps): React.JSX.Element {
->>>>>>> develop
   const [sortKey, setSortKey] = useState<SortKey>('last_updated')
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
   const containerRef = React.useRef<HTMLDivElement>(null)
@@ -131,14 +50,7 @@ function ProjectsTable({
   }
 
   const handleOpenProject = (project: RecentProjectItem): void => {
-<<<<<<< HEAD
     onRowClick?.(project.id)
-=======
-    if (import.meta.env.DEV) {
-      console.log('[ProjectsTable] open project', project.id, project.name)
-    }
-    // TODO: dispatch openProject(project.id)
->>>>>>> develop
   }
 
   const sortedProjects = React.useMemo(() => {

@@ -1,16 +1,12 @@
-import { combineReducers, Reducer, UnknownAction } from 'redux'
-<<<<<<< HEAD
-import activeProjectReducer from './activeProjectReducer'
-import navigationReducer from './navigationReducer'
-=======
-import navigationReducer, { type NavigationState } from './navigationReducer'
 import type { HomePageState } from 'containers/HomePage/reducer'
+import { combineReducers, Reducer, UnknownAction } from 'redux'
+import activeProjectReducer from './activeProjectReducer'
+import navigationReducer, { type NavigationState } from './navigationReducer'
 
 export interface RootState {
   navigation: NavigationState
   homePage?: HomePageState
 }
->>>>>>> develop
 
 function createReducer(
   injectedReducers: Record<string, Reducer> = {}

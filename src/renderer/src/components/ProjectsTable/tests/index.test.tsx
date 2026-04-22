@@ -1,7 +1,7 @@
-import { render, screen, fireEvent, cleanup } from '@testing-library/react'
-import ProjectsTable from '../index'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { formatBytes } from 'utils/format'
 import type { RecentProjectItem } from '../../../containers/HomePage/types'
+import ProjectsTable from '../index'
 
 // ── Mocks ───────────────────────────────────────────────────────────────────
 
@@ -47,7 +47,6 @@ describe('<ProjectsTable />', () => {
     render(<ProjectsTable {...defaultProps} />)
   })
 
-<<<<<<< HEAD
   // ── onRowClick ──
 
   // Verifies clicking a row button fires onRowClick with that project's id
@@ -67,8 +66,6 @@ describe('<ProjectsTable />', () => {
   })
 
   // Verifies the page heading is displayed
-=======
->>>>>>> develop
   it('renders the heading', () => {
     render(<ProjectsTable {...defaultProps} />)
     expect(screen.getByText('Recent Projects')).toBeInTheDocument()

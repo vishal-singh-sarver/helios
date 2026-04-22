@@ -14,12 +14,9 @@ function Tooltip({ text, ariaLabel, place = 'top' }: TooltipProps): React.JSX.El
   return (
     <>
       <span
-<<<<<<< HEAD
         data-tooltip-id={id}
         data-tooltip-content={text}
         tabIndex={0}
-=======
->>>>>>> develop
         aria-label={ariaLabel}
         className="flex h-5 w-5 cursor-default items-center justify-center
         rounded-full border border-neutral-300 text-xs font-semibold text-white"
