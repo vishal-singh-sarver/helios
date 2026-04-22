@@ -110,10 +110,10 @@ mac:
     - pkg   # Professional multi-screen installer
 
 dmg:
-  artifactName: ${name}-${version}.${ext}
+  artifactName: ${name}-${version}-setup.${ext}
 
 pkg:
-  artifactName: ${name}-${version}.${ext}
+  artifactName: ${name}-${version}-setup.${ext}
   # License shown in installer
   license: build/license.txt
   # Installation path for unsigned app
@@ -143,7 +143,7 @@ linux:
   # Optional: desktop icon name (if .desktop file references it)
   # icon: resources/icon
   executableName: helios
-  artifactName: ${name}-${version}.${ext}
+  artifactName: ${name}-${version}-setup.${ext}
   icon: build/icons
 
 
