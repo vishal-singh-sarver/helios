@@ -17,44 +17,59 @@ import { setActiveProject } from 'store/activeProjectReducer'
 import { navigate } from 'store/navigationReducer'
 import { useInjectReducer } from 'utils/injectReducer'
 import { useInjectSaga } from 'utils/injectSaga'
-import {
-  FormValues,
-  INITIAL_VALUES,
-  SidebarItem,
-  TOOLBAR_ITEMS
-} from '../../types/project'
-import { createProject, fetchRecentProjects, resetCreateProject } from './actions'
+import { FormValues, INITIAL_VALUES, SidebarItem, TOOLBAR_ITEMS } from '../../types/project'
+import { createProject, deleteProject, fetchRecentProjects, resetCreateProject } from './actions'
 import messages from './messages'
 import homePageReducer from './reducer'
 import homePageSaga from './saga'
-import {
-  selectCreateProjectError,
-  selectCreateProjectLoading,
-  selectCreateProjectSuccess,
-  selectRecentProjectsData
-} from './selectors'
+import { selectCreateProject, selectRecentProjects, selectDeleteProject } from './selectors'
+import type { RecentProjectItem } from './types'
 
 export function HomePage(): React.JSX.Element {
   useInjectReducer({ key: 'homePage', reducer: homePageReducer })
   useInjectSaga({ key: 'homePage', saga: homePageSaga })
 
   const dispatch = useDispatch()
-  const createLoading = useSelector(selectCreateProjectLoading)
-  const createError   = useSelector(selectCreateProjectError)
-  const createSuccess = useSelector(selectCreateProjectSuccess)
-  const recentProjects = useSelector(selectRecentProjectsData)
+  const {
+    loading: createLoading,
+    error: createError,
+    success: createSuccess
+  } = useSelector(selectCreateProject)
+  const { data: recentProjects } = useSelector(selectRecentProjects)
+  const { inFlightIds: deletingIds } = useSelector(selectDeleteProject)
 
-  // Fetch the recent-projects list on mount. Re-fetch after a successful
-  // create is triggered from the saga (see createProjectWorker), so the
-  // component only needs to kick off the initial load here.
   React.useEffect(() => {
     dispatch(fetchRecentProjects())
   }, [dispatch])
 
   const [searchText, setSearchText] = React.useState('')
   const [showNewProjectDialog, setShowNewProjectDialog] = React.useState(false)
+  const [pendingDelete, setPendingDelete] = React.useState<RecentProjectItem | null>(null)
   const [activeSidebar, setActiveSidebar] = React.useState('Home')
 
+  const pendingDeleteInFlight = pendingDelete ? deletingIds.includes(pendingDelete.id) : false
+
+  const prevInFlightRef = React.useRef(false)
+  React.useEffect(() => {
+    if (prevInFlightRef.current && !pendingDeleteInFlight) {
+      setPendingDelete(null)
+    }
+    prevInFlightRef.current = pendingDeleteInFlight
+  }, [pendingDeleteInFlight])
+
+  const handleRequestDelete = (project: RecentProjectItem): void => {
+    setPendingDelete(project)
+  }
+
+  const handleConfirmDelete = (): void => {
+    if (!pendingDelete || pendingDeleteInFlight) return
+    dispatch(deleteProject({ projectId: pendingDelete.id }))
+  }
+
+  const handleCancelDelete = (): void => {
+    if (pendingDeleteInFlight) return
+    setPendingDelete(null)
+  }
 
   const formik = useFormik<FormValues>({
     initialValues: INITIAL_VALUES,
@@ -187,16 +202,26 @@ export function HomePage(): React.JSX.Element {
             projects={filteredProjects}
             emptyIcon={searchIcon}
             onCreateNew={openNewProjectDialog}
+<<<<<<< HEAD
             onRowClick={(projectId) => {
               dispatch(setActiveProject(projectId))
               dispatch(navigate('project'))
             }}
+=======
+            onRequestDelete={handleRequestDelete}
+            deletingIds={deletingIds}
+>>>>>>> develop
           />
         </main>
       </div>
 
-      <Dialog isOpen={showNewProjectDialog} title={messages.createProject.dialogTitle} onClose={closeNewProjectDialog}>
+      <Dialog
+        isOpen={showNewProjectDialog}
+        title={messages.createProject.dialogTitle}
+        onClose={closeNewProjectDialog}
+      >
         <FormField
+          key="projectName"
           labelProps={{
             label: 'Project Name',
             helpText: 'Enter a project name to identify your work.',
@@ -212,6 +237,7 @@ export function HomePage(): React.JSX.Element {
           }}
         />
         <FormField
+          key="latitude"
           labelProps={{
             label: 'Latitude',
             helpText:
@@ -228,6 +254,7 @@ export function HomePage(): React.JSX.Element {
           }}
         />
         <FormField
+          key="longitude"
           labelProps={{
             label: 'Longitude',
             helpText:
@@ -246,7 +273,7 @@ export function HomePage(): React.JSX.Element {
 
         {createError && (
           <p role="alert" className="pt-2 text-sm text-red-600">
-            {createError}
+            {createError.message}
           </p>
         )}
 
@@ -270,6 +297,41 @@ export function HomePage(): React.JSX.Element {
               </span>
             ) : (
               messages.createProject.submitButton
+            )}
+          </button>
+        </div>
+      </Dialog>
+
+      <Dialog
+        isOpen={pendingDelete !== null}
+        title={messages.deleteProject.dialogTitle}
+        onClose={handleCancelDelete}
+      >
+        <h3 className="text-base font-medium text-white">
+          {pendingDelete ? messages.deleteProject.heading(pendingDelete.name) : ''}
+        </h3>
+        <p className="text-sm text-neutral-400">{messages.deleteProject.body}</p>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <button
+            onClick={handleCancelDelete}
+            disabled={pendingDeleteInFlight}
+            className="rounded bg-neutral-200 px-3 py-1 text-sm text-black hover:bg-neutral-100 disabled:opacity-50"
+          >
+            {messages.deleteProject.cancelButton}
+          </button>
+          <button
+            onClick={handleConfirmDelete}
+            disabled={pendingDeleteInFlight}
+            className="rounded bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-500 disabled:opacity-50"
+          >
+            {pendingDeleteInFlight ? (
+              <span className="flex items-center gap-2">
+                <Spinner />
+                {messages.deleteProject.confirmButton}
+              </span>
+            ) : (
+              messages.deleteProject.confirmButton
             )}
           </button>
         </div>

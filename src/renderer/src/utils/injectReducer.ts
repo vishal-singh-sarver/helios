@@ -9,19 +9,10 @@ import { InjectableStore } from 'store/configureStore'
  * Usage:
  *   useInjectReducer({ key: 'myFeature', reducer })
  */
-export function useInjectReducer({
-  key,
-  reducer
-}: {
-  key: string
-  reducer: Reducer
-}): void {
+export function useInjectReducer({ key, reducer }: { key: string; reducer: Reducer }): void {
   const store = useStore() as InjectableStore
 
-  if (
-    !Reflect.has(store.injectedReducers, key) ||
-    store.injectedReducers[key] !== reducer
-  ) {
+  if (!Reflect.has(store.injectedReducers, key) || store.injectedReducers[key] !== reducer) {
     store.injectedReducers[key] = reducer
     store.replaceReducer(store.createReducer(store.injectedReducers))
   }

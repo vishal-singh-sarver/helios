@@ -24,9 +24,12 @@ describe('<Tooltip />', () => {
     expect(trigger).toHaveAttribute('data-tooltip-content', 'Help text here')
     expect(trigger.getAttribute('data-tooltip-id')).toBeTruthy()
   })
+<<<<<<< HEAD
 
   it('makes the trigger keyboard-focusable', () => {
     render(<Tooltip {...defaultProps} />)
     expect(screen.getByLabelText('Show help')).toHaveAttribute('tabindex', '0')
   })
+=======
+>>>>>>> develop
 })

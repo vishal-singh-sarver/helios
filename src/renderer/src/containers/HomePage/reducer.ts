@@ -1,10 +1,22 @@
 import { produce } from 'immer'
 import type { Reducer, UnknownAction } from 'redux'
 import {
-  FETCH_STATUS, FETCH_STATUS_SUCCESS, FETCH_STATUS_FAILURE,
-  SSE_CONNECT, SSE_EVENT, SSE_DISCONNECT,
-  CREATE_PROJECT, CREATE_PROJECT_SUCCESS, CREATE_PROJECT_FAILURE, RESET_CREATE_PROJECT,
-  FETCH_RECENT_PROJECTS, FETCH_RECENT_PROJECTS_SUCCESS, FETCH_RECENT_PROJECTS_FAILURE
+  FETCH_STATUS,
+  FETCH_STATUS_SUCCESS,
+  FETCH_STATUS_FAILURE,
+  SSE_CONNECT,
+  SSE_EVENT,
+  SSE_DISCONNECT,
+  CREATE_PROJECT,
+  CREATE_PROJECT_SUCCESS,
+  CREATE_PROJECT_FAILURE,
+  RESET_CREATE_PROJECT,
+  FETCH_RECENT_PROJECTS,
+  FETCH_RECENT_PROJECTS_SUCCESS,
+  FETCH_RECENT_PROJECTS_FAILURE,
+  DELETE_PROJECT,
+  DELETE_PROJECT_SUCCESS,
+  DELETE_PROJECT_FAILURE
 } from './constants'
 import type { HomePageAction } from './actions'
 
@@ -12,24 +24,30 @@ import type {
   AppStatus,
   StreamEvent,
   CreateProjectResponse,
-  RecentProjectItem
+  RecentProjectItem,
+  ApiErrorPayload
 } from './types'
 
-export type { AppStatus, StreamEvent, CreateProjectResponse, RecentProjectItem }
+export type { AppStatus, StreamEvent, CreateProjectResponse, RecentProjectItem, ApiErrorPayload }
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
 export interface CreateProjectState {
   loading: boolean
-  error: string | null
+  error: ApiErrorPayload | null
   success: boolean
   data: CreateProjectResponse | null
 }
 
 export interface RecentProjectsState {
   loading: boolean
-  error: string | null
+  error: ApiErrorPayload | null
   data: RecentProjectItem[]
+}
+
+export interface DeleteProjectState {
+  inFlightIds: string[]
+  error: ApiErrorPayload | null
 }
 
 export interface HomePageState {
@@ -44,6 +62,8 @@ export interface HomePageState {
   createProject: CreateProjectState
   // Recent projects
   recentProjects: RecentProjectsState
+  // Delete project
+  deleteProject: DeleteProjectState
 }
 
 export const initialCreateProjectState: CreateProjectState = {
@@ -59,6 +79,11 @@ export const initialRecentProjectsState: RecentProjectsState = {
   data: []
 }
 
+export const initialDeleteProjectState: DeleteProjectState = {
+  inFlightIds: [],
+  error: null
+}
+
 export const initialState: HomePageState = {
   status: null,
   loading: false,
@@ -66,15 +91,13 @@ export const initialState: HomePageState = {
   streaming: false,
   streamLog: [],
   createProject: initialCreateProjectState,
-  recentProjects: initialRecentProjectsState
+  recentProjects: initialRecentProjectsState,
+  deleteProject: initialDeleteProjectState
 }
 
 // ── Reducer ───────────────────────────────────────────────────────────────────
 
-const homePageReducer: Reducer<HomePageState> = (
-  state = initialState,
-  rawAction: UnknownAction
-) =>
+const homePageReducer: Reducer<HomePageState> = (state = initialState, rawAction: UnknownAction) =>
   produce(state, (draft) => {
     const action = rawAction as HomePageAction
     switch (action.type) {
@@ -141,6 +164,33 @@ const homePageReducer: Reducer<HomePageState> = (
         draft.recentProjects.loading = false
         draft.recentProjects.error = action.payload
         break
+
+      case DELETE_PROJECT: {
+        const { projectId } = action.payload
+        if (!draft.deleteProject.inFlightIds.includes(projectId)) {
+          draft.deleteProject.inFlightIds.push(projectId)
+        }
+        draft.deleteProject.error = null
+        break
+      }
+
+      case DELETE_PROJECT_SUCCESS: {
+        const { projectId } = action.payload
+        draft.deleteProject.inFlightIds = draft.deleteProject.inFlightIds.filter(
+          (id) => id !== projectId
+        )
+        draft.recentProjects.data = draft.recentProjects.data.filter((p) => p.id !== projectId)
+        break
+      }
+
+      case DELETE_PROJECT_FAILURE: {
+        const { projectId, error } = action.payload
+        draft.deleteProject.inFlightIds = draft.deleteProject.inFlightIds.filter(
+          (id) => id !== projectId
+        )
+        draft.deleteProject.error = error
+        break
+      }
     }
   })
 

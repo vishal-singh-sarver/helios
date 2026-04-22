@@ -64,7 +64,7 @@ export class BackendManager {
 
   private validateBackendPath(backendPath: string): void {
     this.writeLogLine(`[validation] checking path exists: ${backendPath}`)
-    
+
     if (!fs.existsSync(backendPath)) {
       throw new Error(
         `Backend executable not found: ${backendPath}\n` +
@@ -105,7 +105,7 @@ export class BackendManager {
   private openLogStream(logFile: string): void {
     if (this.logFile !== logFile || !this.logStream) {
       this.logStream?.end()
-      
+
       try {
         this.logStream = fs.createWriteStream(logFile, { flags: 'a' })
         this.logFile = logFile
@@ -142,13 +142,16 @@ export class BackendManager {
     const healthUrl = `http://127.0.0.1:${this.port}/health`
     const deadline = Date.now() + this.startupTimeoutMs
 
-    this.recordMessage('manager', `Polling health check at ${healthUrl}, timeout ${this.startupTimeoutMs}ms`)
+    this.recordMessage(
+      'manager',
+      `Polling health check at ${healthUrl}, timeout ${this.startupTimeoutMs}ms`
+    )
 
     while (Date.now() < deadline) {
       if (this.process !== child || child.killed || child.exitCode !== null) {
         throw new Error(
           `Backend exited before becoming ready (exit code: ${child.exitCode}).\n` +
-          `Recent output:\n${this.getRecentLogs()}`
+            `Recent output:\n${this.getRecentLogs()}`
         )
       }
 
@@ -156,10 +159,10 @@ export class BackendManager {
         // Use AbortController for timeout on health check
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 2000)
-        
+
         const response = await fetch(healthUrl, { signal: controller.signal })
         clearTimeout(timeoutId)
-        
+
         if (response.ok) {
           this.recordMessage('manager', `Health check PASSED ✓`)
           return
@@ -173,7 +176,7 @@ export class BackendManager {
 
     throw new Error(
       `Backend did not become ready within ${this.startupTimeoutMs}ms.\n` +
-      `Recent output:\n${this.getRecentLogs()}`
+        `Recent output:\n${this.getRecentLogs()}`
     )
   }
 
@@ -187,7 +190,7 @@ export class BackendManager {
 
     try {
       this.recordMessage('manager', `Starting backend process...`)
-      
+
       this.validateBackendPath(backendPath)
       this.ensureRuntimeDirectories(runtimePaths.dataDir, runtimePaths.logDir)
       this.openLogStream(runtimePaths.logFile)
@@ -203,9 +206,9 @@ export class BackendManager {
       this.recordMessage('manager', `Cwd: ${app.getPath('home')}`)
       this.recordMessage('manager', `Env: HELIOS_DATA_DIR=${runtimePaths.dataDir}`)
       this.recordMessage('manager', `Platform: ${process.platform}, Packaged: ${app.isPackaged}`)
-      
+
       this.process = spawn(backendPath, [`--port=${this.port}`], {
-        cwd: app.getPath('home'),  // Use home directory instead of data directory
+        cwd: app.getPath('home'), // Use home directory instead of data directory
         stdio: ['ignore', 'pipe', 'pipe'],
         detached: false,
         shell: false,
@@ -250,7 +253,10 @@ export class BackendManager {
       })
 
       this.process.on('exit', (code, signal) => {
-        this.recordMessage('manager', `Process exited (code: ${code}, signal: ${signal}, hasOutput: ${hasOutput})`)
+        this.recordMessage(
+          'manager',
+          `Process exited (code: ${code}, signal: ${signal}, hasOutput: ${hasOutput})`
+        )
         console.log(`Backend process exited with code ${code} and signal ${signal}`)
         this.process = null
       })
@@ -265,7 +271,7 @@ export class BackendManager {
       await this.waitForBackendReady(this.process)
 
       this.recordMessage('manager', `Backend is ready and running`)
-      
+
       return {
         running: true,
         pid: this.process.pid || null,

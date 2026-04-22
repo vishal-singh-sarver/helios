@@ -79,7 +79,7 @@ describe('<SearchBar />', () => {
   })
 
   it('renders without placeholder when not provided', () => {
-  render(<SearchBar {...defaultProps} placeholder={undefined} />)
-  expect(screen.getByRole('textbox')).not.toHaveAttribute('placeholder')
-})
+    render(<SearchBar {...defaultProps} placeholder={undefined} />)
+    expect(screen.getByRole('textbox')).not.toHaveAttribute('placeholder')
+  })
 })

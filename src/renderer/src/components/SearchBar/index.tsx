@@ -17,7 +17,11 @@ function SearchBar({
 }: SearchBarProps): React.JSX.Element {
   return (
     <div className="relative w-56">
-      <img src={icon} alt="" className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 opacity-70" />
+      <img
+        src={icon}
+        alt=""
+        className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 opacity-70"
+      />
       <input
         aria-label={ariaLabel}
         value={value}
