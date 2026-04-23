@@ -1,3 +1,3 @@
 [submodule "backend-api"]
 	path = backend-api
-	url = git@github.com:vishal-singh-sarver/backend-api.git
+	url = https://github.com/vishal-singh-sarver/backend-api.git
