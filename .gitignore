@@ -8,7 +8,7 @@ dist/
 out/
 release/
 linux-installer/payload/Helios
-linux-installer/
+linux-installer/payload
 # Backend Python Build Artifacts
 backend-api/venv/
 backend-api/build/
