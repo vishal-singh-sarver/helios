@@ -1,6 +1,6 @@
 import type { HomePageState } from 'containers/HomePage/reducer'
 import { combineReducers, Reducer, UnknownAction } from 'redux'
-import activeProjectReducer from './activeProjectReducer'
+// import activeProjectReducer from './activeProjectReducer'
 import navigationReducer, { type NavigationState } from './navigationReducer'
 
 export interface RootState {
@@ -13,7 +13,6 @@ function createReducer(
 ): Reducer<RootState, UnknownAction> {
   return combineReducers({
     navigation: navigationReducer,
-    activeProject: activeProjectReducer,
     ...injectedReducers
   }) as unknown as Reducer<RootState, UnknownAction>
 }

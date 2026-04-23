@@ -13,7 +13,6 @@ import Sidebar from '@renderer/components/Sidebar'
 import { useFormik } from 'formik'
 import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { setActiveProject } from 'store/activeProjectReducer'
 import { navigate } from 'store/navigationReducer'
 import { useInjectReducer } from 'utils/injectReducer'
 import { useInjectSaga } from 'utils/injectSaga'
@@ -203,7 +202,11 @@ export function HomePage(): React.JSX.Element {
             emptyIcon={searchIcon}
             onCreateNew={openNewProjectDialog}
             onRowClick={(projectId) => {
-              dispatch(setActiveProject(projectId))
+              try {
+                localStorage.setItem('helios:activeProjectId', projectId)
+              } catch {
+                /* storage disabled — navigation still proceeds */
+              }
               dispatch(navigate('project'))
             }}
             onRequestDelete={handleRequestDelete}

@@ -1,56 +1,34 @@
 import * as actions from '../actions'
 import {
-  SET_LATITUDE,
-  SET_LONGITUDE,
-  SET_UTC_OFFSET,
-  SET_COORDINATES
+  FETCH_STATUS, FETCH_STATUS_SUCCESS, FETCH_STATUS_FAILURE,
+  SSE_CONNECT, SSE_EVENT, SSE_DISCONNECT
 } from '../constants'
+import type { ProjectScreenStatus, ProjectScreenStreamEvent } from '../types'
 
 describe('ProjectScreen actions', () => {
-  it('setLatitude returns a SET_LATITUDE action with the given value', () => {
-    expect(actions.setLatitude('45.5')).toEqual({
-      type: SET_LATITUDE,
-      payload: '45.5'
-    })
+  it('fetchStatus has correct type', () => {
+    expect(actions.fetchStatus()).toEqual({ type: FETCH_STATUS })
   })
 
-  it('setLongitude returns a SET_LONGITUDE action with the given value', () => {
-    expect(actions.setLongitude('-73.9')).toEqual({
-      type: SET_LONGITUDE,
-      payload: '-73.9'
-    })
+  it('fetchStatusSuccess carries payload', () => {
+    const payload: ProjectScreenStatus = { version: '1.0.0', uptime: 0 }
+    expect(actions.fetchStatusSuccess(payload)).toEqual({ type: FETCH_STATUS_SUCCESS, payload })
   })
 
-  it('setUtcOffset returns a SET_UTC_OFFSET action with the given value', () => {
-    expect(actions.setUtcOffset('-5')).toEqual({
-      type: SET_UTC_OFFSET,
-      payload: '-5'
-    })
+  it('fetchStatusFailure carries error message', () => {
+    expect(actions.fetchStatusFailure('oops')).toEqual({ type: FETCH_STATUS_FAILURE, payload: 'oops' })
   })
 
-  it('setCoordinates returns a SET_COORDINATES action with the full payload', () => {
-    const payload = { latitude: '1.1', longitude: '2.2', utcOffset: '3' }
-    expect(actions.setCoordinates(payload)).toEqual({
-      type: SET_COORDINATES,
-      payload
-    })
+  it('sseConnect has correct type', () => {
+    expect(actions.sseConnect()).toEqual({ type: SSE_CONNECT })
   })
 
-  it('setCoordinates accepts partial payloads', () => {
-    expect(actions.setCoordinates({ longitude: '99' })).toEqual({
-      type: SET_COORDINATES,
-      payload: { longitude: '99' }
-    })
+  it('sseEvent carries payload', () => {
+    const payload: ProjectScreenStreamEvent = { type: 'ping', data: null, timestamp: 1 }
+    expect(actions.sseEvent(payload)).toEqual({ type: SSE_EVENT, payload })
   })
 
-  it('setCoordinates accepts an empty object', () => {
-    expect(actions.setCoordinates({})).toEqual({
-      type: SET_COORDINATES,
-      payload: {}
-    })
-  })
-
-  it('actions preserve empty-string values (do not coerce)', () => {
-    expect(actions.setLatitude('')).toEqual({ type: SET_LATITUDE, payload: '' })
+  it('sseDisconnect has correct type', () => {
+    expect(actions.sseDisconnect()).toEqual({ type: SSE_DISCONNECT })
   })
 })

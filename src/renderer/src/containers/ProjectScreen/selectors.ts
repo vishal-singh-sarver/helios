@@ -5,23 +5,19 @@ import { initialState, type ProjectScreenState } from './reducer'
 // ── Domain ─────────────────────────────────────────────────────────────────────
 
 const selectProjectScreenDomain = (state: RootState): ProjectScreenState =>
-  (state as { projectScreen?: ProjectScreenState }).projectScreen ?? initialState
+  (state as any).projectScreen ?? initialState
 
 // ── Memoised selectors ─────────────────────────────────────────────────────────
 
-export const selectCoordinates = createSelector(
-  selectProjectScreenDomain,
-  (s) => s.coordinates
-)
-
-export const selectLatitude = createSelector(selectCoordinates, (c) => c.latitude)
-export const selectLongitude = createSelector(selectCoordinates, (c) => c.longitude)
-export const selectUtcOffset = createSelector(selectCoordinates, (c) => c.utcOffset)
+export const selectStatus    = createSelector(selectProjectScreenDomain, (s) => s.status)
+export const selectLoading   = createSelector(selectProjectScreenDomain, (s) => s.loading)
+export const selectError     = createSelector(selectProjectScreenDomain, (s) => s.error)
+export const selectStreaming  = createSelector(selectProjectScreenDomain, (s) => s.streaming)
+export const selectStreamLog = createSelector(selectProjectScreenDomain, (s) => s.streamLog)
 
 // ── Legacy factory (kept for test compatibility) ───────────────────────────────
 
-const makeSelectProjectScreen = (): ReturnType<typeof createSelector> =>
-  createSelector(selectProjectScreenDomain, (s) => s)
+const makeSelectProjectScreen = () => createSelector(selectProjectScreenDomain, (s) => s)
 
 export default makeSelectProjectScreen
-export { selectProjectScreenDomain }
+export { selectProjectScreenDomain as selectProjectScreenDomain }

@@ -1,27 +1,29 @@
 import { produce } from 'immer'
 import {
-  SET_LATITUDE,
-  SET_LONGITUDE,
-  SET_UTC_OFFSET,
-  SET_COORDINATES
+  FETCH_STATUS, FETCH_STATUS_SUCCESS, FETCH_STATUS_FAILURE,
+  SSE_CONNECT, SSE_EVENT, SSE_DISCONNECT
 } from './constants'
 import type { ProjectScreenAction } from './actions'
-import type { ProjectCoordinates } from './types'
+import type { ProjectScreenStatus, ProjectScreenStreamEvent } from './types'
 
-export type { ProjectCoordinates }
+export type { ProjectScreenStatus, ProjectScreenStreamEvent }
 
 // ── State ──────────────────────────────────────────────────────────────────────
 
 export interface ProjectScreenState {
-  coordinates: ProjectCoordinates
+  status:    ProjectScreenStatus | null
+  loading:   boolean
+  error:     string | null
+  streaming: boolean
+  streamLog: ProjectScreenStreamEvent[]
 }
 
 export const initialState: ProjectScreenState = {
-  coordinates: {
-    latitude: '',
-    longitude: '',
-    utcOffset: ''
-  }
+  status:    null,
+  loading:   false,
+  error:     null,
+  streaming: false,
+  streamLog: []
 }
 
 // ── Reducer ────────────────────────────────────────────────────────────────────
@@ -32,20 +34,32 @@ const projectScreenReducer = (
 ): ProjectScreenState =>
   produce(state, (draft) => {
     switch (action.type) {
-      case SET_LATITUDE:
-        draft.coordinates.latitude = action.payload
+      case FETCH_STATUS:
+        draft.loading = true
+        draft.error   = null
         break
 
-      case SET_LONGITUDE:
-        draft.coordinates.longitude = action.payload
+      case FETCH_STATUS_SUCCESS:
+        draft.loading = false
+        draft.status  = action.payload
         break
 
-      case SET_UTC_OFFSET:
-        draft.coordinates.utcOffset = action.payload
+      case FETCH_STATUS_FAILURE:
+        draft.loading = false
+        draft.error   = action.payload
         break
 
-      case SET_COORDINATES:
-        Object.assign(draft.coordinates, action.payload)
+      case SSE_CONNECT:
+        draft.streaming = true
+        draft.streamLog = []
+        break
+
+      case SSE_EVENT:
+        draft.streamLog.push(action.payload)
+        break
+
+      case SSE_DISCONNECT:
+        draft.streaming = false
         break
     }
   })

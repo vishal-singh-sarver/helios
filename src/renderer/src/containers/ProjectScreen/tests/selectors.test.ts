@@ -1,15 +1,15 @@
 import makeSelectProjectScreen, {
   selectProjectScreenDomain,
-  selectCoordinates,
-  selectLatitude,
-  selectLongitude,
-  selectUtcOffset
+  selectStatus,
+  selectLoading,
+  selectError,
+  selectStreaming,
+  selectStreamLog
 } from '../selectors'
 import { initialState } from '../reducer'
 
-const withProjectScreen = (partial: Partial<typeof initialState>): any => ({
-  projectScreen: { ...initialState, ...partial }
-})
+const withProjectScreen = (partial: Partial<typeof initialState>) =>
+  ({ projectScreen: { ...initialState, ...partial } } as any)
 
 describe('selectProjectScreenDomain', () => {
   it('selects the projectScreen slice', () => {
@@ -28,32 +28,26 @@ describe('makeSelectProjectScreen', () => {
   })
 })
 
-describe('selectCoordinates', () => {
-  it('returns all three coordinate fields', () => {
-    const coords = { latitude: '10', longitude: '20', utcOffset: '1' }
-    expect(selectCoordinates(withProjectScreen({ coordinates: coords }))).toEqual(coords)
-  })
-})
-
-describe('individual coordinate selectors', () => {
-  it('selectLatitude returns the latitude string', () => {
-    const coords = { latitude: '45.5', longitude: '', utcOffset: '' }
-    expect(selectLatitude(withProjectScreen({ coordinates: coords }))).toBe('45.5')
+describe('individual selectors', () => {
+  it('selectStatus', () => {
+    const status = { version: '1.0', uptime: 5 }
+    expect(selectStatus(withProjectScreen({ status }))).toEqual(status)
   })
 
-  it('selectLongitude returns the longitude string', () => {
-    const coords = { latitude: '', longitude: '-73.9', utcOffset: '' }
-    expect(selectLongitude(withProjectScreen({ coordinates: coords }))).toBe('-73.9')
+  it('selectLoading', () => {
+    expect(selectLoading(withProjectScreen({ loading: true }))).toBe(true)
   })
 
-  it('selectUtcOffset returns the utcOffset string', () => {
-    const coords = { latitude: '', longitude: '', utcOffset: '-5' }
-    expect(selectUtcOffset(withProjectScreen({ coordinates: coords }))).toBe('-5')
+  it('selectError', () => {
+    expect(selectError(withProjectScreen({ error: 'bad' }))).toBe('bad')
   })
 
-  it('returns empty strings when state is fresh', () => {
-    expect(selectLatitude(withProjectScreen({}))).toBe('')
-    expect(selectLongitude(withProjectScreen({}))).toBe('')
-    expect(selectUtcOffset(withProjectScreen({}))).toBe('')
+  it('selectStreaming', () => {
+    expect(selectStreaming(withProjectScreen({ streaming: true }))).toBe(true)
+  })
+
+  it('selectStreamLog', () => {
+    const log = [{ type: 'ping', data: null, timestamp: 1 }]
+    expect(selectStreamLog(withProjectScreen({ streamLog: log }))).toEqual(log)
   })
 })

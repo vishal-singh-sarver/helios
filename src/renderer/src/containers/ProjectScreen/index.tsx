@@ -1,23 +1,19 @@
-import React from 'react'
-import { useDispatch, useSelector } from 'react-redux'
-import type { Reducer } from 'redux'
 import Header from '@renderer/components/Header'
 import LabeledField from '@renderer/components/LabeledField'
 import MenuBar from '@renderer/components/MenuBar'
 import Tooltip from '@renderer/components/Tooltip'
-import { useInjectReducer } from 'utils/injectReducer'
-import { useInjectSaga } from 'utils/injectSaga'
-import { TOOLBAR_ITEMS } from '../../types/project'
 import CenterWorkspace from '@renderer/containers/CenterWorkspace'
 import LeftPanel from '@renderer/containers/LeftPanel'
 import RightPanel from '@renderer/containers/RightPanel'
-import { mockProjectStore } from '@renderer/containers/HomePage/mockProjectStore'
-import { selectActiveProjectId } from 'store/activeProjectReducer'
+import React from 'react'
+import { useDispatch } from 'react-redux'
+import type { Reducer } from 'redux'
 import { navigate } from 'store/navigationReducer'
-import { setCoordinates, setLatitude, setLongitude } from './actions'
+import { useInjectReducer } from 'utils/injectReducer'
+import { useInjectSaga } from 'utils/injectSaga'
+import { TOOLBAR_ITEMS } from '../../types/project'
 import reducer from './reducer'
 import saga from './saga'
-import { selectLatitude, selectLongitude, selectUtcOffset } from './selectors'
 
 // Help text — mirrors the strings used in HomePage's New Project dialog so
 // the user sees the same guidance whether they're creating a project or
@@ -49,37 +45,12 @@ export function ProjectScreen(): React.JSX.Element {
   useInjectSaga({ key: 'projectScreen', saga })
 
   const dispatch = useDispatch()
-  const latitude = useSelector(selectLatitude)
-  const longitude = useSelector(selectLongitude)
-  const utcOffset = useSelector(selectUtcOffset)
-  const activeProjectId = useSelector(selectActiveProjectId)
+  const [latitude, setLatitude] = React.useState('')
+  const [longitude, setLongitude] = React.useState('')
+  const [utcOffset] = React.useState('')
 
-  // Hydrate the coordinate fields from the active project. Runs whenever the
-  // active project changes (including on initial mount). When the real backend
-  // is wired, swap this useEffect for a saga that fetches the project by id —
-  // the rest of the screen is already reading from the reducer.
-  React.useEffect(() => {
-    if (!activeProjectId) return
-    const project = mockProjectStore.findById(activeProjectId)
-    if (!project) return
-    dispatch(
-      setCoordinates({
-        latitude: String(project.latitude),
-        longitude: String(project.longitude),
-        utcOffset: String(project.utc_offset)
-      })
-    )
-  }, [activeProjectId, dispatch])
-
-  // UTC Offset is computed from a mathematical formula (to be wired in
-  // later). It is never edited manually, so default disabled: true. The
-  // setter is kept around so a future effect / handler can temporarily
-  // unlock it if that's ever needed.
   const [utcOffsetDisabled, setUtcOffsetDisabled] = React.useState(true)
 
-  // When a project run starts, all three coordinate fields must lock so
-  // the user can't change inputs mid-run. The trigger logic will be
-  // provided later (likely from a "Run" button or a saga effect).
   const [projectRunning, setProjectRunning] = React.useState(false)
 
   // Placeholders until the setters are wired to real controls.
@@ -104,7 +75,7 @@ export function ProjectScreen(): React.JSX.Element {
           <LabeledField
             label="Latitude"
             value={latitude}
-            onChange={(value) => dispatch(setLatitude(value))}
+            onChange={setLatitude}
             disabled={coordsLocked}
             invalid={latitudeInvalid}
             labelAdornment={<Tooltip text={LATITUDE_HELP} ariaLabel="Show latitude help" />}
@@ -113,7 +84,7 @@ export function ProjectScreen(): React.JSX.Element {
           <LabeledField
             label="Longitude"
             value={longitude}
-            onChange={(value) => dispatch(setLongitude(value))}
+            onChange={setLongitude}
             disabled={coordsLocked}
             invalid={longitudeInvalid}
             labelAdornment={<Tooltip text={LONGITUDE_HELP} ariaLabel="Show longitude help" />}

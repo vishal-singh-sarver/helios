@@ -1,93 +1,57 @@
 import projectScreenReducer, { initialState } from '../reducer'
 import * as actions from '../actions'
-import type { ProjectScreenAction } from '../actions'
 
 describe('projectScreenReducer', () => {
-  it('returns the initial state for an unknown action', () => {
-    expect(projectScreenReducer(undefined, { type: '@@unknown' } as unknown as ProjectScreenAction)).toEqual(
-      initialState
-    )
+  it('returns the initial state', () => {
+    expect(projectScreenReducer(undefined, {} as any)).toEqual(initialState)
   })
 
-  it('starts with empty coordinate strings', () => {
-    expect(initialState.coordinates).toEqual({
-      latitude: '',
-      longitude: '',
-      utcOffset: ''
-    })
-  })
-
-  describe('SET_LATITUDE', () => {
-    it('updates only the latitude field', () => {
-      const state = projectScreenReducer(initialState, actions.setLatitude('45.5'))
-      expect(state.coordinates.latitude).toBe('45.5')
-      expect(state.coordinates.longitude).toBe('')
-      expect(state.coordinates.utcOffset).toBe('')
+  describe('REST', () => {
+    it('FETCH_STATUS sets loading and clears error', () => {
+      const state = { ...initialState, error: 'prev' }
+      const result = projectScreenReducer(state, actions.fetchStatus())
+      expect(result.loading).toBe(true)
+      expect(result.error).toBeNull()
     })
 
-    it('overwrites previous latitude', () => {
-      const seeded = { ...initialState, coordinates: { ...initialState.coordinates, latitude: '10' } }
-      const state = projectScreenReducer(seeded, actions.setLatitude('20'))
-      expect(state.coordinates.latitude).toBe('20')
+    it('FETCH_STATUS_SUCCESS stores status and clears loading', () => {
+      const status = { version: '1.0.0', uptime: 0 }
+      const result = projectScreenReducer({ ...initialState, loading: true }, actions.fetchStatusSuccess(status))
+      expect(result.loading).toBe(false)
+      expect(result.status).toEqual(status)
     })
 
-    it('does not mutate the original state', () => {
-      projectScreenReducer(initialState, actions.setLatitude('99'))
-      expect(initialState.coordinates.latitude).toBe('')
+    it('FETCH_STATUS_FAILURE stores error and clears loading', () => {
+      const result = projectScreenReducer({ ...initialState, loading: true }, actions.fetchStatusFailure('err'))
+      expect(result.loading).toBe(false)
+      expect(result.error).toBe('err')
     })
   })
 
-  describe('SET_LONGITUDE', () => {
-    it('updates only the longitude field', () => {
-      const state = projectScreenReducer(initialState, actions.setLongitude('-73.9'))
-      expect(state.coordinates.longitude).toBe('-73.9')
-      expect(state.coordinates.latitude).toBe('')
-      expect(state.coordinates.utcOffset).toBe('')
-    })
-  })
-
-  describe('SET_UTC_OFFSET', () => {
-    it('updates only the utcOffset field', () => {
-      const state = projectScreenReducer(initialState, actions.setUtcOffset('-5'))
-      expect(state.coordinates.utcOffset).toBe('-5')
-      expect(state.coordinates.latitude).toBe('')
-      expect(state.coordinates.longitude).toBe('')
-    })
-  })
-
-  describe('SET_COORDINATES (bulk update)', () => {
-    it('updates all three fields at once', () => {
-      const state = projectScreenReducer(
-        initialState,
-        actions.setCoordinates({ latitude: '1.1', longitude: '2.2', utcOffset: '3' })
-      )
-      expect(state.coordinates).toEqual({
-        latitude: '1.1',
-        longitude: '2.2',
-        utcOffset: '3'
-      })
+  describe('SSE', () => {
+    it('SSE_CONNECT sets streaming and resets log', () => {
+      const event = { type: 'x', data: null, timestamp: 0 }
+      const result = projectScreenReducer({ ...initialState, streamLog: [event] }, actions.sseConnect())
+      expect(result.streaming).toBe(true)
+      expect(result.streamLog).toHaveLength(0)
     })
 
-    it('merges partial updates, leaving other fields unchanged', () => {
-      const seeded = {
-        ...initialState,
-        coordinates: { latitude: '10', longitude: '20', utcOffset: '1' }
-      }
-      const state = projectScreenReducer(seeded, actions.setCoordinates({ longitude: '99' }))
-      expect(state.coordinates).toEqual({
-        latitude: '10',
-        longitude: '99',
-        utcOffset: '1'
-      })
+    it('SSE_EVENT appends event to streamLog', () => {
+      const event = { type: 'update', data: {}, timestamp: 1 }
+      const result = projectScreenReducer(initialState, actions.sseEvent(event))
+      expect(result.streamLog).toHaveLength(1)
+      expect(result.streamLog[0]).toEqual(event)
     })
 
-    it('accepts an empty payload as a no-op', () => {
-      const seeded = {
-        ...initialState,
-        coordinates: { latitude: '1', longitude: '2', utcOffset: '3' }
-      }
-      const state = projectScreenReducer(seeded, actions.setCoordinates({}))
-      expect(state.coordinates).toEqual(seeded.coordinates)
+    it('SSE_DISCONNECT clears streaming flag', () => {
+      const result = projectScreenReducer({ ...initialState, streaming: true }, actions.sseDisconnect())
+      expect(result.streaming).toBe(false)
+    })
+
+    it('SSE_EVENT does not mutate original state', () => {
+      const event = { type: 'ping', data: null, timestamp: 1 }
+      projectScreenReducer(initialState, actions.sseEvent(event))
+      expect(initialState.streamLog).toHaveLength(0)
     })
   })
 })

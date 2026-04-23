@@ -1,0 +1,372 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`<ProjectScreen /> > should match the snapshot 1`] = `
+<div
+  class="flex flex-col h-full"
+>
+  <header
+    class="border-b border-app-border"
+  >
+    <div
+      class="flex h-11 items-center border-b border-app-border px-4"
+    >
+      <button
+        aria-label="Go to home"
+        class="flex items-center rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500"
+        type="button"
+      >
+        <img
+          alt="Helios logo"
+          class="h-5 w-auto"
+          src="/src/renderer/src/assets/Helios_logo.svg"
+        />
+      </button>
+    </div>
+    <div
+      class="flex h-11 items-center justify-between px-3"
+    >
+      <nav
+        class="flex items-center gap-2 text-sm font-medium text-neutral-300"
+      >
+        <div
+          class="group relative"
+        >
+          <button
+            class="rounded px-2 py-1 group-hover:bg-panel group-hover:text-white"
+          >
+            File
+          </button>
+          <div
+            class="invisible absolute top-7 left-0 z-20 min-w-44 group-hover:visible"
+          >
+            <div
+              class="h-2 w-full"
+            />
+            <div
+              class="rounded border border-app-border bg-[#181a1f] py-1 shadow-lg"
+            >
+              <button
+                class="block w-full px-3 py-1.5 text-left text-sm text-neutral-200 hover:bg-app-border"
+              >
+                New Project
+              </button>
+              <button
+                class="block w-full px-3 py-1.5 text-left text-sm text-neutral-200 hover:bg-app-border"
+              >
+                Open Project
+              </button>
+              <button
+                class="block w-full px-3 py-1.5 text-left text-sm text-neutral-200 hover:bg-app-border"
+              >
+                Import Project
+              </button>
+              <button
+                class="block w-full px-3 py-1.5 text-left text-sm text-neutral-200 hover:bg-app-border"
+              >
+                Exit
+              </button>
+            </div>
+          </div>
+        </div>
+        <div
+          class="group relative"
+        >
+          <button
+            class="rounded px-2 py-1 group-hover:bg-panel group-hover:text-white"
+          >
+            Edit
+          </button>
+          <div
+            class="invisible absolute top-7 left-0 z-20 min-w-44 group-hover:visible"
+          >
+            <div
+              class="h-2 w-full"
+            />
+            <div
+              class="rounded border border-app-border bg-[#181a1f] py-1 shadow-lg"
+            >
+              <button
+                class="block w-full px-3 py-1.5 text-left text-sm text-neutral-200 hover:bg-app-border"
+              >
+                Undo
+              </button>
+              <button
+                class="block w-full px-3 py-1.5 text-left text-sm text-neutral-200 hover:bg-app-border"
+              >
+                Redo
+              </button>
+              <button
+                class="block w-full px-3 py-1.5 text-left text-sm text-neutral-200 hover:bg-app-border"
+              >
+                Preferences
+              </button>
+            </div>
+          </div>
+        </div>
+        <div
+          class="group relative"
+        >
+          <button
+            class="rounded px-2 py-1 group-hover:bg-panel group-hover:text-white"
+          >
+            View
+          </button>
+          <div
+            class="invisible absolute top-7 left-0 z-20 min-w-44 group-hover:visible"
+          >
+            <div
+              class="h-2 w-full"
+            />
+            <div
+              class="rounded border border-app-border bg-[#181a1f] py-1 shadow-lg"
+            >
+              <button
+                class="block w-full px-3 py-1.5 text-left text-sm text-neutral-200 hover:bg-app-border"
+              >
+                Zoom In
+              </button>
+              <button
+                class="block w-full px-3 py-1.5 text-left text-sm text-neutral-200 hover:bg-app-border"
+              >
+                Zoom Out
+              </button>
+              <button
+                class="block w-full px-3 py-1.5 text-left text-sm text-neutral-200 hover:bg-app-border"
+              >
+                Reset Layout
+              </button>
+            </div>
+          </div>
+        </div>
+        <div
+          class="group relative"
+        >
+          <button
+            class="rounded px-2 py-1 group-hover:bg-panel group-hover:text-white"
+          >
+            Tools
+          </button>
+          <div
+            class="invisible absolute top-7 left-0 z-20 min-w-44 group-hover:visible"
+          >
+            <div
+              class="h-2 w-full"
+            />
+            <div
+              class="rounded border border-app-border bg-[#181a1f] py-1 shadow-lg"
+            >
+              <button
+                class="block w-full px-3 py-1.5 text-left text-sm text-neutral-200 hover:bg-app-border"
+              >
+                Scripting Console
+              </button>
+              <button
+                class="block w-full px-3 py-1.5 text-left text-sm text-neutral-200 hover:bg-app-border"
+              >
+                Extensions
+              </button>
+              <button
+                class="block w-full px-3 py-1.5 text-left text-sm text-neutral-200 hover:bg-app-border"
+              >
+                Diagnostics
+              </button>
+            </div>
+          </div>
+        </div>
+        <div
+          class="group relative"
+        >
+          <button
+            class="rounded px-2 py-1 group-hover:bg-panel group-hover:text-white"
+          >
+            Help
+          </button>
+          <div
+            class="invisible absolute top-7 left-0 z-20 min-w-44 group-hover:visible"
+          >
+            <div
+              class="h-2 w-full"
+            />
+            <div
+              class="rounded border border-app-border bg-[#181a1f] py-1 shadow-lg"
+            >
+              <button
+                class="block w-full px-3 py-1.5 text-left text-sm text-neutral-200 hover:bg-app-border"
+              >
+                Documentation
+              </button>
+              <button
+                class="block w-full px-3 py-1.5 text-left text-sm text-neutral-200 hover:bg-app-border"
+              >
+                Shortcuts
+              </button>
+              <button
+                class="block w-full px-3 py-1.5 text-left text-sm text-neutral-200 hover:bg-app-border"
+              >
+                About Helios
+              </button>
+            </div>
+          </div>
+        </div>
+      </nav>
+      <div
+        class="flex items-center gap-2"
+      >
+        <div
+          class="flex items-center rounded border border-app-border bg-dark text-sm"
+        >
+          <span
+            class="flex items-center gap-1.5 px-3 py-1 text-neutral-200 bg-neutral-800/60 border-r rounded-l border-app-border"
+          >
+            Latitude
+            <span
+              aria-label="Show latitude help"
+              class="flex h-5 w-5 cursor-default items-center justify-center
+        rounded-full border border-neutral-300 text-xs font-semibold text-white"
+              data-tooltip-content="Enter latitude in decimal degrees. Valid range: -90 <= latitude <= 90. Negative for South, positive for North."
+              data-tooltip-id="_r_2_"
+              tabindex="0"
+            >
+              ?
+            </span>
+          </span>
+          <input
+            aria-label="Latitude"
+            class="w-20 h-7 px-2 bg-dark text-right outline-none focus:bg-neutral-900 text-neutral-100 "
+            value=""
+          />
+        </div>
+        <div
+          class="flex items-center rounded border border-app-border bg-dark text-sm"
+        >
+          <span
+            class="flex items-center gap-1.5 px-3 py-1 text-neutral-200 bg-neutral-800/60 border-r rounded-l border-app-border"
+          >
+            Longitude
+            <span
+              aria-label="Show longitude help"
+              class="flex h-5 w-5 cursor-default items-center justify-center
+        rounded-full border border-neutral-300 text-xs font-semibold text-white"
+              data-tooltip-content="Enter longitude in decimal degrees. Valid range: -180 <= longitude <= 180. Negative for West, positive for East."
+              data-tooltip-id="_r_3_"
+              tabindex="0"
+            >
+              ?
+            </span>
+          </span>
+          <input
+            aria-label="Longitude"
+            class="w-20 h-7 px-2 bg-dark text-right outline-none focus:bg-neutral-900 text-neutral-100 "
+            value=""
+          />
+        </div>
+        <div
+          class="flex items-center rounded border border-app-border bg-dark text-sm"
+        >
+          <span
+            class="flex items-center gap-1.5 px-3 py-1 text-neutral-200 bg-neutral-800/60 border-r rounded-l border-app-border"
+          >
+            UTC Offset
+          </span>
+          <input
+            aria-label="UTC Offset"
+            class="w-20 h-7 px-2 bg-dark text-right outline-none focus:bg-neutral-900 text-neutral-500 cursor-not-allowed cursor-default"
+            disabled=""
+            readonly=""
+            value=""
+          />
+        </div>
+      </div>
+    </div>
+  </header>
+  <main
+    class="flex min-h-0 flex-1 gap-[10px] overflow-hidden p-[10px]"
+  >
+    <aside
+      class="w-[280px] shrink-0 overflow-hidden rounded-lg border border-app-border bg-panel/20 transition-[width] duration-150"
+    >
+      <div
+        class="flex items-center justify-end p-1"
+      >
+        <button
+          aria-label="Collapse panel"
+          class="flex h-6 w-6 items-center justify-center rounded text-neutral-300 hover:bg-neutral-700/60 hover:text-white"
+          type="button"
+        >
+          <svg
+            fill="none"
+            height="14"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            style="transform: rotate(0deg);"
+            viewBox="0 0 24 24"
+            width="14"
+          >
+            <polyline
+              points="15 18 9 12 15 6"
+            />
+          </svg>
+        </button>
+      </div>
+      <div
+        class="overflow-y-auto p-3"
+      />
+    </aside>
+    <section
+      class="flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-app-border bg-panel/20 p-3"
+    >
+      <div
+        class="flex items-center"
+      >
+        <button
+          aria-pressed="false"
+          class="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm text-neutral-200 bg-neutral-800/80 hover:bg-neutral-700/80"
+          type="button"
+        >
+          <img
+            alt=""
+            aria-hidden="true"
+            class="h-4 w-4"
+            src="data:image/svg+xml,%3csvg%20width='20'%20height='20'%20viewBox='0%200%2020%2020'%20fill='none'%20xmlns='http://www.w3.org/2000/svg'%3e%3cpath%20d='M1.0415%2010.5558C1.0415%208.28798%202.70375%206.42268%204.88021%205.99528C5.33416%203.63605%207.46782%201.875%209.99984%201.875C12.7952%201.875%2015.1058%204.02392%2015.2033%206.7513C17.3113%207.04298%2018.9582%208.79938%2018.9582%2010.9587C18.958%2013.3255%2016.9792%2015.2083%2014.5832%2015.2083C14.238%2015.2083%2013.9582%2014.9285%2013.9582%2014.5833C13.9582%2014.2382%2014.238%2013.9583%2014.5832%2013.9583C16.3291%2013.9583%2017.708%2012.5956%2017.7082%2010.9587C17.7082%209.48399%2016.5892%208.23116%2015.091%207.99723C14.9117%208.80685%2014.5344%209.54373%2014.0111%2010.1563C13.7869%2010.4186%2013.3922%2010.4494%2013.1297%2010.2254C12.8673%2010.0012%2012.8363%209.60652%2013.0605%209.34408C13.5523%208.7685%2013.8692%208.05477%2013.9419%207.27539C13.9525%207.16197%2013.9582%207.04672%2013.9582%206.93034C13.958%204.84849%2012.206%203.125%209.99984%203.125C8.16584%203.125%206.64366%204.31771%206.18392%205.91553C7.1222%205.98155%207.9881%206.31003%208.70101%206.8278C8.98015%207.03068%209.04215%207.42178%208.83936%207.70101C8.63648%207.98009%208.24536%208.0421%207.96615%207.83936C7.37418%207.40943%206.63663%207.15251%205.83317%207.15251C5.7175%207.15251%205.60308%207.15843%205.49056%207.16878C3.67812%207.33563%202.2915%208.80491%202.2915%2010.5558C2.29166%2012.4152%203.85712%2013.9583%205.83317%2013.9583C6.17835%2013.9583%206.45817%2014.2382%206.45817%2014.5833C6.45817%2014.9285%206.17835%2015.2083%205.83317%2015.2083C3.20704%2015.2083%201.04166%2013.1452%201.0415%2010.5558Z'%20fill='white'/%3e%3cpath%20d='M9.96077%2011.3216C10.1512%2011.034%2010.5389%2010.9548%2010.8267%2011.145C11.1146%2011.3354%2011.1936%2011.7238%2011.0033%2012.0117L9.71582%2013.9583H10.6354C10.7924%2013.9583%2010.9827%2013.9565%2011.1367%2013.9795C11.2733%2013.9999%2011.5337%2014.0605%2011.7129%2014.2944L11.7837%2014.4059L11.8358%2014.5264C11.9289%2014.8045%2011.8353%2015.0534%2011.7772%2015.1774C11.7112%2015.3183%2011.6049%2015.4759%2011.5176%2015.6079L10.0389%2017.8451C9.84845%2018.1327%209.46082%2018.2119%209.17301%2018.0216C8.88506%2017.8313%208.80607%2017.4429%208.99642%2017.1549L10.2839%2015.2083H9.36426C9.20729%2015.2083%209.01692%2015.2101%208.86296%2015.1872C8.70688%2015.1639%208.38953%2015.0877%208.21598%2014.7607C8.04349%2014.4357%208.15614%2014.1309%208.22249%2013.9893C8.28848%2013.8484%208.39482%2013.6908%208.4821%2013.5588L9.96077%2011.3216Z'%20fill='white'/%3e%3c/svg%3e"
+          />
+          Weather
+        </button>
+      </div>
+    </section>
+    <aside
+      class="w-[280px] shrink-0 overflow-hidden rounded-lg border border-app-border bg-panel/20 transition-[width] duration-150"
+    >
+      <div
+        class="flex items-center justify-start p-1"
+      >
+        <button
+          aria-label="Collapse panel"
+          class="flex h-6 w-6 items-center justify-center rounded text-neutral-300 hover:bg-neutral-700/60 hover:text-white"
+          type="button"
+        >
+          <svg
+            fill="none"
+            height="14"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            style="transform: rotate(180deg);"
+            viewBox="0 0 24 24"
+            width="14"
+          >
+            <polyline
+              points="15 18 9 12 15 6"
+            />
+          </svg>
+        </button>
+      </div>
+      <div
+        class="overflow-y-auto p-3"
+      />
+    </aside>
+  </main>
+</div>
+`;
