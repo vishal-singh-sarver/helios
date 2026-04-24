@@ -6,6 +6,7 @@ yarn.lock
 # Build Output & Distribution
 dist/
 out/
+*.tsbuildinfo
 release/
 linux-installer/payload/Helios
 

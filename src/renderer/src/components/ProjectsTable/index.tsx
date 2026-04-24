@@ -1,15 +1,16 @@
-import React, { useState } from 'react'
 import deleteIcon from '@renderer/assets/delete.svg'
 import sortIcon from '@renderer/assets/Sort 3.svg'
+import React, { useState } from 'react'
 import { formatBytes, formatRelativeDate } from 'utils/format'
 import { useVirtualRows } from 'utils/useVirtualRows'
-import EmptyState from '../EmptyState'
 import type { RecentProjectItem } from '../../containers/HomePage/types'
+import EmptyState from '../EmptyState'
 
 interface ProjectsTableProps {
   projects: RecentProjectItem[]
   emptyIcon: string
   onCreateNew: () => void
+  onRowClick?: (projectId: string) => void
   onRequestDelete: (project: RecentProjectItem) => void
   deletingIds: string[]
 }
@@ -26,12 +27,14 @@ const COLUMN_LABELS: Record<SortKey, string> = {
   size: 'Size'
 }
 
+// ── Component ─────────────────────────────────────────────────────────────────
 function ProjectsTable({
   projects,
   emptyIcon,
   onCreateNew,
   onRequestDelete,
-  deletingIds
+  deletingIds,
+  onRowClick
 }: ProjectsTableProps): React.JSX.Element {
   const [sortKey, setSortKey] = useState<SortKey>('last_updated')
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
@@ -47,10 +50,7 @@ function ProjectsTable({
   }
 
   const handleOpenProject = (project: RecentProjectItem): void => {
-    if (import.meta.env.DEV) {
-      console.log('[ProjectsTable] open project', project.id, project.name)
-    }
-    // TODO: dispatch openProject(project.id)
+    onRowClick?.(project.id)
   }
 
   const sortedProjects = React.useMemo(() => {

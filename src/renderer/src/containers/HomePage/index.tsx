@@ -1,5 +1,3 @@
-import React from 'react'
-import { useDispatch, useSelector } from 'react-redux'
 import homeIcon from '@renderer/assets/home.svg'
 import newProjectIcon from '@renderer/assets/new_project.svg'
 import openProjectIcon from '@renderer/assets/open_project.svg'
@@ -13,6 +11,9 @@ import ProjectsTable from '@renderer/components/ProjectsTable'
 import SearchBar from '@renderer/components/SearchBar'
 import Sidebar from '@renderer/components/Sidebar'
 import { useFormik } from 'formik'
+import React from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import { navigate } from 'store/navigationReducer'
 import { useInjectReducer } from 'utils/injectReducer'
 import { useInjectSaga } from 'utils/injectSaga'
 import { FormValues, INITIAL_VALUES, SidebarItem, TOOLBAR_ITEMS } from '../../types/project'
@@ -20,7 +21,7 @@ import { createProject, deleteProject, fetchRecentProjects, resetCreateProject }
 import messages from './messages'
 import homePageReducer from './reducer'
 import homePageSaga from './saga'
-import { selectCreateProject, selectRecentProjects, selectDeleteProject } from './selectors'
+import { selectCreateProject, selectDeleteProject, selectRecentProjects } from './selectors'
 import type { RecentProjectItem } from './types'
 
 export function HomePage(): React.JSX.Element {
@@ -148,7 +149,7 @@ export function HomePage(): React.JSX.Element {
     {
       label: 'Open project',
       icon: openProjectIcon,
-      onAction: () => {}
+      onAction: () => dispatch(navigate('project'))
     }
   ]
   // useDeferredValue keeps the input responsive while the filter re-runs.
@@ -200,6 +201,14 @@ export function HomePage(): React.JSX.Element {
             projects={filteredProjects}
             emptyIcon={searchIcon}
             onCreateNew={openNewProjectDialog}
+            onRowClick={(projectId) => {
+              try {
+                localStorage.setItem('helios:activeProjectId', projectId)
+              } catch {
+                /* storage disabled — navigation still proceeds */
+              }
+              dispatch(navigate('project'))
+            }}
             onRequestDelete={handleRequestDelete}
             deletingIds={deletingIds}
           />
@@ -216,7 +225,8 @@ export function HomePage(): React.JSX.Element {
           labelProps={{
             label: 'Project Name',
             helpText: 'Enter a project name to identify your work.',
-            helpAriaLabel: 'Show project name help'
+            helpAriaLabel: 'Show project name help',
+            helpPlace: 'right'
           }}
           inputProps={{
             ...formik.getFieldProps('projectName'),

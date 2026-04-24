@@ -16,6 +16,9 @@ export const NAVIGATE = 'app/navigation/NAVIGATE'
 interface NavigateAction {
   type: typeof NAVIGATE
   payload: Screen
+  // Index signature required by Redux 5's UnknownAction type so dispatch
+  // accepts this action without a cast.
+  [extraProps: string]: unknown
 }
 
 export type NavigationAction = NavigateAction

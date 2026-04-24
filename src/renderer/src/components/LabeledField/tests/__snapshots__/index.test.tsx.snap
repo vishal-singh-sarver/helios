@@ -1,0 +1,55 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`<LabeledField /> > matches the snapshot (disabled) 1`] = `
+<div
+  class="flex items-center rounded border border-app-border bg-dark text-sm"
+>
+  <span
+    class="flex items-center gap-1.5 px-3 py-1 text-neutral-200 bg-neutral-800/60 border-r rounded-l border-app-border"
+  >
+    UTC Offset
+  </span>
+  <input
+    aria-label="UTC Offset"
+    class="w-20 h-7 px-2 bg-dark text-right outline-none focus:bg-neutral-900 text-neutral-500 cursor-not-allowed cursor-default"
+    disabled=""
+    readonly=""
+    value="-7"
+  />
+</div>
+`;
+
+exports[`<LabeledField /> > matches the snapshot (editable) 1`] = `
+<div
+  class="flex items-center rounded border border-app-border bg-dark text-sm"
+>
+  <span
+    class="flex items-center gap-1.5 px-3 py-1 text-neutral-200 bg-neutral-800/60 border-r rounded-l border-app-border"
+  >
+    Latitude
+  </span>
+  <input
+    aria-label="Latitude"
+    class="w-20 h-7 px-2 bg-dark text-right outline-none focus:bg-neutral-900 text-neutral-100 "
+    value="45.5"
+  />
+</div>
+`;
+
+exports[`<LabeledField /> > matches the snapshot (read-only) 1`] = `
+<div
+  class="flex items-center rounded border border-app-border bg-dark text-sm"
+>
+  <span
+    class="flex items-center gap-1.5 px-3 py-1 text-neutral-200 bg-neutral-800/60 border-r rounded-l border-app-border"
+  >
+    Latitude
+  </span>
+  <input
+    aria-label="Latitude"
+    class="w-20 h-7 px-2 bg-dark text-right outline-none focus:bg-neutral-900 text-neutral-100 cursor-default"
+    readonly=""
+    value="45.5"
+  />
+</div>
+`;

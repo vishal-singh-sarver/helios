@@ -1,6 +1,7 @@
-import { combineReducers, Reducer, UnknownAction } from 'redux'
-import navigationReducer, { type NavigationState } from './navigationReducer'
 import type { HomePageState } from 'containers/HomePage/reducer'
+import { combineReducers, Reducer, UnknownAction } from 'redux'
+// import activeProjectReducer from './activeProjectReducer'
+import navigationReducer, { type NavigationState } from './navigationReducer'
 
 export interface RootState {
   navigation: NavigationState

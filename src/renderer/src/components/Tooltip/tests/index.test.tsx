@@ -1,6 +1,4 @@
-import React from 'react'
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import Tooltip from '../index'
 
 describe('<Tooltip />', () => {
@@ -13,24 +11,22 @@ describe('<Tooltip />', () => {
     render(<Tooltip {...defaultProps} />)
   })
 
-  it('renders the trigger with correct label', () => {
+  it('renders the trigger with correct label and "?" glyph', () => {
     render(<Tooltip {...defaultProps} />)
     expect(screen.getByLabelText('Show help')).toHaveTextContent('?')
   })
 
-  it('renders tooltip text in the DOM', () => {
+  it('wires the trigger with data-tooltip-* attributes for react-tooltip', () => {
     render(<Tooltip {...defaultProps} />)
-    expect(screen.getByRole('tooltip')).toHaveTextContent('Help text here')
+    const trigger = screen.getByLabelText('Show help')
+
+    // react-tooltip matches a tooltip bubble to its trigger via these attrs.
+    expect(trigger).toHaveAttribute('data-tooltip-content', 'Help text here')
+    expect(trigger.getAttribute('data-tooltip-id')).toBeTruthy()
   })
 
-  it('shows tooltip on hover', async () => {
+  it('makes the trigger keyboard-focusable', () => {
     render(<Tooltip {...defaultProps} />)
-
-    const trigger = screen.getByLabelText('Show help')
-    const tooltip = screen.getByRole('tooltip')
-
-    await userEvent.hover(trigger)
-
-    expect(tooltip).toBeInTheDocument()
+    expect(screen.getByLabelText('Show help')).toHaveAttribute('tabindex', '0')
   })
 })

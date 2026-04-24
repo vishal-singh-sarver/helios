@@ -2,10 +2,11 @@ import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import FormField from '../index'
 
-// Mock Tooltip to isolate FormField — Tooltip has its own tests
+// Mock Tooltip to isolate FormField — Tooltip has its own tests.
+// Captures `place` as a data attribute so tests can assert it was forwarded.
 vi.mock('../../Tooltip', () => ({
-  default: ({ text, ariaLabel }: { text: string; ariaLabel: string }) => (
-    <span data-testid="tooltip" aria-label={ariaLabel}>
+  default: ({ text, ariaLabel, place }: { text: string; ariaLabel: string; place?: string }) => (
+    <span data-testid="tooltip" aria-label={ariaLabel} data-place={place ?? ''}>
       {text}
     </span>
   )
@@ -140,6 +141,23 @@ describe('<FormField />', () => {
       <FormField {...defaultProps} inputProps={{ ...defaultProps.inputProps, disabled: true }} />
     )
     expect(screen.getByRole('textbox')).toBeDisabled()
+  })
+
+  // ── helpPlace pass-through ──
+
+  it('forwards helpPlace to the Tooltip when provided', () => {
+    render(
+      <FormField
+        {...defaultProps}
+        labelProps={{ ...defaultProps.labelProps, helpPlace: 'right' }}
+      />
+    )
+    expect(screen.getByTestId('tooltip')).toHaveAttribute('data-place', 'right')
+  })
+
+  it('leaves helpPlace unset on the Tooltip when not provided', () => {
+    render(<FormField {...defaultProps} />)
+    expect(screen.getByTestId('tooltip')).toHaveAttribute('data-place', '')
   })
 
   // Snapshot regression guard — default state (no error)

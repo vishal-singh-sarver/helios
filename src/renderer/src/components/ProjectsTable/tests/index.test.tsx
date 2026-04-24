@@ -1,7 +1,7 @@
-import { render, screen, fireEvent, cleanup } from '@testing-library/react'
-import ProjectsTable from '../index'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { formatBytes } from 'utils/format'
 import type { RecentProjectItem } from '../../../containers/HomePage/types'
+import ProjectsTable from '../index'
 
 // ── Mocks ───────────────────────────────────────────────────────────────────
 
@@ -47,6 +47,25 @@ describe('<ProjectsTable />', () => {
     render(<ProjectsTable {...defaultProps} />)
   })
 
+  // ── onRowClick ──
+
+  // Verifies clicking a row button fires onRowClick with that project's id
+  it('fires onRowClick with the project id when a row is clicked', () => {
+    const onRowClick = vi.fn()
+    render(<ProjectsTable {...defaultProps} onRowClick={onRowClick} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Open project Alpha Project' }))
+    expect(onRowClick).toHaveBeenCalledWith('p-alpha')
+  })
+
+  // Verifies the component does not throw when no onRowClick is provided
+  it('does not throw when clicking a row with no onRowClick prop', () => {
+    render(<ProjectsTable {...defaultProps} />)
+    expect(() =>
+      fireEvent.click(screen.getByRole('button', { name: 'Open project Alpha Project' }))
+    ).not.toThrow()
+  })
+
+  // Verifies the page heading is displayed
   it('renders the heading', () => {
     render(<ProjectsTable {...defaultProps} />)
     expect(screen.getByText('Recent Projects')).toBeInTheDocument()
