@@ -2,11 +2,11 @@ name: Build Installers
 
 on:
   push:
-    branches:
-      - main
-      - release
-    # tags:
-    #   - 'v*'
+    # branches:
+    #   - main
+    #   - release
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
@@ -89,7 +89,10 @@ jobs:
             libgbm1 \
             libxkbcommon0 \
             fonts-liberation \
-            xdg-utils
+            xdg-utils \
+            libglu1-mesa-dev \
+            freeglut3-dev \
+            mesa-common-dev
       # - run: npm ci
       - run: npm install
       - name: Create .env file
@@ -107,7 +110,7 @@ jobs:
   release:
     needs: [build-windows, build-macos, build-linux]
     runs-on: ubuntu-latest
-    #if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v')
     # if: github.ref == 'refs/heads/main'
     steps:
       - name: Download artifacts
@@ -141,6 +144,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: artifacts/**/*
-          generate_release_notes: true
+          body_path: notes.md
+          generate_release_notes: false
           draft: false
           prerelease: false
