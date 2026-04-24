@@ -126,10 +126,14 @@ jobs:
           echo "| OS | File | Size | Checksum (sha256) |" >> notes.md
           echo "|----|----------|------|-------------------|" >> notes.md
 
+          TAG=${GITHUB_REF#refs/tags/}
+          REPO="${{ github.repository }}"
+
           for file in $(find artifacts -type f); do
             name=$(basename "$file")
             size=$(du -h "$file" | cut -f1)
             checksum=$(sha256sum "$file" | cut -d ' ' -f1)
+            url="https://github.com/$REPO/releases/download/$TAG/$name"
 
             if [[ $name == *.exe ]]; then os="Windows"; fi
             if [[ $name == *.dmg ]]; then os="macOS"; fi
@@ -137,7 +141,7 @@ jobs:
             if [[ $name == *.AppImage ]]; then os="Linux"; fi
             if [[ $name == *.deb ]]; then os="Linux"; fi
 
-            echo "| $os | $name | $size | $checksum |" >> notes.md
+            echo "| $os | [$name]($url) | $size | \`$checksum\` |" >> notes.md
           done
 
       - name: Create GitHub Release
