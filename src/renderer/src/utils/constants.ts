@@ -16,5 +16,9 @@ export const API_ROUTES = {
     create: '/api/project/create',
     recent: '/api/project/recent',
     delete: (projectId: string) => `/api/project/${projectId}`
+  },
+  weather: {
+    // TODO: confirm endpoint with backend; placeholder until then.
+    import: '/api/weather/import'
   }
 } as const

@@ -39,3 +39,20 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
     writable: true
   })
 }
+
+// Tests run in jsdom — there's no Electron preload bridge, so window.api is
+// undefined. Saga code references the api functions inside `call(window.api.X, …)`,
+// which throws on property access if `api` is missing. Install no-op stubs so
+// effect-equality assertions can compare function references without firing.
+if (typeof window !== 'undefined' && !(window as unknown as { api?: unknown }).api) {
+  const noop = (): undefined => undefined
+  ;(window as unknown as { api: Record<string, unknown> }).api = {
+    openFile: noop,
+    saveFile: noop,
+    readFile: noop,
+    writeFile: noop,
+    getBackendStatus: noop,
+    startBackend: noop,
+    stopBackend: noop
+  }
+}

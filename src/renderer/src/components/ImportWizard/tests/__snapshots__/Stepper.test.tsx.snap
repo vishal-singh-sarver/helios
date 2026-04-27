@@ -1,0 +1,213 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`<Stepper /> > renders correctly at step index 0 (snapshot) 1`] = `
+<div
+  class="px-2 pt-1 pb-3"
+>
+  <div
+    class="flex items-start"
+  >
+    <div
+      class="flex flex-col items-center"
+      style="min-width: 96px;"
+    >
+      <div
+        class="flex h-7 w-7 items-center justify-center rounded-full bg-[#245AC5] transition-all"
+      >
+        <div
+          class="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-white"
+        >
+          <div
+            class="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-[#245AC5]"
+          >
+            <div
+              class="h-1.5 w-1.5 rounded-full bg-white"
+            />
+          </div>
+        </div>
+      </div>
+      <div
+        class="mt-2 whitespace-pre-line text-center text-xs leading-tight font-semibold text-white"
+      >
+        File
+Preview
+      </div>
+    </div>
+    <div
+      class="mx-1 mt-3.5 h-px flex-1"
+      style="background: rgb(36, 90, 197);"
+    />
+    <div
+      class="flex flex-col items-center"
+      style="min-width: 96px;"
+    >
+      <div
+        class="flex h-7 w-7 items-center justify-center rounded-full bg-white transition-all"
+      >
+        <div
+          class="h-2.5 w-2.5 rounded-full bg-neutral-400"
+        />
+      </div>
+      <div
+        class="mt-2 whitespace-pre-line text-center text-xs leading-tight text-neutral-500"
+      >
+        Data
+Preview
+      </div>
+    </div>
+    <div
+      class="mx-1 mt-3.5 h-px flex-1"
+      style="background: rgb(42, 45, 58);"
+    />
+    <div
+      class="flex flex-col items-center"
+      style="min-width: 96px;"
+    >
+      <div
+        class="flex h-7 w-7 items-center justify-center rounded-full bg-white transition-all"
+      >
+        <div
+          class="h-2.5 w-2.5 rounded-full bg-neutral-400"
+        />
+      </div>
+      <div
+        class="mt-2 whitespace-pre-line text-center text-xs leading-tight text-neutral-500"
+      >
+        Date/
+Time
+      </div>
+    </div>
+    <div
+      class="mx-1 mt-3.5 h-px flex-1"
+      style="background: rgb(42, 45, 58);"
+    />
+    <div
+      class="flex flex-col items-center"
+      style="min-width: 96px;"
+    >
+      <div
+        class="flex h-7 w-7 items-center justify-center rounded-full bg-white transition-all"
+      >
+        <div
+          class="h-2.5 w-2.5 rounded-full bg-neutral-400"
+        />
+      </div>
+      <div
+        class="mt-2 whitespace-pre-line text-center text-xs leading-tight text-neutral-500"
+      >
+        Review &
+Import
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`<Stepper /> > renders correctly at step index 3 (final, snapshot) 1`] = `
+<div
+  class="px-2 pt-1 pb-3"
+>
+  <div
+    class="flex items-start"
+  >
+    <div
+      class="flex flex-col items-center"
+      style="min-width: 96px;"
+    >
+      <div
+        class="flex h-7 w-7 items-center justify-center rounded-full bg-[#245AC5] text-white transition-all"
+      >
+        <img
+          alt=""
+          class="h-3.5 w-3.5"
+          src="data:image/svg+xml,%3csvg%20width='12'%20height='11'%20viewBox='0%200%2012%2011'%20fill='none'%20xmlns='http://www.w3.org/2000/svg'%3e%3cpath%20fill-rule='evenodd'%20clip-rule='evenodd'%20d='M10.7464%200.274437L3.58641%207.18444L1.68641%205.15444C1.33641%204.82444%200.786406%204.80444%200.386406%205.08444C-0.00359413%205.37444%20-0.113594%205.88444%200.126406%206.29444L2.37641%209.95444C2.59641%2010.2944%202.97641%2010.5044%203.40641%2010.5044C3.81641%2010.5044%204.20641%2010.2944%204.42641%209.95444C4.78641%209.48444%2011.6564%201.29444%2011.6564%201.29444C12.5564%200.374437%2011.4664%20-0.435563%2010.7464%200.264437V0.274437Z'%20fill='white'/%3e%3c/svg%3e"
+        />
+      </div>
+      <div
+        class="mt-2 whitespace-pre-line text-center text-xs leading-tight text-neutral-300"
+      >
+        File
+Preview
+      </div>
+    </div>
+    <div
+      class="mx-1 mt-3.5 h-px flex-1"
+      style="background: rgb(36, 90, 197);"
+    />
+    <div
+      class="flex flex-col items-center"
+      style="min-width: 96px;"
+    >
+      <div
+        class="flex h-7 w-7 items-center justify-center rounded-full bg-[#245AC5] text-white transition-all"
+      >
+        <img
+          alt=""
+          class="h-3.5 w-3.5"
+          src="data:image/svg+xml,%3csvg%20width='12'%20height='11'%20viewBox='0%200%2012%2011'%20fill='none'%20xmlns='http://www.w3.org/2000/svg'%3e%3cpath%20fill-rule='evenodd'%20clip-rule='evenodd'%20d='M10.7464%200.274437L3.58641%207.18444L1.68641%205.15444C1.33641%204.82444%200.786406%204.80444%200.386406%205.08444C-0.00359413%205.37444%20-0.113594%205.88444%200.126406%206.29444L2.37641%209.95444C2.59641%2010.2944%202.97641%2010.5044%203.40641%2010.5044C3.81641%2010.5044%204.20641%2010.2944%204.42641%209.95444C4.78641%209.48444%2011.6564%201.29444%2011.6564%201.29444C12.5564%200.374437%2011.4664%20-0.435563%2010.7464%200.264437V0.274437Z'%20fill='white'/%3e%3c/svg%3e"
+        />
+      </div>
+      <div
+        class="mt-2 whitespace-pre-line text-center text-xs leading-tight text-neutral-300"
+      >
+        Data
+Preview
+      </div>
+    </div>
+    <div
+      class="mx-1 mt-3.5 h-px flex-1"
+      style="background: rgb(36, 90, 197);"
+    />
+    <div
+      class="flex flex-col items-center"
+      style="min-width: 96px;"
+    >
+      <div
+        class="flex h-7 w-7 items-center justify-center rounded-full bg-[#245AC5] text-white transition-all"
+      >
+        <img
+          alt=""
+          class="h-3.5 w-3.5"
+          src="data:image/svg+xml,%3csvg%20width='12'%20height='11'%20viewBox='0%200%2012%2011'%20fill='none'%20xmlns='http://www.w3.org/2000/svg'%3e%3cpath%20fill-rule='evenodd'%20clip-rule='evenodd'%20d='M10.7464%200.274437L3.58641%207.18444L1.68641%205.15444C1.33641%204.82444%200.786406%204.80444%200.386406%205.08444C-0.00359413%205.37444%20-0.113594%205.88444%200.126406%206.29444L2.37641%209.95444C2.59641%2010.2944%202.97641%2010.5044%203.40641%2010.5044C3.81641%2010.5044%204.20641%2010.2944%204.42641%209.95444C4.78641%209.48444%2011.6564%201.29444%2011.6564%201.29444C12.5564%200.374437%2011.4664%20-0.435563%2010.7464%200.264437V0.274437Z'%20fill='white'/%3e%3c/svg%3e"
+        />
+      </div>
+      <div
+        class="mt-2 whitespace-pre-line text-center text-xs leading-tight text-neutral-300"
+      >
+        Date/
+Time
+      </div>
+    </div>
+    <div
+      class="mx-1 mt-3.5 h-px flex-1"
+      style="background: rgb(36, 90, 197);"
+    />
+    <div
+      class="flex flex-col items-center"
+      style="min-width: 96px;"
+    >
+      <div
+        class="flex h-7 w-7 items-center justify-center rounded-full bg-[#245AC5] transition-all"
+      >
+        <div
+          class="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-white"
+        >
+          <div
+            class="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-[#245AC5]"
+          >
+            <div
+              class="h-1.5 w-1.5 rounded-full bg-white"
+            />
+          </div>
+        </div>
+      </div>
+      <div
+        class="mt-2 whitespace-pre-line text-center text-xs leading-tight font-semibold text-white"
+      >
+        Review &
+Import
+      </div>
+    </div>
+  </div>
+</div>
+`;

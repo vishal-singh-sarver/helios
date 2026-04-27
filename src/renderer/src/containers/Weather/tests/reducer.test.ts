@@ -1,5 +1,6 @@
 import weatherReducer, { initialState } from '../reducer'
 import * as actions from '../actions'
+import type { ImportedDataset, PickedFile } from '../types'
 
 describe('weatherReducer', () => {
   it('returns the initial state', () => {
@@ -58,6 +59,101 @@ describe('weatherReducer', () => {
       const event = { type: 'ping', data: null, timestamp: 1 }
       weatherReducer(initialState, actions.sseEvent(event))
       expect(initialState.streamLog).toHaveLength(0)
+    })
+  })
+
+  describe('Import — file pick', () => {
+    const picked: PickedFile = { filename: 'foo.csv', rawText: 'a,b\n1,2' }
+
+    it('IMPORT_PICK_FILE_REQUESTED flips fileLoading and clears error/file', () => {
+      const state = { ...initialState, fileError: 'prev', pickedFile: picked }
+      const result = weatherReducer(state, actions.importPickFileRequested())
+      expect(result.fileLoading).toBe(true)
+      expect(result.fileError).toBeNull()
+      expect(result.pickedFile).toBeNull()
+    })
+
+    it('IMPORT_PICK_FILE_SUCCEEDED stores the picked file and clears loading', () => {
+      const state = { ...initialState, fileLoading: true }
+      const result = weatherReducer(state, actions.importPickFileSucceeded(picked))
+      expect(result.fileLoading).toBe(false)
+      expect(result.pickedFile).toEqual(picked)
+    })
+
+    it('IMPORT_PICK_FILE_FAILED stores the error and clears loading', () => {
+      const state = { ...initialState, fileLoading: true }
+      const result = weatherReducer(state, actions.importPickFileFailed('read error'))
+      expect(result.fileLoading).toBe(false)
+      expect(result.fileError).toBe('read error')
+    })
+  })
+
+  describe('Import — finalize', () => {
+    const dataset: ImportedDataset = {
+      filename: 'foo.csv',
+      columns: [{ key: '__check__', label: 'check', index: -1 }],
+      records: [{ dtIso: '2026-01-01T00:00:00.000Z', values: { __check__: 'true' } }]
+    }
+
+    it('IMPORT_FINALIZE_REQUESTED flips importing and clears any prior error', () => {
+      const state = { ...initialState, importError: 'prev' }
+      const result = weatherReducer(state, actions.importFinalizeRequested(dataset))
+      expect(result.importing).toBe(true)
+      expect(result.importError).toBeNull()
+    })
+
+    it('IMPORT_FINALIZE_SUCCEEDED stores the dataset and clears pickedFile', () => {
+      const state = {
+        ...initialState,
+        importing: true,
+        pickedFile: { filename: 'foo.csv', rawText: 'x' },
+        fileError: 'cleared too'
+      }
+      const result = weatherReducer(state, actions.importFinalizeSucceeded(dataset))
+      expect(result.importing).toBe(false)
+      expect(result.dataset).toEqual(dataset)
+      expect(result.pickedFile).toBeNull()
+      expect(result.fileError).toBeNull()
+    })
+
+    it('IMPORT_FINALIZE_FAILED stores the error and clears importing', () => {
+      const state = { ...initialState, importing: true }
+      const result = weatherReducer(state, actions.importFinalizeFailed('save cancelled'))
+      expect(result.importing).toBe(false)
+      expect(result.importError).toBe('save cancelled')
+    })
+
+    it('IMPORT_FINALIZE_FAILED preserves dataset from a previous successful import', () => {
+      const state = { ...initialState, importing: true, dataset }
+      const result = weatherReducer(state, actions.importFinalizeFailed('boom'))
+      expect(result.dataset).toEqual(dataset)
+    })
+  })
+
+  describe('Import — reset', () => {
+    const dataset: ImportedDataset = {
+      filename: 'foo.csv',
+      columns: [],
+      records: []
+    }
+
+    it('IMPORT_RESET clears every transient field but preserves dataset', () => {
+      const state = {
+        ...initialState,
+        fileLoading: true,
+        fileError: 'err',
+        pickedFile: { filename: 'foo.csv', rawText: 'x' },
+        importing: true,
+        importError: 'oops',
+        dataset
+      }
+      const result = weatherReducer(state, actions.importReset())
+      expect(result.fileLoading).toBe(false)
+      expect(result.fileError).toBeNull()
+      expect(result.pickedFile).toBeNull()
+      expect(result.importing).toBe(false)
+      expect(result.importError).toBeNull()
+      expect(result.dataset).toEqual(dataset)
     })
   })
 })

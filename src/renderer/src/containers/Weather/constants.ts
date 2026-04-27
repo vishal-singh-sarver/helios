@@ -7,3 +7,12 @@ export const FETCH_STATUS_FAILURE = 'app/Weather/FETCH_STATUS_FAILURE' as const
 export const SSE_CONNECT = 'app/Weather/SSE_CONNECT' as const
 export const SSE_EVENT = 'app/Weather/SSE_EVENT' as const
 export const SSE_DISCONNECT = 'app/Weather/SSE_DISCONNECT' as const
+
+// Weather data import
+export const IMPORT_PICK_FILE_REQUESTED = 'app/Weather/IMPORT_PICK_FILE_REQUESTED' as const
+export const IMPORT_PICK_FILE_SUCCEEDED = 'app/Weather/IMPORT_PICK_FILE_SUCCEEDED' as const
+export const IMPORT_PICK_FILE_FAILED = 'app/Weather/IMPORT_PICK_FILE_FAILED' as const
+export const IMPORT_FINALIZE_REQUESTED = 'app/Weather/IMPORT_FINALIZE_REQUESTED' as const
+export const IMPORT_FINALIZE_SUCCEEDED = 'app/Weather/IMPORT_FINALIZE_SUCCEEDED' as const
+export const IMPORT_FINALIZE_FAILED = 'app/Weather/IMPORT_FINALIZE_FAILED' as const
+export const IMPORT_RESET = 'app/Weather/IMPORT_RESET' as const

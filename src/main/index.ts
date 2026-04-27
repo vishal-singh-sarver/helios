@@ -270,21 +270,25 @@ app.on('second-instance', () => {
 
 // --- File dialog IPC handlers ---
 
-ipcMain.handle('dialog:openFile', async (_event, filters: Electron.FileFilter[]) => {
-  const result = await dialog.showOpenDialog({
-    properties: ['openFile'],
-    filters
-  })
+ipcMain.handle('dialog:openFile', async (event, filters: Electron.FileFilter[]) => {
+  // Attach the dialog to the calling window so it becomes a modal sheet on
+  // macOS (and stays on top on other platforms). Without this the dialog
+  // floats free — the user can click back to the app while it's still open
+  // behind the scenes, leaving the renderer's "Opening…" state stuck.
+  const win = BrowserWindow.fromWebContents(event.sender)
+  const result = win
+    ? await dialog.showOpenDialog(win, { properties: ['openFile'], filters })
+    : await dialog.showOpenDialog({ properties: ['openFile'], filters })
   return result.canceled ? null : result.filePaths[0]
 })
 
 ipcMain.handle(
   'dialog:saveFile',
-  async (_event, filters: Electron.FileFilter[], defaultPath?: string) => {
-    const result = await dialog.showSaveDialog({
-      filters,
-      defaultPath
-    })
+  async (event, filters: Electron.FileFilter[], defaultPath?: string) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    const result = win
+      ? await dialog.showSaveDialog(win, { filters, defaultPath })
+      : await dialog.showSaveDialog({ filters, defaultPath })
     return result.canceled ? null : result.filePath
   }
 )
