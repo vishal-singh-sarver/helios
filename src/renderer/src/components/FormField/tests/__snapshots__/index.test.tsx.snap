@@ -22,16 +22,19 @@ exports[`<FormField /> > should match the snapshot 1`] = `
       Enter a project name.
     </span>
   </label>
-  <input
-    aria-invalid="false"
-    class="mt-1 h-9 w-full rounded border border-app-border bg-dark 
-        px-3 text-sm text-white outline-none focus:border-neutral-500"
-    id="projectName"
-    name="projectName"
-    placeholder="Enter"
-    type="text"
-    value=""
-  />
+  <div
+    class="relative"
+  >
+    <input
+      aria-invalid="false"
+      class="mt-1 h-9 w-full rounded border border-app-border bg-dark text-sm text-white outline-none focus:border-neutral-500 px-3"
+      id="projectName"
+      name="projectName"
+      placeholder="Enter"
+      type="text"
+      value=""
+    />
+  </div>
 </div>
 `;
 
@@ -57,20 +60,23 @@ exports[`<FormField /> > should match the snapshot with error 1`] = `
       Enter a project name.
     </span>
   </label>
-  <input
-    aria-describedby="_r_j_"
-    aria-invalid="true"
-    class="mt-1 h-9 w-full rounded border border-app-border bg-dark 
-        px-3 text-sm text-white outline-none focus:border-neutral-500"
-    id="projectName"
-    name="projectName"
-    placeholder="Enter"
-    type="text"
-    value=""
-  />
+  <div
+    class="relative"
+  >
+    <input
+      aria-describedby="_r_n_"
+      aria-invalid="true"
+      class="mt-1 h-9 w-full rounded border border-app-border bg-dark text-sm text-white outline-none focus:border-neutral-500 px-3"
+      id="projectName"
+      name="projectName"
+      placeholder="Enter"
+      type="text"
+      value=""
+    />
+  </div>
   <p
     class="mt-1 text-xs text-red-400"
-    id="_r_j_"
+    id="_r_n_"
     role="alert"
   >
     Required

@@ -2,6 +2,8 @@ import React from 'react'
 import type { Reducer } from 'redux'
 import { useInjectReducer } from 'utils/injectReducer'
 import { useInjectSaga } from 'utils/injectSaga'
+import WeatherTable from './WeatherTable'
+import WeatherToolbar from './WeatherToolbar'
 import reducer from './reducer'
 import saga from './saga'
 
@@ -13,8 +15,9 @@ export function Weather(): React.JSX.Element {
   useInjectSaga({ key: 'weather', saga })
 
   return (
-    <div className="flex flex-1 items-center justify-center text-sm text-neutral-400">
-      Weather
+    <div className="flex flex-1 flex-col overflow-hidden">
+      <WeatherToolbar />
+      <WeatherTable />
     </div>
   )
 }

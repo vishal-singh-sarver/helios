@@ -160,6 +160,80 @@ describe('<FormField />', () => {
     expect(screen.getByTestId('tooltip')).toHaveAttribute('data-place', '')
   })
 
+  // ── Select variant ──
+
+  it('renders a select when options are provided', () => {
+    render(
+      <FormField
+        {...defaultProps}
+        inputProps={{
+          ...defaultProps.inputProps,
+          options: [
+            { value: 'a', label: 'Alpha' },
+            { value: 'b', label: 'Beta' }
+          ]
+        }}
+      />
+    )
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    expect(screen.getByRole('combobox')).toBeInTheDocument()
+  })
+
+  it('renders placeholder as the first empty option in the select', () => {
+    render(
+      <FormField
+        {...defaultProps}
+        inputProps={{
+          ...defaultProps.inputProps,
+          placeholder: 'Pick one',
+          options: [{ value: 'a', label: 'Alpha' }]
+        }}
+      />
+    )
+    const options = Array.from(screen.getByRole('combobox').querySelectorAll('option'))
+    expect(options[0]).toHaveTextContent('Pick one')
+    expect(options[0]).toHaveValue('')
+  })
+
+  it('renders one option per entry in the options list', () => {
+    render(
+      <FormField
+        {...defaultProps}
+        inputProps={{
+          ...defaultProps.inputProps,
+          options: [
+            { value: 'a', label: 'Alpha' },
+            { value: 'b', label: 'Beta' },
+            { value: 'c', label: 'Gamma' }
+          ]
+        }}
+      />
+    )
+    const options = Array.from(screen.getByRole('combobox').querySelectorAll('option'))
+    // +1 for the placeholder option
+    expect(options).toHaveLength(4)
+    expect(options.slice(1).map((o) => o.textContent)).toEqual(['Alpha', 'Beta', 'Gamma'])
+  })
+
+  it('fires onChange when a select option is chosen', () => {
+    const onChange = vi.fn()
+    render(
+      <FormField
+        {...defaultProps}
+        inputProps={{
+          ...defaultProps.inputProps,
+          onChange,
+          options: [
+            { value: 'a', label: 'Alpha' },
+            { value: 'b', label: 'Beta' }
+          ]
+        }}
+      />
+    )
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'b' } })
+    expect(onChange).toHaveBeenCalled()
+  })
+
   // Snapshot regression guard — default state (no error)
   it('should match the snapshot', () => {
     const { container } = render(<FormField {...defaultProps} />)
