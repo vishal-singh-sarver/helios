@@ -1,31 +1,302 @@
 import {
-  FETCH_STATUS, FETCH_STATUS_SUCCESS, FETCH_STATUS_FAILURE,
-  SSE_CONNECT, SSE_EVENT, SSE_DISCONNECT
+  LOAD_DATA_TYPES_REQUESTED,
+  LOAD_DATA_TYPES_SUCCEEDED,
+  LOAD_DATA_TYPES_FAILED,
+  SET_ACTIVE_SCENARIO,
+  LOAD_SCENARIO_REQUESTED,
+  LOAD_SCENARIO_SUCCEEDED,
+  LOAD_SCENARIO_FAILED,
+  UPLOAD_FILE_REQUESTED,
+  UPLOAD_FILE_SUCCEEDED,
+  UPLOAD_FILE_FAILED,
+  ADD_ROW_REQUESTED,
+  ADD_ROW_SUCCEEDED,
+  ADD_ROW_FAILED,
+  ADD_COLUMN_REQUESTED,
+  ADD_COLUMN_SUCCEEDED,
+  ADD_COLUMN_FAILED,
+  UPDATE_CELL_LOCAL,
+  UPDATE_CELL_REQUESTED,
+  UPDATE_CELL_SUCCEEDED,
+  UPDATE_CELL_FAILED,
+  SET_ROW_SELECTION,
+  SET_ALL_ROWS_SELECTION
 } from './constants'
-import type { ProjectScreenStatus, ProjectScreenStreamEvent } from './types'
+import type {
+  AddColumnPayload,
+  AddRowPayload,
+  ColId,
+  DataTypeDef,
+  LoadedScenarioPayload,
+  RowId,
+  UpdateCellLocalPayload
+} from './types'
 
-// ── Action interfaces ──────────────────────────────────────────────────────────
+// Index signature on every action satisfies Redux 5's UnknownAction so
+// dispatch accepts these without a cast (same pattern as
+// store/navigationReducer.ts).
+type Idx = { [extraProps: string]: unknown }
 
-export interface FetchStatusAction         { type: typeof FETCH_STATUS }
-export interface FetchStatusSuccessAction  { type: typeof FETCH_STATUS_SUCCESS; payload: ProjectScreenStatus }
-export interface FetchStatusFailureAction  { type: typeof FETCH_STATUS_FAILURE; payload: string }
-export interface SseConnectAction          { type: typeof SSE_CONNECT }
-export interface SseEventAction            { type: typeof SSE_EVENT; payload: ProjectScreenStreamEvent }
-export interface SseDisconnectAction       { type: typeof SSE_DISCONNECT }
+// ── Action interfaces ────────────────────────────────────────────────────────
+
+// Data types
+export interface LoadDataTypesRequestedAction extends Idx {
+  type: typeof LOAD_DATA_TYPES_REQUESTED
+}
+export interface LoadDataTypesSucceededAction extends Idx {
+  type: typeof LOAD_DATA_TYPES_SUCCEEDED
+  payload: DataTypeDef[]
+}
+export interface LoadDataTypesFailedAction extends Idx {
+  type: typeof LOAD_DATA_TYPES_FAILED
+  payload: string
+}
+
+// Active scenario
+export interface SetActiveScenarioAction extends Idx {
+  type: typeof SET_ACTIVE_SCENARIO
+  payload: { scenarioId: string }
+}
+
+// Scenario load
+export interface LoadScenarioRequestedAction extends Idx {
+  type: typeof LOAD_SCENARIO_REQUESTED
+  payload: { scenarioId: string }
+}
+export interface LoadScenarioSucceededAction extends Idx {
+  type: typeof LOAD_SCENARIO_SUCCEEDED
+  payload: LoadedScenarioPayload
+}
+export interface LoadScenarioFailedAction extends Idx {
+  type: typeof LOAD_SCENARIO_FAILED
+  payload: { scenarioId: string; error: string }
+}
+
+// Upload
+export interface UploadFileRequestedAction extends Idx {
+  type: typeof UPLOAD_FILE_REQUESTED
+  payload: { scenarioId: string; file: File }
+}
+export interface UploadFileSucceededAction extends Idx {
+  type: typeof UPLOAD_FILE_SUCCEEDED
+  payload: { scenarioId: string }
+}
+export interface UploadFileFailedAction extends Idx {
+  type: typeof UPLOAD_FILE_FAILED
+  payload: { scenarioId: string; error: string }
+}
+
+// Add row
+export interface AddRowRequestedAction extends Idx {
+  type: typeof ADD_ROW_REQUESTED
+  payload: { scenarioId: string; date: string; time: string; values: Record<ColId, string> }
+}
+export interface AddRowSucceededAction extends Idx {
+  type: typeof ADD_ROW_SUCCEEDED
+  payload: AddRowPayload
+}
+export interface AddRowFailedAction extends Idx {
+  type: typeof ADD_ROW_FAILED
+  payload: { scenarioId: string; error: string }
+}
+
+// Add column
+export interface AddColumnRequestedAction extends Idx {
+  type: typeof ADD_COLUMN_REQUESTED
+  payload: {
+    scenarioId: string
+    columnname: string
+    dataTypeId: string | null
+    unitId: string | null
+    values: string[]
+  }
+}
+export interface AddColumnSucceededAction extends Idx {
+  type: typeof ADD_COLUMN_SUCCEEDED
+  payload: AddColumnPayload
+}
+export interface AddColumnFailedAction extends Idx {
+  type: typeof ADD_COLUMN_FAILED
+  payload: { scenarioId: string; error: string }
+}
+
+// Cell edit
+export interface UpdateCellLocalAction extends Idx {
+  type: typeof UPDATE_CELL_LOCAL
+  payload: UpdateCellLocalPayload
+}
+export interface UpdateCellRequestedAction extends Idx {
+  type: typeof UPDATE_CELL_REQUESTED
+  payload: { scenarioId: string; rowId: RowId; colId: ColId }
+}
+export interface UpdateCellSucceededAction extends Idx {
+  type: typeof UPDATE_CELL_SUCCEEDED
+  payload: { scenarioId: string; rowId: RowId; colId: ColId }
+}
+export interface UpdateCellFailedAction extends Idx {
+  type: typeof UPDATE_CELL_FAILED
+  payload: { scenarioId: string; rowId: RowId; colId: ColId; error: string }
+}
+
+// Selection
+export interface SetRowSelectionAction extends Idx {
+  type: typeof SET_ROW_SELECTION
+  payload: { scenarioId: string; rowId: RowId; selected: boolean }
+}
+export interface SetAllRowsSelectionAction extends Idx {
+  type: typeof SET_ALL_ROWS_SELECTION
+  payload: { scenarioId: string; selected: boolean }
+}
 
 export type ProjectScreenAction =
-  | FetchStatusAction
-  | FetchStatusSuccessAction
-  | FetchStatusFailureAction
-  | SseConnectAction
-  | SseEventAction
-  | SseDisconnectAction
+  | LoadDataTypesRequestedAction
+  | LoadDataTypesSucceededAction
+  | LoadDataTypesFailedAction
+  | SetActiveScenarioAction
+  | LoadScenarioRequestedAction
+  | LoadScenarioSucceededAction
+  | LoadScenarioFailedAction
+  | UploadFileRequestedAction
+  | UploadFileSucceededAction
+  | UploadFileFailedAction
+  | AddRowRequestedAction
+  | AddRowSucceededAction
+  | AddRowFailedAction
+  | AddColumnRequestedAction
+  | AddColumnSucceededAction
+  | AddColumnFailedAction
+  | UpdateCellLocalAction
+  | UpdateCellRequestedAction
+  | UpdateCellSucceededAction
+  | UpdateCellFailedAction
+  | SetRowSelectionAction
+  | SetAllRowsSelectionAction
 
-// ── Action creators ────────────────────────────────────────────────────────────
+// ── Action creators ──────────────────────────────────────────────────────────
 
-export const fetchStatus         = (): FetchStatusAction         => ({ type: FETCH_STATUS })
-export const fetchStatusSuccess  = (payload: ProjectScreenStatus): FetchStatusSuccessAction  => ({ type: FETCH_STATUS_SUCCESS, payload })
-export const fetchStatusFailure  = (payload: string): FetchStatusFailureAction  => ({ type: FETCH_STATUS_FAILURE, payload })
-export const sseConnect          = (): SseConnectAction          => ({ type: SSE_CONNECT })
-export const sseEvent            = (payload: ProjectScreenStreamEvent): SseEventAction => ({ type: SSE_EVENT, payload })
-export const sseDisconnect       = (): SseDisconnectAction       => ({ type: SSE_DISCONNECT })
+export const loadDataTypesRequested = (): LoadDataTypesRequestedAction => ({
+  type: LOAD_DATA_TYPES_REQUESTED
+})
+export const loadDataTypesSucceeded = (
+  payload: DataTypeDef[]
+): LoadDataTypesSucceededAction => ({ type: LOAD_DATA_TYPES_SUCCEEDED, payload })
+export const loadDataTypesFailed = (payload: string): LoadDataTypesFailedAction => ({
+  type: LOAD_DATA_TYPES_FAILED,
+  payload
+})
+
+export const setActiveScenario = (scenarioId: string): SetActiveScenarioAction => ({
+  type: SET_ACTIVE_SCENARIO,
+  payload: { scenarioId }
+})
+
+export const loadScenarioRequested = (scenarioId: string): LoadScenarioRequestedAction => ({
+  type: LOAD_SCENARIO_REQUESTED,
+  payload: { scenarioId }
+})
+export const loadScenarioSucceeded = (
+  payload: LoadedScenarioPayload
+): LoadScenarioSucceededAction => ({ type: LOAD_SCENARIO_SUCCEEDED, payload })
+export const loadScenarioFailed = (
+  scenarioId: string,
+  error: string
+): LoadScenarioFailedAction => ({
+  type: LOAD_SCENARIO_FAILED,
+  payload: { scenarioId, error }
+})
+
+export const uploadFileRequested = (
+  scenarioId: string,
+  file: File
+): UploadFileRequestedAction => ({ type: UPLOAD_FILE_REQUESTED, payload: { scenarioId, file } })
+export const uploadFileSucceeded = (scenarioId: string): UploadFileSucceededAction => ({
+  type: UPLOAD_FILE_SUCCEEDED,
+  payload: { scenarioId }
+})
+export const uploadFileFailed = (scenarioId: string, error: string): UploadFileFailedAction => ({
+  type: UPLOAD_FILE_FAILED,
+  payload: { scenarioId, error }
+})
+
+export const addRowRequested = (
+  scenarioId: string,
+  date: string,
+  time: string,
+  values: Record<ColId, string>
+): AddRowRequestedAction => ({
+  type: ADD_ROW_REQUESTED,
+  payload: { scenarioId, date, time, values }
+})
+export const addRowSucceeded = (payload: AddRowPayload): AddRowSucceededAction => ({
+  type: ADD_ROW_SUCCEEDED,
+  payload
+})
+export const addRowFailed = (scenarioId: string, error: string): AddRowFailedAction => ({
+  type: ADD_ROW_FAILED,
+  payload: { scenarioId, error }
+})
+
+export const addColumnRequested = (
+  scenarioId: string,
+  columnname: string,
+  dataTypeId: string | null,
+  unitId: string | null,
+  values: string[]
+): AddColumnRequestedAction => ({
+  type: ADD_COLUMN_REQUESTED,
+  payload: { scenarioId, columnname, dataTypeId, unitId, values }
+})
+export const addColumnSucceeded = (payload: AddColumnPayload): AddColumnSucceededAction => ({
+  type: ADD_COLUMN_SUCCEEDED,
+  payload
+})
+export const addColumnFailed = (scenarioId: string, error: string): AddColumnFailedAction => ({
+  type: ADD_COLUMN_FAILED,
+  payload: { scenarioId, error }
+})
+
+export const updateCellLocal = (payload: UpdateCellLocalPayload): UpdateCellLocalAction => ({
+  type: UPDATE_CELL_LOCAL,
+  payload
+})
+export const updateCellRequested = (
+  scenarioId: string,
+  rowId: RowId,
+  colId: ColId
+): UpdateCellRequestedAction => ({
+  type: UPDATE_CELL_REQUESTED,
+  payload: { scenarioId, rowId, colId }
+})
+export const updateCellSucceeded = (
+  scenarioId: string,
+  rowId: RowId,
+  colId: ColId
+): UpdateCellSucceededAction => ({
+  type: UPDATE_CELL_SUCCEEDED,
+  payload: { scenarioId, rowId, colId }
+})
+export const updateCellFailed = (
+  scenarioId: string,
+  rowId: RowId,
+  colId: ColId,
+  error: string
+): UpdateCellFailedAction => ({
+  type: UPDATE_CELL_FAILED,
+  payload: { scenarioId, rowId, colId, error }
+})
+
+export const setRowSelection = (
+  scenarioId: string,
+  rowId: RowId,
+  selected: boolean
+): SetRowSelectionAction => ({
+  type: SET_ROW_SELECTION,
+  payload: { scenarioId, rowId, selected }
+})
+export const setAllRowsSelection = (
+  scenarioId: string,
+  selected: boolean
+): SetAllRowsSelectionAction => ({
+  type: SET_ALL_ROWS_SELECTION,
+  payload: { scenarioId, selected }
+})
