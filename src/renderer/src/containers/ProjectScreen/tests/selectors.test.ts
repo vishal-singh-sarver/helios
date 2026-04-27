@@ -8,20 +8,19 @@ import {
   makeSelectCellValue,
   makeSelectDataType,
   makeSelectRowSelected,
-  selectActiveScenarioGrid,
   selectActiveScenarioId,
+  selectActiveWeatherTable,
   selectAllDataTypes,
   selectAllRowsSelected,
   selectColumnDataTypes,
   selectColumnOrder,
   selectColumns,
   selectDataTypesLoadStatus,
-  selectLoadStatus,
   selectProjectScreenDomain,
   selectRowOrder,
   selectScenarioDataTypes
 } from '../selectors'
-import type { DataTypeDef, LoadedScenarioPayload } from '../types'
+import type { ColumnDef, DataTypeDef, LoadedScenarioPayload } from '../types'
 
 const SCN = 'scenario-1'
 
@@ -51,16 +50,17 @@ const sampleTypes: DataTypeDef[] = [
   }
 ]
 
+const sampleColumns: ColumnDef[] = [
+  { id: 'col_datetime', name: 'date_time', unit: null, datatype: null },
+  { id: 'col_air_temperature', name: 'air_temperature', unit: 'K', datatype: 'air_temperature' }
+]
+
 const samplePayload: LoadedScenarioPayload = {
   scenarioId: SCN,
-  columns: [
-    { id: 'date', name: 'Date', dataTypeId: 'date', unitId: null },
-    { id: 'time', name: 'Time', dataTypeId: 'time', unitId: null },
-    { id: 'air_temperature', name: 'Air Temperature', dataTypeId: 'air_temperature', unitId: 'kelvin' }
-  ],
+  columns: sampleColumns,
   rows: [
-    { date: '2026-04-27', time: '10:00:00', values: { air_temperature: '293.1' } },
-    { date: '2026-04-27', time: '11:00:00', values: { air_temperature: '294.2' } }
+    { col_datetime: '2026-04-27 10:00:00', col_air_temperature: '293.1' },
+    { col_datetime: '2026-04-27 11:00:00', col_air_temperature: '294.2' }
   ]
 }
 
@@ -111,39 +111,35 @@ describe('data-type selectors', () => {
   })
 })
 
-describe('grid selectors', () => {
+describe('weather-table selectors', () => {
   it('selectActiveScenarioId reflects the active id', () => {
     expect(selectActiveScenarioId(wrap(buildLoadedState()))).toBe(SCN)
   })
 
-  it('selectActiveScenarioGrid returns the loaded grid', () => {
-    const grid = selectActiveScenarioGrid(wrap(buildLoadedState()))
-    expect(grid?.rowOrder).toEqual([0, 1])
+  it('selectActiveWeatherTable returns the loaded table', () => {
+    const table = selectActiveWeatherTable(wrap(buildLoadedState()))
+    expect(table?.rowOrder).toEqual(['row_0', 'row_1'])
   })
 
   it('selectColumns / selectColumnOrder reflect the loaded data', () => {
     const root = wrap(buildLoadedState())
-    expect(selectColumnOrder(root)).toEqual(['date', 'time', 'air_temperature'])
-    expect(selectColumns(root).air_temperature.unitId).toBe('kelvin')
+    expect(selectColumnOrder(root)).toEqual(['col_datetime', 'col_air_temperature'])
+    expect(selectColumns(root).col_air_temperature.unit).toBe('K')
   })
 
   it('selectRowOrder reflects rowOrder', () => {
-    expect(selectRowOrder(wrap(buildLoadedState()))).toEqual([0, 1])
-  })
-
-  it('selectLoadStatus is loaded after a successful load', () => {
-    expect(selectLoadStatus(wrap(buildLoadedState()))).toBe('loaded')
+    expect(selectRowOrder(wrap(buildLoadedState()))).toEqual(['row_0', 'row_1'])
   })
 })
 
 describe('per-cell factories', () => {
   it('makeSelectCellValue reads the correct cell', () => {
-    const sel = makeSelectCellValue(0, 'air_temperature')
+    const sel = makeSelectCellValue('row_0', 'col_air_temperature')
     expect(sel(wrap(buildLoadedState()))).toBe('293.1')
   })
 
   it('makeSelectCellSync defaults to idle', () => {
-    const sel = makeSelectCellSync(0, 'air_temperature')
+    const sel = makeSelectCellSync('row_0', 'col_air_temperature')
     expect(sel(wrap(buildLoadedState()))).toBe('idle')
   })
 
@@ -153,51 +149,42 @@ describe('per-cell factories', () => {
       state,
       actions.updateCellLocal({
         scenarioId: SCN,
-        rowId: 0,
-        colId: 'air_temperature',
+        rowId: 'row_0',
+        colId: 'col_air_temperature',
         value: '300.0',
         validationError: null
       })
     )
-    const sel = makeSelectCellSync(0, 'air_temperature')
+    const sel = makeSelectCellSync('row_0', 'col_air_temperature')
     expect(sel(wrap(state))).toBe('pending')
   })
 
-  it('makeSelectCellError prefers validation error over server error', () => {
+  it('makeSelectCellError surfaces validation errors', () => {
     let state = buildLoadedState()
     state = projectScreenReducer(
       state,
       actions.updateCellLocal({
         scenarioId: SCN,
-        rowId: 0,
-        colId: 'air_temperature',
+        rowId: 'row_0',
+        colId: 'col_air_temperature',
         value: 'NaN',
         validationError: 'must be number'
       })
     )
-    state = projectScreenReducer(
-      state,
-      actions.updateCellFailed(SCN, 0, 'air_temperature', 'server says no')
-    )
-    const sel = makeSelectCellError(0, 'air_temperature')
+    const sel = makeSelectCellError('row_0', 'col_air_temperature')
     expect(sel(wrap(state))).toBe('must be number')
   })
 
-  it('makeSelectCellError falls back to server error when no validation error', () => {
-    let state = buildLoadedState()
-    state = projectScreenReducer(
-      state,
-      actions.updateCellFailed(SCN, 0, 'air_temperature', 'server says no')
-    )
-    const sel = makeSelectCellError(0, 'air_temperature')
-    expect(sel(wrap(state))).toBe('server says no')
+  it('makeSelectCellError returns null when no validation error', () => {
+    const sel = makeSelectCellError('row_0', 'col_air_temperature')
+    expect(sel(wrap(buildLoadedState()))).toBeNull()
   })
 })
 
 describe('selection selectors', () => {
   it('selectAllRowsSelected is false when at least one row unselected', () => {
     let state = buildLoadedState()
-    state = projectScreenReducer(state, actions.setRowSelection(SCN, 0, true))
+    state = projectScreenReducer(state, actions.setRowSelection(SCN, 'row_0', true))
     expect(selectAllRowsSelected(wrap(state))).toBe(false)
   })
 
@@ -209,8 +196,8 @@ describe('selection selectors', () => {
 
   it('makeSelectRowSelected reflects per-row state', () => {
     let state = buildLoadedState()
-    state = projectScreenReducer(state, actions.setRowSelection(SCN, 1, true))
-    expect(makeSelectRowSelected(0)(wrap(state))).toBe(false)
-    expect(makeSelectRowSelected(1)(wrap(state))).toBe(true)
+    state = projectScreenReducer(state, actions.setRowSelection(SCN, 'row_1', true))
+    expect(makeSelectRowSelected('row_0')(wrap(state))).toBe(false)
+    expect(makeSelectRowSelected('row_1')(wrap(state))).toBe(true)
   })
 })

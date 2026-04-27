@@ -18,7 +18,10 @@ export const API_ROUTES = {
     delete: (projectId: string) => `/api/project/${projectId}`
   },
   weather: {
+    headers: '/api/weather/headers',
+    data: '/api/weather/data',
     addColumn: '/api/weather/column/add',
-    addRows: '/api/weather/rows/add'
+    addRows: '/api/weather/rows/add',
+    updateCell: '/api/weather/cell/update'
   }
 } as const

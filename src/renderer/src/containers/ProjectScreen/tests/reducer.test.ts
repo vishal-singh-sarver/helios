@@ -1,6 +1,6 @@
 import projectScreenReducer, { initialState } from '../reducer'
 import * as actions from '../actions'
-import { cellKey, type DataTypeDef, type LoadedScenarioPayload } from '../types'
+import { cellKey, type ColumnDef, type DataTypeDef, type LoadedScenarioPayload } from '../types'
 
 const SCN = 'scenario-1'
 
@@ -15,16 +15,17 @@ const sampleDataType: DataTypeDef = {
   defaultUnit: 'kelvin'
 }
 
+const sampleColumns: ColumnDef[] = [
+  { id: 'col_datetime', name: 'date_time', unit: null, datatype: null },
+  { id: 'col_air_temperature', name: 'air_temperature', unit: 'K', datatype: 'air_temperature' }
+]
+
 const samplePayload: LoadedScenarioPayload = {
   scenarioId: SCN,
-  columns: [
-    { id: 'date', name: 'Date', dataTypeId: 'date', unitId: null },
-    { id: 'time', name: 'Time', dataTypeId: 'time', unitId: null },
-    { id: 'air_temperature', name: 'Air Temperature', dataTypeId: 'air_temperature', unitId: 'kelvin' }
-  ],
+  columns: sampleColumns,
   rows: [
-    { date: '2026-04-27', time: '10:00:00', values: { air_temperature: '293.1' } },
-    { date: '2026-04-27', time: '11:00:00', values: { air_temperature: '294.2' } }
+    { col_datetime: '2026-04-27 10:00:00', col_air_temperature: '293.1' },
+    { col_datetime: '2026-04-27 11:00:00', col_air_temperature: '294.2' }
   ]
 }
 
@@ -62,14 +63,14 @@ describe('projectScreenReducer', () => {
   })
 
   describe('active scenario', () => {
-    it('SET_ACTIVE_SCENARIO sets id and initializes an empty grid if absent', () => {
+    it('SET_ACTIVE_SCENARIO sets id and initializes an empty table if absent', () => {
       const result = projectScreenReducer(initialState, actions.setActiveScenario(SCN))
       expect(result.activeScenarioId).toBe(SCN)
       expect(result.byScenario[SCN]).toBeDefined()
       expect(result.byScenario[SCN].rowOrder).toEqual([])
     })
 
-    it('SET_ACTIVE_SCENARIO leaves an existing grid untouched', () => {
+    it('SET_ACTIVE_SCENARIO leaves an existing table untouched', () => {
       const loaded = projectScreenReducer(initialState, actions.loadScenarioSucceeded(samplePayload))
       const result = projectScreenReducer(loaded, actions.setActiveScenario(SCN))
       expect(result.byScenario[SCN].rowOrder).toHaveLength(2)
@@ -77,109 +78,69 @@ describe('projectScreenReducer', () => {
   })
 
   describe('scenario load', () => {
-    it('LOAD_SCENARIO_REQUESTED sets loading on the scenario', () => {
-      const result = projectScreenReducer(initialState, actions.loadScenarioRequested(SCN))
-      expect(result.byScenario[SCN].loadStatus).toBe('loading')
-    })
-
-    it('LOAD_SCENARIO_SUCCEEDED populates rows in insert order with rowKeys', () => {
+    it('LOAD_SCENARIO_SUCCEEDED populates columns / rows in insert order with row_${i} ids', () => {
       const result = projectScreenReducer(initialState, actions.loadScenarioSucceeded(samplePayload))
-      const grid = result.byScenario[SCN]
+      const table = result.byScenario[SCN]
 
-      expect(grid.columnOrder).toEqual(['date', 'time', 'air_temperature'])
-      expect(grid.rowOrder).toEqual([0, 1])
-      expect(grid.rows[0]).toEqual({
-        date: '2026-04-27',
-        time: '10:00:00',
-        air_temperature: '293.1'
+      expect(table.columnOrder).toEqual(['col_datetime', 'col_air_temperature'])
+      expect(table.rowOrder).toEqual(['row_0', 'row_1'])
+      expect(table.rows.row_0).toEqual({
+        col_datetime: '2026-04-27 10:00:00',
+        col_air_temperature: '293.1'
       })
-      expect(grid.rowKeys[0]).toEqual({ date: '2026-04-27', time: '10:00:00' })
-      expect(grid.nextRowSeq).toBe(2)
-      expect(grid.loadStatus).toBe('loaded')
-    })
-
-    it('LOAD_SCENARIO_FAILED stores the error on the scenario', () => {
-      const result = projectScreenReducer(
-        initialState,
-        actions.loadScenarioFailed(SCN, 'network')
-      )
-      expect(result.byScenario[SCN].loadStatus).toBe('error')
-      expect(result.byScenario[SCN].loadError).toBe('network')
+      expect(table.columns.col_air_temperature.unit).toBe('K')
     })
   })
 
   describe('upload', () => {
-    it('UPLOAD_FILE_SUCCEEDED clears the scenario and sets loading for the follow-up fetch', () => {
+    it('UPLOAD_FILE_SUCCEEDED clears the table for the follow-up fetch', () => {
       const loaded = projectScreenReducer(initialState, actions.loadScenarioSucceeded(samplePayload))
       const result = projectScreenReducer(loaded, actions.uploadFileSucceeded(SCN))
-      const grid = result.byScenario[SCN]
+      const table = result.byScenario[SCN]
 
-      expect(grid.rowOrder).toEqual([])
-      expect(grid.columnOrder).toEqual([])
-      expect(grid.loadStatus).toBe('loading')
+      expect(table.rowOrder).toEqual([])
+      expect(table.columnOrder).toEqual([])
     })
   })
 
   describe('add row', () => {
-    it('ADD_ROW_SUCCEEDED mints the next rowId and appends it', () => {
+    it('ADD_ROW_SUCCEEDED appends new rows with row_${idx} ids continuing from rowOrder.length', () => {
       const loaded = projectScreenReducer(initialState, actions.loadScenarioSucceeded(samplePayload))
       const result = projectScreenReducer(
         loaded,
-        actions.addRowSucceeded({
-          scenarioId: SCN,
-          date: '2026-04-27',
-          time: '12:00:00',
-          values: { air_temperature: '295.0' }
-        })
+        actions.addRowSucceeded(SCN, [
+          { col_datetime: '2026-04-27 12:00:00', col_air_temperature: '295.0' }
+        ])
       )
-      const grid = result.byScenario[SCN]
+      const table = result.byScenario[SCN]
 
-      expect(grid.rowOrder).toEqual([0, 1, 2])
-      expect(grid.nextRowSeq).toBe(3)
-      expect(grid.rows[2]).toEqual({
-        date: '2026-04-27',
-        time: '12:00:00',
-        air_temperature: '295.0'
+      expect(table.rowOrder).toEqual(['row_0', 'row_1', 'row_2'])
+      expect(table.rows.row_2).toEqual({
+        col_datetime: '2026-04-27 12:00:00',
+        col_air_temperature: '295.0'
       })
-      expect(grid.rowKeys[2]).toEqual({ date: '2026-04-27', time: '12:00:00' })
     })
   })
 
   describe('add column', () => {
-    it('ADD_COLUMN_SUCCEEDED appends column and writes per-row values', () => {
+    it('ADD_COLUMN_SUCCEEDED appends column and back-fills defaultValue across rows', () => {
       const loaded = projectScreenReducer(initialState, actions.loadScenarioSucceeded(samplePayload))
+      const newColumn: ColumnDef = {
+        id: 'col_humidity',
+        name: 'air_humidity',
+        unit: '%',
+        datatype: 'air_humidity'
+      }
       const result = projectScreenReducer(
         loaded,
-        actions.addColumnSucceeded({
-          scenarioId: SCN,
-          colId: 'humidity',
-          name: 'Humidity',
-          dataTypeId: 'air_humidity',
-          unitId: 'percent',
-          values: ['65', '60']
-        })
+        actions.addColumnSucceeded(SCN, newColumn, '65')
       )
-      const grid = result.byScenario[SCN]
+      const table = result.byScenario[SCN]
 
-      expect(grid.columnOrder).toContain('humidity')
-      expect(grid.rows[0].humidity).toBe('65')
-      expect(grid.rows[1].humidity).toBe('60')
-    })
-
-    it('fills missing per-row values with empty string', () => {
-      const loaded = projectScreenReducer(initialState, actions.loadScenarioSucceeded(samplePayload))
-      const result = projectScreenReducer(
-        loaded,
-        actions.addColumnSucceeded({
-          scenarioId: SCN,
-          colId: 'pressure',
-          name: 'Pressure',
-          dataTypeId: 'air_pressure',
-          unitId: 'pa',
-          values: ['101325']
-        })
-      )
-      expect(result.byScenario[SCN].rows[1].pressure).toBe('')
+      expect(table.columnOrder).toContain('col_humidity')
+      expect(table.columns.col_humidity).toEqual(newColumn)
+      expect(table.rows.row_0.col_humidity).toBe('65')
+      expect(table.rows.row_1.col_humidity).toBe('65')
     })
   })
 
@@ -190,17 +151,17 @@ describe('projectScreenReducer', () => {
         loaded,
         actions.updateCellLocal({
           scenarioId: SCN,
-          rowId: 0,
-          colId: 'air_temperature',
+          rowId: 'row_0',
+          colId: 'col_air_temperature',
           value: '300.0',
           validationError: null
         })
       )
-      const grid = result.byScenario[SCN]
+      const table = result.byScenario[SCN]
 
-      expect(grid.rows[0].air_temperature).toBe('300.0')
-      expect(grid.cellSync[cellKey(0, 'air_temperature')]).toBe('pending')
-      expect(grid.validationErrors[0]?.air_temperature).toBeUndefined()
+      expect(table.rows.row_0.col_air_temperature).toBe('300.0')
+      expect(table.cellSync[cellKey('row_0', 'col_air_temperature')]).toBe('pending')
+      expect(table.validationErrors.row_0?.col_air_temperature).toBeUndefined()
     })
 
     it('UPDATE_CELL_LOCAL with a validation error writes value + error, no pending sync', () => {
@@ -209,17 +170,17 @@ describe('projectScreenReducer', () => {
         loaded,
         actions.updateCellLocal({
           scenarioId: SCN,
-          rowId: 0,
-          colId: 'air_temperature',
+          rowId: 'row_0',
+          colId: 'col_air_temperature',
           value: 'NaN',
           validationError: 'Must be a number'
         })
       )
-      const grid = result.byScenario[SCN]
+      const table = result.byScenario[SCN]
 
-      expect(grid.rows[0].air_temperature).toBe('NaN')
-      expect(grid.validationErrors[0].air_temperature).toBe('Must be a number')
-      expect(grid.cellSync[cellKey(0, 'air_temperature')]).toBeUndefined()
+      expect(table.rows.row_0.col_air_temperature).toBe('NaN')
+      expect(table.validationErrors.row_0.col_air_temperature).toBe('Must be a number')
+      expect(table.cellSync[cellKey('row_0', 'col_air_temperature')]).toBeUndefined()
     })
 
     it('UPDATE_CELL_SUCCEEDED clears sync state for the cell', () => {
@@ -228,44 +189,45 @@ describe('projectScreenReducer', () => {
         loaded,
         actions.updateCellLocal({
           scenarioId: SCN,
-          rowId: 0,
-          colId: 'air_temperature',
+          rowId: 'row_0',
+          colId: 'col_air_temperature',
           value: '300.0',
           validationError: null
         })
       )
       const result = projectScreenReducer(
         pending,
-        actions.updateCellSucceeded(SCN, 0, 'air_temperature')
+        actions.updateCellSucceeded(SCN, 'row_0', 'col_air_temperature')
       )
-      expect(result.byScenario[SCN].cellSync[cellKey(0, 'air_temperature')]).toBeUndefined()
+      expect(
+        result.byScenario[SCN].cellSync[cellKey('row_0', 'col_air_temperature')]
+      ).toBeUndefined()
     })
 
-    it('UPDATE_CELL_FAILED sets error sync state and stores message', () => {
+    it('UPDATE_CELL_FAILED marks cellSync as error', () => {
       const loaded = projectScreenReducer(initialState, actions.loadScenarioSucceeded(samplePayload))
       const result = projectScreenReducer(
         loaded,
-        actions.updateCellFailed(SCN, 0, 'air_temperature', 'rejected by backend')
+        actions.updateCellFailed(SCN, 'row_0', 'col_air_temperature', 'rejected by backend')
       )
-      const grid = result.byScenario[SCN]
+      const table = result.byScenario[SCN]
 
-      expect(grid.cellSync[cellKey(0, 'air_temperature')]).toBe('error')
-      expect(grid.cellErrors[cellKey(0, 'air_temperature')]).toBe('rejected by backend')
+      expect(table.cellSync[cellKey('row_0', 'col_air_temperature')]).toBe('error')
     })
   })
 
   describe('selection', () => {
     it('SET_ROW_SELECTION toggles one row', () => {
       const loaded = projectScreenReducer(initialState, actions.loadScenarioSucceeded(samplePayload))
-      const result = projectScreenReducer(loaded, actions.setRowSelection(SCN, 1, true))
-      expect(result.byScenario[SCN].rowSelection[1]).toBe(true)
-      expect(result.byScenario[SCN].rowSelection[0]).toBeUndefined()
+      const result = projectScreenReducer(loaded, actions.setRowSelection(SCN, 'row_1', true))
+      expect(result.byScenario[SCN].rowSelection.row_1).toBe(true)
+      expect(result.byScenario[SCN].rowSelection.row_0).toBeUndefined()
     })
 
     it('SET_ALL_ROWS_SELECTION toggles every visible row', () => {
       const loaded = projectScreenReducer(initialState, actions.loadScenarioSucceeded(samplePayload))
       const result = projectScreenReducer(loaded, actions.setAllRowsSelection(SCN, true))
-      expect(result.byScenario[SCN].rowSelection).toEqual({ 0: true, 1: true })
+      expect(result.byScenario[SCN].rowSelection).toEqual({ row_0: true, row_1: true })
     })
   })
 })

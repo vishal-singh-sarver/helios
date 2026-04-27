@@ -4,9 +4,12 @@ import Dialog from '@renderer/components/Dialog'
 import FormField from '@renderer/components/FormField'
 import { Spinner } from '@renderer/components/LoadingScreen/Spinner'
 import TimePicker24 from '@renderer/components/TimePicker24'
+import { addRowRequested } from 'containers/ProjectScreen/actions'
 import { useFormik } from 'formik'
 import React from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import messages from './messages'
+import { selectActiveScenarioId, selectColumnOrder } from './selectors'
 
 export interface AddRowsValues {
   numberOfRows: string
@@ -50,6 +53,10 @@ interface AddRowsDialogProps {
 function AddRowsDialog({ isOpen, onClose }: AddRowsDialogProps): React.JSX.Element {
   const [loading] = React.useState(false)
   const [error] = React.useState<string | null>(null)
+
+  const dispatch = useDispatch()
+  const scenarioId = useSelector(selectActiveScenarioId)
+  const columnIds = useSelector(selectColumnOrder)
 
   const startDateRef = React.useRef<HTMLInputElement>(null)
   const startTimeRef = React.useRef<HTMLInputElement>(null)
@@ -107,8 +114,18 @@ function AddRowsDialog({ isOpen, onClose }: AddRowsDialogProps): React.JSX.Eleme
 
       return errors
     },
-    onSubmit: () => {
-      if (loading) return
+    onSubmit: (values) => {
+      if (loading || !scenarioId) return
+      const numberOfRows = Number.parseInt(values.numberOfRows, 10)
+      dispatch(
+        addRowRequested(
+          scenarioId,
+          values.startDate,
+          values.startTime,
+          columnIds,
+          numberOfRows
+        )
+      )
       formik.resetForm()
       onClose()
     }

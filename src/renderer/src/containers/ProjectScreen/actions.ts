@@ -23,9 +23,12 @@ import {
   SET_ALL_ROWS_SELECTION
 } from './constants'
 import type {
-  AddColumnPayload,
-  AddRowPayload,
+  AddColumnRequestedPayload,
+  AddColumnSucceededPayload,
+  AddRowRequestedPayload,
+  AddRowSucceededPayload,
   ColId,
+  ColumnDef,
   DataTypeDef,
   LoadedScenarioPayload,
   RowId,
@@ -89,11 +92,11 @@ export interface UploadFileFailedAction extends Idx {
 // Add row
 export interface AddRowRequestedAction extends Idx {
   type: typeof ADD_ROW_REQUESTED
-  payload: { scenarioId: string; date: string; time: string; values: Record<ColId, string> }
+  payload: AddRowRequestedPayload
 }
 export interface AddRowSucceededAction extends Idx {
   type: typeof ADD_ROW_SUCCEEDED
-  payload: AddRowPayload
+  payload: AddRowSucceededPayload
 }
 export interface AddRowFailedAction extends Idx {
   type: typeof ADD_ROW_FAILED
@@ -103,17 +106,11 @@ export interface AddRowFailedAction extends Idx {
 // Add column
 export interface AddColumnRequestedAction extends Idx {
   type: typeof ADD_COLUMN_REQUESTED
-  payload: {
-    scenarioId: string
-    columnname: string
-    dataTypeId: string | null
-    unitId: string | null
-    values: string[]
-  }
+  payload: AddColumnRequestedPayload
 }
 export interface AddColumnSucceededAction extends Idx {
   type: typeof ADD_COLUMN_SUCCEEDED
-  payload: AddColumnPayload
+  payload: AddColumnSucceededPayload
 }
 export interface AddColumnFailedAction extends Idx {
   type: typeof ADD_COLUMN_FAILED
@@ -222,14 +219,18 @@ export const addRowRequested = (
   scenarioId: string,
   date: string,
   time: string,
-  values: Record<ColId, string>
+  columnIds: ColId[],
+  numberOfRows: number
 ): AddRowRequestedAction => ({
   type: ADD_ROW_REQUESTED,
-  payload: { scenarioId, date, time, values }
+  payload: { scenarioId, date, time, columnIds, numberOfRows }
 })
-export const addRowSucceeded = (payload: AddRowPayload): AddRowSucceededAction => ({
+export const addRowSucceeded = (
+  scenarioId: string,
+  rows: Array<Record<ColId, string>>
+): AddRowSucceededAction => ({
   type: ADD_ROW_SUCCEEDED,
-  payload
+  payload: { scenarioId, rows }
 })
 export const addRowFailed = (scenarioId: string, error: string): AddRowFailedAction => ({
   type: ADD_ROW_FAILED,
@@ -238,17 +239,21 @@ export const addRowFailed = (scenarioId: string, error: string): AddRowFailedAct
 
 export const addColumnRequested = (
   scenarioId: string,
-  columnname: string,
-  dataTypeId: string | null,
-  unitId: string | null,
-  values: string[]
+  name: string,
+  dataTypeId: string,
+  dataUnitId: string,
+  defaultValue: string
 ): AddColumnRequestedAction => ({
   type: ADD_COLUMN_REQUESTED,
-  payload: { scenarioId, columnname, dataTypeId, unitId, values }
+  payload: { scenarioId, name, dataTypeId, dataUnitId, defaultValue }
 })
-export const addColumnSucceeded = (payload: AddColumnPayload): AddColumnSucceededAction => ({
+export const addColumnSucceeded = (
+  scenarioId: string,
+  column: ColumnDef,
+  defaultValue: string
+): AddColumnSucceededAction => ({
   type: ADD_COLUMN_SUCCEEDED,
-  payload
+  payload: { scenarioId, column, defaultValue }
 })
 export const addColumnFailed = (scenarioId: string, error: string): AddColumnFailedAction => ({
   type: ADD_COLUMN_FAILED,

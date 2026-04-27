@@ -2,9 +2,12 @@ import Dialog from '@renderer/components/Dialog'
 import FormField from '@renderer/components/FormField'
 import type { FormFieldOption } from '@renderer/components/FormField'
 import { Spinner } from '@renderer/components/LoadingScreen/Spinner'
+import { addColumnRequested } from 'containers/ProjectScreen/actions'
 import { useFormik } from 'formik'
 import React from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import messages from './messages'
+import { selectActiveScenarioId } from './selectors'
 
 export interface AddColumnValues {
   parameterName: string
@@ -39,6 +42,9 @@ function AddColumnDialog({ isOpen, onClose }: AddColumnDialogProps): React.JSX.E
   const [loading] = React.useState(false)
   const [error] = React.useState<string | null>(null)
 
+  const dispatch = useDispatch()
+  const scenarioId = useSelector(selectActiveScenarioId)
+
   const formik = useFormik<AddColumnValues>({
     initialValues: INITIAL_VALUES,
     validateOnChange: true,
@@ -55,8 +61,17 @@ function AddColumnDialog({ isOpen, onClose }: AddColumnDialogProps): React.JSX.E
 
       return errors
     },
-    onSubmit: () => {
-      if (loading) return
+    onSubmit: (values) => {
+      if (loading || !scenarioId) return
+      dispatch(
+        addColumnRequested(
+          scenarioId,
+          values.parameterName.trim(),
+          values.dataType,
+          '',
+          values.defaultValue
+        )
+      )
       formik.resetForm()
       onClose()
     }

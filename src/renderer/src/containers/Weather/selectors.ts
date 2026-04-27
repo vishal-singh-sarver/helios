@@ -7,7 +7,7 @@ import { initialState, type WeatherState } from './reducer'
 const selectWeatherDomain = (state: RootState): WeatherState =>
   (state as any).weather ?? initialState
 
-// ── Memoised selectors ─────────────────────────────────────────────────────────
+// ── Memoised selectors (legacy SSE / status — leave untouched) ─────────────────
 
 export const selectStatus = createSelector(selectWeatherDomain, (s) => s.status)
 export const selectLoading = createSelector(selectWeatherDomain, (s) => s.loading)
@@ -21,3 +21,25 @@ const makeSelectWeather = () => createSelector(selectWeatherDomain, (s) => s)
 
 export default makeSelectWeather
 export { selectWeatherDomain as selectWeatherDomain }
+
+// ── Weather table re-exports ──────────────────────────────────────────────────
+//
+// The weather table itself lives in state.projectScreen (ScenarioGrid →
+// WeatherTable). Re-export the active-table selectors here so Weather
+// components can consume them without crossing container boundaries
+// directly. See containers/ProjectScreen/selectors.ts for the source.
+
+export {
+  makeSelectCellError,
+  makeSelectCellSync,
+  makeSelectCellValue,
+  makeSelectRow,
+  makeSelectRowSelected,
+  selectActiveScenarioId,
+  selectActiveWeatherTable,
+  selectAllRowsSelected,
+  selectColumnOrder,
+  selectColumns,
+  selectRowOrder,
+  selectRowSelection
+} from 'containers/ProjectScreen/selectors'

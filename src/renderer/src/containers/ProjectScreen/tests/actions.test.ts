@@ -18,7 +18,7 @@ import {
   UPDATE_CELL_SUCCEEDED,
   UPLOAD_FILE_SUCCEEDED
 } from '../constants'
-import type { DataTypeDef, LoadedScenarioPayload } from '../types'
+import type { ColumnDef, DataTypeDef, LoadedScenarioPayload } from '../types'
 
 const SCN = 'scenario-1'
 
@@ -82,56 +82,62 @@ describe('ProjectScreen action creators', () => {
     })
   })
 
-  it('addRowRequested carries date, time and values', () => {
-    expect(actions.addRowRequested(SCN, '2026-04-27', '10:00:00', { x: '1' })).toEqual({
+  it('addRowRequested carries date, time, columnIds and numberOfRows', () => {
+    expect(
+      actions.addRowRequested(SCN, '2026-04-27', '10:00', ['col_datetime', 'col_1'], 5)
+    ).toEqual({
       type: ADD_ROW_REQUESTED,
-      payload: { scenarioId: SCN, date: '2026-04-27', time: '10:00:00', values: { x: '1' } }
-    })
-  })
-
-  it('addRowSucceeded passes through the payload', () => {
-    const payload = {
-      scenarioId: SCN,
-      date: '2026-04-27',
-      time: '10:00:00',
-      values: { x: '1' }
-    }
-    expect(actions.addRowSucceeded(payload)).toEqual({ type: ADD_ROW_SUCCEEDED, payload })
-  })
-
-  it('addColumnRequested carries column metadata + per-row values', () => {
-    expect(actions.addColumnRequested(SCN, 'humidity', 'air_humidity', 'percent', ['1', '2'])).toEqual({
-      type: ADD_COLUMN_REQUESTED,
       payload: {
         scenarioId: SCN,
-        columnname: 'humidity',
-        dataTypeId: 'air_humidity',
-        unitId: 'percent',
-        values: ['1', '2']
+        date: '2026-04-27',
+        time: '10:00',
+        columnIds: ['col_datetime', 'col_1'],
+        numberOfRows: 5
       }
     })
   })
 
-  it('addColumnSucceeded passes through the payload', () => {
-    const payload = {
-      scenarioId: SCN,
-      colId: 'humidity',
-      name: 'Humidity',
-      dataTypeId: 'air_humidity',
-      unitId: 'percent',
-      values: ['1', '2']
+  it('addRowSucceeded carries scenarioId and merged rows', () => {
+    const rows = [{ col_datetime: '2026-04-27 10:00', col_1: '22.5' }]
+    expect(actions.addRowSucceeded(SCN, rows)).toEqual({
+      type: ADD_ROW_SUCCEEDED,
+      payload: { scenarioId: SCN, rows }
+    })
+  })
+
+  it('addColumnRequested carries the API payload', () => {
+    expect(
+      actions.addColumnRequested(SCN, 'air_humidity', 'humidity', 'percent', '65')
+    ).toEqual({
+      type: ADD_COLUMN_REQUESTED,
+      payload: {
+        scenarioId: SCN,
+        name: 'air_humidity',
+        dataTypeId: 'humidity',
+        dataUnitId: 'percent',
+        defaultValue: '65'
+      }
+    })
+  })
+
+  it('addColumnSucceeded carries the new column metadata + back-fill value', () => {
+    const column: ColumnDef = {
+      id: 'col_humidity',
+      name: 'air_humidity',
+      unit: '%',
+      datatype: 'humidity'
     }
-    expect(actions.addColumnSucceeded(payload)).toEqual({
+    expect(actions.addColumnSucceeded(SCN, column, '65')).toEqual({
       type: ADD_COLUMN_SUCCEEDED,
-      payload
+      payload: { scenarioId: SCN, column, defaultValue: '65' }
     })
   })
 
   it('updateCellLocal carries the optimistic-edit payload', () => {
     const payload = {
       scenarioId: SCN,
-      rowId: 0,
-      colId: 'x',
+      rowId: 'row_0',
+      colId: 'col_1',
       value: '1.0',
       validationError: null
     }
@@ -139,24 +145,24 @@ describe('ProjectScreen action creators', () => {
   })
 
   it('updateCellRequested / Succeeded / Failed carry the cell coordinates', () => {
-    expect(actions.updateCellRequested(SCN, 0, 'x')).toEqual({
+    expect(actions.updateCellRequested(SCN, 'row_0', 'col_1')).toEqual({
       type: UPDATE_CELL_REQUESTED,
-      payload: { scenarioId: SCN, rowId: 0, colId: 'x' }
+      payload: { scenarioId: SCN, rowId: 'row_0', colId: 'col_1' }
     })
-    expect(actions.updateCellSucceeded(SCN, 0, 'x')).toEqual({
+    expect(actions.updateCellSucceeded(SCN, 'row_0', 'col_1')).toEqual({
       type: UPDATE_CELL_SUCCEEDED,
-      payload: { scenarioId: SCN, rowId: 0, colId: 'x' }
+      payload: { scenarioId: SCN, rowId: 'row_0', colId: 'col_1' }
     })
-    expect(actions.updateCellFailed(SCN, 0, 'x', 'rejected')).toEqual({
+    expect(actions.updateCellFailed(SCN, 'row_0', 'col_1', 'rejected')).toEqual({
       type: UPDATE_CELL_FAILED,
-      payload: { scenarioId: SCN, rowId: 0, colId: 'x', error: 'rejected' }
+      payload: { scenarioId: SCN, rowId: 'row_0', colId: 'col_1', error: 'rejected' }
     })
   })
 
   it('selection actions carry their flags', () => {
-    expect(actions.setRowSelection(SCN, 5, true)).toEqual({
+    expect(actions.setRowSelection(SCN, 'row_5', true)).toEqual({
       type: SET_ROW_SELECTION,
-      payload: { scenarioId: SCN, rowId: 5, selected: true }
+      payload: { scenarioId: SCN, rowId: 'row_5', selected: true }
     })
     expect(actions.setAllRowsSelection(SCN, false)).toEqual({
       type: SET_ALL_ROWS_SELECTION,

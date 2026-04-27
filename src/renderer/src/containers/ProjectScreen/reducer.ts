@@ -26,17 +26,17 @@ import {
 import type { ProjectScreenAction } from './actions'
 import {
   cellKey,
-  emptyScenarioGrid,
+  emptyWeatherTable,
   type DataTypeDef,
   type LoadStatus,
-  type ScenarioGrid
+  type RowId,
+  type WeatherTable
 } from './types'
 
 export type {
   ColumnDef,
   DataTypeDef,
-  RowKey,
-  ScenarioGrid,
+  WeatherTable,
   CellSyncStatus,
   LoadStatus,
   RowId,
@@ -55,7 +55,7 @@ export interface DataTypesSlice {
 export interface ProjectScreenState {
   dataTypes: DataTypesSlice
   activeScenarioId: string | null
-  byScenario: Record<string, ScenarioGrid>
+  byScenario: Record<string, WeatherTable>
 }
 
 export const initialState: ProjectScreenState = {
@@ -71,17 +71,17 @@ export const initialState: ProjectScreenState = {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-// Returns the draft scenario, initializing an empty grid if absent. Used by
-// reducer cases that need to mutate per-scenario state.
-function ensureScenario(
+function ensureTable(
   draft: Draft<ProjectScreenState>,
   scenarioId: string
-): Draft<ScenarioGrid> {
+): Draft<WeatherTable> {
   if (!draft.byScenario[scenarioId]) {
-    draft.byScenario[scenarioId] = emptyScenarioGrid()
+    draft.byScenario[scenarioId] = emptyWeatherTable()
   }
   return draft.byScenario[scenarioId]
 }
+
+const rowIdAt = (i: number): RowId => `row_${i}`
 
 // ── Reducer ──────────────────────────────────────────────────────────────────
 
@@ -117,94 +117,75 @@ const projectScreenReducer = (
 
       case SET_ACTIVE_SCENARIO:
         draft.activeScenarioId = action.payload.scenarioId
-        ensureScenario(draft, action.payload.scenarioId)
+        ensureTable(draft, action.payload.scenarioId)
         break
 
       // ── Scenario load ──────────────────────────────────────────────────────
 
-      case LOAD_SCENARIO_REQUESTED: {
-        const grid = ensureScenario(draft, action.payload.scenarioId)
-        grid.loadStatus = 'loading'
-        grid.loadError = null
+      case LOAD_SCENARIO_REQUESTED:
+        ensureTable(draft, action.payload.scenarioId)
         break
-      }
 
       case LOAD_SCENARIO_SUCCEEDED: {
         const { scenarioId, columns, rows } = action.payload
-        const fresh = emptyScenarioGrid()
+        const fresh = emptyWeatherTable()
 
         for (const col of columns) {
           fresh.columns[col.id] = { ...col }
           fresh.columnOrder.push(col.id)
         }
 
-        rows.forEach((row, i) => {
-          const rowId = i
-          fresh.rows[rowId] = { date: row.date, time: row.time, ...row.values }
-          fresh.rowKeys[rowId] = { date: row.date, time: row.time }
+        rows.forEach((rowData, i) => {
+          const rowId = rowIdAt(i)
+          fresh.rows[rowId] = { ...rowData }
           fresh.rowOrder.push(rowId)
         })
-        fresh.nextRowSeq = rows.length
 
-        fresh.loadStatus = 'loaded'
         draft.byScenario[scenarioId] = fresh
         break
       }
 
-      case LOAD_SCENARIO_FAILED: {
-        const grid = ensureScenario(draft, action.payload.scenarioId)
-        grid.loadStatus = 'error'
-        grid.loadError = action.payload.error
+      case LOAD_SCENARIO_FAILED:
+        // No table-level error state; UI surfaces error via dialog/toast.
         break
-      }
 
       // ── Upload ─────────────────────────────────────────────────────────────
 
-      case UPLOAD_FILE_REQUESTED: {
-        const grid = ensureScenario(draft, action.payload.scenarioId)
-        grid.loadStatus = 'loading'
-        grid.loadError = null
+      case UPLOAD_FILE_REQUESTED:
+        ensureTable(draft, action.payload.scenarioId)
         break
-      }
 
       case UPLOAD_FILE_SUCCEEDED:
         // Upload replaces server-side data; clear the client cache so the
-        // follow-up LOAD_SCENARIO populates a fresh grid. The saga is
+        // follow-up LOAD_SCENARIO populates a fresh table. The saga is
         // responsible for dispatching that follow-up.
-        draft.byScenario[action.payload.scenarioId] = emptyScenarioGrid()
-        draft.byScenario[action.payload.scenarioId].loadStatus = 'loading'
+        draft.byScenario[action.payload.scenarioId] = emptyWeatherTable()
         break
 
-      case UPLOAD_FILE_FAILED: {
-        const grid = ensureScenario(draft, action.payload.scenarioId)
-        grid.loadStatus = 'error'
-        grid.loadError = action.payload.error
+      case UPLOAD_FILE_FAILED:
         break
-      }
 
       // ── Add row ────────────────────────────────────────────────────────────
 
       case ADD_ROW_REQUESTED:
-        // Saga trigger only — UI shows pending elsewhere (e.g. dialog spinner).
+        // Saga trigger only — UI shows pending elsewhere (dialog spinner).
         break
 
       case ADD_ROW_SUCCEEDED: {
-        const grid = draft.byScenario[action.payload.scenarioId]
-        if (!grid) break
+        const { scenarioId, rows } = action.payload
+        const table = draft.byScenario[scenarioId]
+        if (!table) break
 
-        const rowId = grid.nextRowSeq++
-        grid.rows[rowId] = {
-          date: action.payload.date,
-          time: action.payload.time,
-          ...action.payload.values
-        }
-        grid.rowKeys[rowId] = { date: action.payload.date, time: action.payload.time }
-        grid.rowOrder.push(rowId)
+        const startIdx = table.rowOrder.length
+        rows.forEach((rowData, i) => {
+          const rowId = rowIdAt(startIdx + i)
+          table.rows[rowId] = { ...rowData }
+          table.rowOrder.push(rowId)
+        })
         break
       }
 
       case ADD_ROW_FAILED:
-        // No state mutation; UI surfaces error from the dialog/toast.
         break
 
       // ── Add column ─────────────────────────────────────────────────────────
@@ -213,17 +194,16 @@ const projectScreenReducer = (
         break
 
       case ADD_COLUMN_SUCCEEDED: {
-        const grid = draft.byScenario[action.payload.scenarioId]
-        if (!grid) break
+        const { scenarioId, column, defaultValue } = action.payload
+        const table = draft.byScenario[scenarioId]
+        if (!table) break
 
-        const { colId, name, dataTypeId, unitId, values } = action.payload
-        grid.columns[colId] = { id: colId, name, dataTypeId, unitId }
-        grid.columnOrder.push(colId)
-
-        grid.rowOrder.forEach((rowId, i) => {
-          if (!grid.rows[rowId]) grid.rows[rowId] = {}
-          grid.rows[rowId][colId] = values[i] ?? ''
-        })
+        table.columns[column.id] = { ...column }
+        table.columnOrder.push(column.id)
+        for (const rowId of table.rowOrder) {
+          if (!table.rows[rowId]) table.rows[rowId] = {}
+          table.rows[rowId][column.id] = defaultValue
+        }
         break
       }
 
@@ -234,25 +214,23 @@ const projectScreenReducer = (
 
       case UPDATE_CELL_LOCAL: {
         const { scenarioId, rowId, colId, value, validationError } = action.payload
-        const grid = draft.byScenario[scenarioId]
-        if (!grid) break
+        const table = draft.byScenario[scenarioId]
+        if (!table) break
 
-        if (!grid.rows[rowId]) grid.rows[rowId] = {}
-        grid.rows[rowId][colId] = value
+        if (!table.rows[rowId]) table.rows[rowId] = {}
+        table.rows[rowId][colId] = value
 
         const key = cellKey(rowId, colId)
         if (validationError != null) {
-          if (!grid.validationErrors[rowId]) grid.validationErrors[rowId] = {}
-          grid.validationErrors[rowId][colId] = validationError
-          // No network call will be made — clear any stale pending/error sync state.
-          delete grid.cellSync[key]
-          delete grid.cellErrors[key]
+          if (!table.validationErrors[rowId]) table.validationErrors[rowId] = {}
+          table.validationErrors[rowId][colId] = validationError
+          // No network call will be made — clear any stale pending sync state.
+          delete table.cellSync[key]
         } else {
-          if (grid.validationErrors[rowId]) {
-            delete grid.validationErrors[rowId][colId]
+          if (table.validationErrors[rowId]) {
+            delete table.validationErrors[rowId][colId]
           }
-          grid.cellSync[key] = 'pending'
-          delete grid.cellErrors[key]
+          table.cellSync[key] = 'pending'
         }
         break
       }
@@ -263,40 +241,34 @@ const projectScreenReducer = (
 
       case UPDATE_CELL_SUCCEEDED: {
         const { scenarioId, rowId, colId } = action.payload
-        const grid = draft.byScenario[scenarioId]
-        if (!grid) break
-
-        const key = cellKey(rowId, colId)
-        delete grid.cellSync[key]
-        delete grid.cellErrors[key]
+        const table = draft.byScenario[scenarioId]
+        if (!table) break
+        delete table.cellSync[cellKey(rowId, colId)]
         break
       }
 
       case UPDATE_CELL_FAILED: {
-        const { scenarioId, rowId, colId, error } = action.payload
-        const grid = draft.byScenario[scenarioId]
-        if (!grid) break
-
-        const key = cellKey(rowId, colId)
-        grid.cellSync[key] = 'error'
-        grid.cellErrors[key] = error
+        const { scenarioId, rowId, colId } = action.payload
+        const table = draft.byScenario[scenarioId]
+        if (!table) break
+        table.cellSync[cellKey(rowId, colId)] = 'error'
         break
       }
 
       // ── Selection ──────────────────────────────────────────────────────────
 
       case SET_ROW_SELECTION: {
-        const grid = draft.byScenario[action.payload.scenarioId]
-        if (!grid) break
-        grid.rowSelection[action.payload.rowId] = action.payload.selected
+        const table = draft.byScenario[action.payload.scenarioId]
+        if (!table) break
+        table.rowSelection[action.payload.rowId] = action.payload.selected
         break
       }
 
       case SET_ALL_ROWS_SELECTION: {
-        const grid = draft.byScenario[action.payload.scenarioId]
-        if (!grid) break
-        for (const rowId of grid.rowOrder) {
-          grid.rowSelection[rowId] = action.payload.selected
+        const table = draft.byScenario[action.payload.scenarioId]
+        if (!table) break
+        for (const rowId of table.rowOrder) {
+          table.rowSelection[rowId] = action.payload.selected
         }
         break
       }

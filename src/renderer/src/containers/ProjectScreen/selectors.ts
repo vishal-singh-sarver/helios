@@ -8,7 +8,7 @@ import {
   type ColumnDef,
   type DataTypeDef,
   type RowId,
-  type ScenarioGrid
+  type WeatherTable
 } from './types'
 
 // ── Domain ───────────────────────────────────────────────────────────────────
@@ -63,42 +63,32 @@ export const selectByScenario = createSelector(
   (s) => s.byScenario
 )
 
-export const selectActiveScenarioGrid = createSelector(
+export const selectActiveWeatherTable = createSelector(
   selectActiveScenarioId,
   selectByScenario,
-  (id, byScenario): ScenarioGrid | null => (id ? (byScenario[id] ?? null) : null)
+  (id, byScenario): WeatherTable | null => (id ? (byScenario[id] ?? null) : null)
 )
 
-export const makeSelectScenarioGrid = (
+export const makeSelectWeatherTable = (
   scenarioId: string
-): ((state: RootState) => ScenarioGrid | null) =>
+): ((state: RootState) => WeatherTable | null) =>
   createSelector(selectByScenario, (byScenario) => byScenario[scenarioId] ?? null)
 
 // ── Columns / rows for the active scenario ───────────────────────────────────
 
 export const selectColumns = createSelector(
-  selectActiveScenarioGrid,
-  (grid): Record<ColId, ColumnDef> => grid?.columns ?? {}
+  selectActiveWeatherTable,
+  (table): Record<ColId, ColumnDef> => table?.columns ?? {}
 )
 
 export const selectColumnOrder = createSelector(
-  selectActiveScenarioGrid,
-  (grid): ColId[] => grid?.columnOrder ?? []
+  selectActiveWeatherTable,
+  (table): ColId[] => table?.columnOrder ?? []
 )
 
 export const selectRowOrder = createSelector(
-  selectActiveScenarioGrid,
-  (grid): RowId[] => grid?.rowOrder ?? []
-)
-
-export const selectLoadStatus = createSelector(
-  selectActiveScenarioGrid,
-  (grid) => grid?.loadStatus ?? 'idle'
-)
-
-export const selectLoadError = createSelector(
-  selectActiveScenarioGrid,
-  (grid) => grid?.loadError ?? null
+  selectActiveWeatherTable,
+  (table): RowId[] => table?.rowOrder ?? []
 )
 
 // ── Per-row / per-cell factories ─────────────────────────────────────────────
@@ -110,50 +100,46 @@ export const selectLoadError = createSelector(
 export const makeSelectRow = (
   rowId: RowId
 ): ((state: RootState) => Record<ColId, string> | undefined) =>
-  createSelector(selectActiveScenarioGrid, (grid) => grid?.rows[rowId])
+  createSelector(selectActiveWeatherTable, (table) => table?.rows[rowId])
 
 export const makeSelectCellValue = (
   rowId: RowId,
   colId: ColId
 ): ((state: RootState) => string | undefined) =>
-  createSelector(selectActiveScenarioGrid, (grid) => grid?.rows[rowId]?.[colId])
+  createSelector(selectActiveWeatherTable, (table) => table?.rows[rowId]?.[colId])
 
 export const makeSelectCellSync = (
   rowId: RowId,
   colId: ColId
 ): ((state: RootState) => CellSyncStatus) => {
   const key = cellKey(rowId, colId)
-  return createSelector(selectActiveScenarioGrid, (grid) => grid?.cellSync[key] ?? 'idle')
+  return createSelector(selectActiveWeatherTable, (table) => table?.cellSync[key] ?? 'idle')
 }
 
-// Combined error: client-side validation errors take precedence over
-// server-side rejection messages, but either produces a red border.
+// Validation error per cell (client-side). Server-side error messages are
+// not stored — `cellSync === 'error'` indicates a failed sync without text.
 export const makeSelectCellError = (
   rowId: RowId,
   colId: ColId
-): ((state: RootState) => string | null) => {
-  const key = cellKey(rowId, colId)
-  return createSelector(selectActiveScenarioGrid, (grid) => {
-    if (!grid) return null
-    const validation = grid.validationErrors[rowId]?.[colId]
-    if (validation) return validation
-    return grid.cellErrors[key] ?? null
-  })
-}
+): ((state: RootState) => string | null) =>
+  createSelector(
+    selectActiveWeatherTable,
+    (table) => table?.validationErrors[rowId]?.[colId] ?? null
+  )
 
 // ── Selection ────────────────────────────────────────────────────────────────
 
 export const selectRowSelection = createSelector(
-  selectActiveScenarioGrid,
-  (grid): Record<RowId, boolean> => grid?.rowSelection ?? {}
+  selectActiveWeatherTable,
+  (table): Record<RowId, boolean> => table?.rowSelection ?? {}
 )
 
 export const selectAllRowsSelected = createSelector(
-  selectActiveScenarioGrid,
+  selectActiveWeatherTable,
   selectRowSelection,
-  (grid, selection) => {
-    if (!grid || grid.rowOrder.length === 0) return false
-    return grid.rowOrder.every((rowId) => selection[rowId] === true)
+  (table, selection) => {
+    if (!table || table.rowOrder.length === 0) return false
+    return table.rowOrder.every((rowId) => selection[rowId] === true)
   }
 )
 
