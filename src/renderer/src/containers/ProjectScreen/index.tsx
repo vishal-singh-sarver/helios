@@ -6,14 +6,26 @@ import CenterWorkspace from '@renderer/containers/CenterWorkspace'
 import LeftPanel from '@renderer/containers/LeftPanel'
 import RightPanel from '@renderer/containers/RightPanel'
 import React from 'react'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import type { Reducer } from 'redux'
 import { navigate } from 'store/navigationReducer'
 import { useInjectReducer } from 'utils/injectReducer'
 import { useInjectSaga } from 'utils/injectSaga'
 import { TOOLBAR_ITEMS } from '../../types/project'
+import { listScenariosRequested, loadDataTypesRequested, setActiveProject } from './actions'
 import reducer from './reducer'
 import saga from './saga'
+import { selectActiveProjectId } from './selectors'
+
+// HomePage writes `helios:activeProjectId` to localStorage on row click.
+// We hydrate from it here so a refresh on the project screen still has a
+// project — and so the scenarios fetch below has something to scope to.
+const PROJECT_ID_STORAGE_KEY = 'helios:activeProjectId'
+
+// `helios:activeScenarioId` is project-screen-scoped: the saga writes it on
+// listScenariosSucceeded and we clear it on project screen unmount so it
+// doesn't linger in localStorage once the user navigates back to Home.
+const SCENARIO_ID_STORAGE_KEY = 'helios:activeScenarioId'
 
 // Help text — mirrors the strings used in HomePage's New Project dialog so
 // the user sees the same guidance whether they're creating a project or
@@ -45,6 +57,38 @@ export function ProjectScreen(): React.JSX.Element {
   useInjectSaga({ key: 'projectScreen', saga })
 
   const dispatch = useDispatch()
+  const activeProjectId = useSelector(selectActiveProjectId)
+
+  // Load the data-types-with-units catalog once per mount. The reducer
+  // dedupes by overwriting, so re-mounting the screen refreshes the slice.
+  React.useEffect(() => {
+    dispatch(loadDataTypesRequested())
+  }, [dispatch])
+
+  React.useEffect(() => {
+    if (activeProjectId == null) {
+      const stored = localStorage.getItem(PROJECT_ID_STORAGE_KEY)
+      if (stored) dispatch(setActiveProject(stored))
+    }
+  }, [activeProjectId, dispatch])
+
+  // Fire on every project-id change. Stale Redux scenario state from a prior
+  // visit is overwritten by the saga's setActiveScenario when the response
+  // resolves — so no `activeScenarioId == null` guard is needed.
+  React.useEffect(() => {
+    if (activeProjectId != null) {
+      dispatch(listScenariosRequested(activeProjectId))
+    }
+  }, [activeProjectId, dispatch])
+
+  // Clear the persisted scenario id when leaving the project screen so it
+  // doesn't show up in localStorage on Home.
+  React.useEffect(() => {
+    return () => {
+      localStorage.removeItem(SCENARIO_ID_STORAGE_KEY)
+    }
+  }, [])
+
   const [latitude, setLatitude] = React.useState('')
   const [longitude, setLongitude] = React.useState('')
   const [utcOffset] = React.useState('')

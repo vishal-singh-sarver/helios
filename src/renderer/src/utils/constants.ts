@@ -8,20 +8,37 @@ export const BASE_URL =
 // ── Backend routes ────────────────────────────────────────────────────────────
 //
 // Single source of truth for every backend path the renderer calls. Paths are
-// relative to BASE_URL and get prefixed inside utils/api.ts. Rename or reshape
-// an endpoint in one place and every caller picks it up at build time.
+// relative to BASE_URL and get prefixed inside utils/api.ts.
+//
+// Weather routes are scoped by (project_id, scenario_id) — exposed as
+// builder functions so callers can't forget either.
 
 export const API_ROUTES = {
   project: {
     create: '/api/project/create',
     recent: '/api/project/recent',
-    delete: (projectId: string) => `/api/project/${projectId}`
+    delete: (projectId: string) => `/api/project/${projectId}`,
+    // Returns the project + its scenarios (each with weather_data_headers).
+    // Used to bootstrap the active scenario id on project screen mount.
+    get: (projectId: string) => `/api/project/${projectId}`
   },
   weather: {
-    headers: '/api/weather/headers',
-    data: '/api/weather/data',
-    addColumn: '/api/weather/column/add',
-    addRows: '/api/weather/rows/add',
-    updateCell: '/api/weather/cell/update'
+    headers: (projectId: string, scenarioId: string) =>
+      `/api/weather/project/${projectId}/scenario/${scenarioId}/weather_data_header`,
+    data: (projectId: string, scenarioId: string) =>
+      `/api/weather/project/${projectId}/scenario/${scenarioId}/getAllTimeSeriesData`,
+    update: (projectId: string, scenarioId: string) =>
+      `/api/weather/project/${projectId}/scenario/${scenarioId}/update`,
+    add: (projectId: string, scenarioId: string) =>
+      `/api/weather/project/${projectId}/scenario/${scenarioId}/add`,
+    delete: (projectId: string, scenarioId: string) =>
+      `/api/weather/project/${projectId}/scenario/${scenarioId}/delete`,
+    uploadFile: (projectId: string, scenarioId: string) =>
+      `/api/weather/project/${projectId}/scenario/${scenarioId}/uploadfile`
+  },
+  catalog: {
+    // Each data type carries its `units[]` inline, so a single round-trip on
+    // ProjectScreen mount populates the entire catalog slice.
+    dataTypes: '/api/data-types/'
   }
 } as const

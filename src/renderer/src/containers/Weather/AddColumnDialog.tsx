@@ -7,7 +7,7 @@ import { useFormik } from 'formik'
 import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import messages from './messages'
-import { selectActiveScenarioId } from './selectors'
+import { selectActiveProjectId, selectActiveScenarioId } from './selectors'
 
 export interface AddColumnValues {
   parameterName: string
@@ -43,6 +43,7 @@ function AddColumnDialog({ isOpen, onClose }: AddColumnDialogProps): React.JSX.E
   const [error] = React.useState<string | null>(null)
 
   const dispatch = useDispatch()
+  const projectId = useSelector(selectActiveProjectId)
   const scenarioId = useSelector(selectActiveScenarioId)
 
   const formik = useFormik<AddColumnValues>({
@@ -62,13 +63,18 @@ function AddColumnDialog({ isOpen, onClose }: AddColumnDialogProps): React.JSX.E
       return errors
     },
     onSubmit: (values) => {
-      if (loading || !scenarioId) return
+      if (loading || !projectId || !scenarioId) return
+      // dataType / unit ids are still slugs in this dialog — the next PR
+      // replaces the dropdowns with catalog-driven (numeric id) pickers.
+      // Coerce to 0 for now so the action signature compiles; the saga is
+      // still calling the mock add endpoint, so the value isn't load-bearing.
       dispatch(
         addColumnRequested(
+          projectId,
           scenarioId,
           values.parameterName.trim(),
-          values.dataType,
-          '',
+          0,
+          0,
           values.defaultValue
         )
       )

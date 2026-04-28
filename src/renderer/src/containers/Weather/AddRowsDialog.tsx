@@ -9,7 +9,11 @@ import { useFormik } from 'formik'
 import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import messages from './messages'
-import { selectActiveScenarioId, selectColumnOrder } from './selectors'
+import {
+  selectActiveProjectId,
+  selectActiveScenarioId,
+  selectColumnOrder
+} from './selectors'
 
 export interface AddRowsValues {
   numberOfRows: string
@@ -55,6 +59,7 @@ function AddRowsDialog({ isOpen, onClose }: AddRowsDialogProps): React.JSX.Eleme
   const [error] = React.useState<string | null>(null)
 
   const dispatch = useDispatch()
+  const projectId = useSelector(selectActiveProjectId)
   const scenarioId = useSelector(selectActiveScenarioId)
   const columnIds = useSelector(selectColumnOrder)
 
@@ -115,10 +120,11 @@ function AddRowsDialog({ isOpen, onClose }: AddRowsDialogProps): React.JSX.Eleme
       return errors
     },
     onSubmit: (values) => {
-      if (loading || !scenarioId) return
+      if (loading || !projectId || !scenarioId) return
       const numberOfRows = Number.parseInt(values.numberOfRows, 10)
       dispatch(
         addRowRequested(
+          projectId,
           scenarioId,
           values.startDate,
           values.startTime,

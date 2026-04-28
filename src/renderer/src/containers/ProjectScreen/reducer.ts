@@ -3,7 +3,14 @@ import {
   LOAD_DATA_TYPES_REQUESTED,
   LOAD_DATA_TYPES_SUCCEEDED,
   LOAD_DATA_TYPES_FAILED,
+  SET_ACTIVE_PROJECT,
   SET_ACTIVE_SCENARIO,
+  LIST_SCENARIOS_REQUESTED,
+  LIST_SCENARIOS_SUCCEEDED,
+  LIST_SCENARIOS_FAILED,
+  LOAD_HEADERS_REQUESTED,
+  LOAD_HEADERS_SUCCEEDED,
+  LOAD_HEADERS_FAILED,
   LOAD_SCENARIO_REQUESTED,
   LOAD_SCENARIO_SUCCEEDED,
   LOAD_SCENARIO_FAILED,
@@ -30,41 +37,101 @@ import {
   type DataTypeDef,
   type LoadStatus,
   type RowId,
+  type Scenario,
+  type WeatherHeader,
   type WeatherTable
 } from './types'
 
 export type {
   ColumnDef,
   DataTypeDef,
+  DataUnitDef,
   WeatherTable,
   CellSyncStatus,
+  CellValue,
   LoadStatus,
   RowId,
-  ColId
+  ColId,
+  Scenario,
+  WeatherHeader
 } from './types'
 
 // ── State ────────────────────────────────────────────────────────────────────
 
 export interface DataTypesSlice {
-  byId: Record<string, DataTypeDef>
-  allIds: string[]
+  byId: Record<number, DataTypeDef>
+  allIds: number[]
   loadStatus: LoadStatus
   loadError: string | null
 }
 
-export interface ProjectScreenState {
+export interface CatalogSlice {
   dataTypes: DataTypesSlice
+}
+
+export interface ScenariosByProjectEntry {
+  ids: string[]
+  byId: Record<string, Scenario>
+  loadStatus: LoadStatus
+  loadError: string | null
+}
+
+export interface ScenariosSlice {
+  byProject: Record<string, ScenariosByProjectEntry>
+}
+
+// Raw weather_data_header rows, keyed by scenario id. Stored verbatim from
+// the wire so consumers can read fields the joined ColumnDef discards
+// (status, display_order, helios_data_type_id). `ids` is sorted by
+// display_order so iteration order matches the table.
+export interface HeadersByScenarioEntry {
+  ids: number[]
+  byId: Record<number, WeatherHeader>
+  loadStatus: LoadStatus
+  loadError: string | null
+}
+
+export interface HeadersSlice {
+  byScenario: Record<string, HeadersByScenarioEntry>
+}
+
+export interface ProjectScreenState {
+  catalog: CatalogSlice
+  scenarios: ScenariosSlice
+  headers: HeadersSlice
+  activeProjectId: string | null
   activeScenarioId: string | null
   byScenario: Record<string, WeatherTable>
 }
 
+const emptyDataTypesSlice = (): DataTypesSlice => ({
+  byId: {},
+  allIds: [],
+  loadStatus: 'idle',
+  loadError: null
+})
+
+const emptyScenariosEntry = (): ScenariosByProjectEntry => ({
+  ids: [],
+  byId: {},
+  loadStatus: 'idle',
+  loadError: null
+})
+
+const emptyHeadersEntry = (): HeadersByScenarioEntry => ({
+  ids: [],
+  byId: {},
+  loadStatus: 'idle',
+  loadError: null
+})
+
 export const initialState: ProjectScreenState = {
-  dataTypes: {
-    byId: {},
-    allIds: [],
-    loadStatus: 'idle',
-    loadError: null
+  catalog: {
+    dataTypes: emptyDataTypesSlice()
   },
+  scenarios: { byProject: {} },
+  headers: { byScenario: {} },
+  activeProjectId: null,
   activeScenarioId: null,
   byScenario: {}
 }
@@ -81,6 +148,26 @@ function ensureTable(
   return draft.byScenario[scenarioId]
 }
 
+function ensureScenariosEntry(
+  draft: Draft<ProjectScreenState>,
+  projectId: string
+): Draft<ScenariosByProjectEntry> {
+  if (!draft.scenarios.byProject[projectId]) {
+    draft.scenarios.byProject[projectId] = emptyScenariosEntry()
+  }
+  return draft.scenarios.byProject[projectId]
+}
+
+function ensureHeadersEntry(
+  draft: Draft<ProjectScreenState>,
+  scenarioId: string
+): Draft<HeadersByScenarioEntry> {
+  if (!draft.headers.byScenario[scenarioId]) {
+    draft.headers.byScenario[scenarioId] = emptyHeadersEntry()
+  }
+  return draft.headers.byScenario[scenarioId]
+}
+
 const rowIdAt = (i: number): RowId => `row_${i}`
 
 // ── Reducer ──────────────────────────────────────────────────────────────────
@@ -91,34 +178,98 @@ const projectScreenReducer = (
 ): ProjectScreenState =>
   produce(state, (draft) => {
     switch (action.type) {
-      // ── Data types ─────────────────────────────────────────────────────────
+      // ── Catalog: data types ────────────────────────────────────────────────
 
       case LOAD_DATA_TYPES_REQUESTED:
-        draft.dataTypes.loadStatus = 'loading'
-        draft.dataTypes.loadError = null
+        draft.catalog.dataTypes.loadStatus = 'loading'
+        draft.catalog.dataTypes.loadError = null
         break
 
       case LOAD_DATA_TYPES_SUCCEEDED:
-        draft.dataTypes.byId = {}
-        draft.dataTypes.allIds = []
+        draft.catalog.dataTypes.byId = {}
+        draft.catalog.dataTypes.allIds = []
         for (const def of action.payload) {
-          draft.dataTypes.byId[def.id] = def
-          draft.dataTypes.allIds.push(def.id)
+          draft.catalog.dataTypes.byId[def.id] = def
+          draft.catalog.dataTypes.allIds.push(def.id)
         }
-        draft.dataTypes.loadStatus = 'loaded'
+        draft.catalog.dataTypes.loadStatus = 'loaded'
         break
 
       case LOAD_DATA_TYPES_FAILED:
-        draft.dataTypes.loadStatus = 'error'
-        draft.dataTypes.loadError = action.payload
+        draft.catalog.dataTypes.loadStatus = 'error'
+        draft.catalog.dataTypes.loadError = action.payload
         break
 
-      // ── Active scenario ────────────────────────────────────────────────────
+      // ── Active project + scenario ──────────────────────────────────────────
+
+      case SET_ACTIVE_PROJECT:
+        draft.activeProjectId = action.payload.projectId
+        break
 
       case SET_ACTIVE_SCENARIO:
         draft.activeScenarioId = action.payload.scenarioId
         ensureTable(draft, action.payload.scenarioId)
         break
+
+      // ── List scenarios (per project) ───────────────────────────────────────
+
+      case LIST_SCENARIOS_REQUESTED: {
+        const entry = ensureScenariosEntry(draft, action.payload.projectId)
+        entry.loadStatus = 'loading'
+        entry.loadError = null
+        break
+      }
+
+      case LIST_SCENARIOS_SUCCEEDED: {
+        const entry = ensureScenariosEntry(draft, action.payload.projectId)
+        entry.ids = []
+        entry.byId = {}
+        for (const s of action.payload.scenarios) {
+          entry.byId[s.id] = s
+          entry.ids.push(s.id)
+        }
+        entry.loadStatus = 'loaded'
+        break
+      }
+
+      case LIST_SCENARIOS_FAILED: {
+        const entry = ensureScenariosEntry(draft, action.payload.projectId)
+        entry.loadStatus = 'error'
+        entry.loadError = action.payload.error
+        break
+      }
+
+      // ── Weather headers (per scenario) ─────────────────────────────────────
+
+      case LOAD_HEADERS_REQUESTED: {
+        const entry = ensureHeadersEntry(draft, action.payload.scenarioId)
+        entry.loadStatus = 'loading'
+        entry.loadError = null
+        break
+      }
+
+      case LOAD_HEADERS_SUCCEEDED: {
+        const entry = ensureHeadersEntry(draft, action.payload.scenarioId)
+        entry.ids = []
+        entry.byId = {}
+        // Sort by display_order so iteration order matches the rendered table.
+        const sorted = [...action.payload.headers].sort(
+          (a, b) => a.display_order - b.display_order
+        )
+        for (const h of sorted) {
+          entry.byId[h.id] = h
+          entry.ids.push(h.id)
+        }
+        entry.loadStatus = 'loaded'
+        break
+      }
+
+      case LOAD_HEADERS_FAILED: {
+        const entry = ensureHeadersEntry(draft, action.payload.scenarioId)
+        entry.loadStatus = 'error'
+        entry.loadError = action.payload.error
+        break
+      }
 
       // ── Scenario load ──────────────────────────────────────────────────────
 
@@ -166,25 +317,12 @@ const projectScreenReducer = (
         break
 
       // ── Add row ────────────────────────────────────────────────────────────
+      //
+      // Row-add returns counters only; the saga chains LOAD_SCENARIO_REQUESTED
+      // on success. No append branch in the reducer.
 
       case ADD_ROW_REQUESTED:
-        // Saga trigger only — UI shows pending elsewhere (dialog spinner).
-        break
-
-      case ADD_ROW_SUCCEEDED: {
-        const { scenarioId, rows } = action.payload
-        const table = draft.byScenario[scenarioId]
-        if (!table) break
-
-        const startIdx = table.rowOrder.length
-        rows.forEach((rowData, i) => {
-          const rowId = rowIdAt(startIdx + i)
-          table.rows[rowId] = { ...rowData }
-          table.rowOrder.push(rowId)
-        })
-        break
-      }
-
+      case ADD_ROW_SUCCEEDED:
       case ADD_ROW_FAILED:
         break
 
@@ -202,7 +340,9 @@ const projectScreenReducer = (
         table.columnOrder.push(column.id)
         for (const rowId of table.rowOrder) {
           if (!table.rows[rowId]) table.rows[rowId] = {}
-          table.rows[rowId][column.id] = defaultValue
+          // Server stores NaN for newly-created cells until they're touched;
+          // mirror that with `null` unless the user supplied a default value.
+          table.rows[rowId][column.id] = defaultValue === '' ? null : defaultValue
         }
         break
       }
@@ -218,7 +358,8 @@ const projectScreenReducer = (
         if (!table) break
 
         if (!table.rows[rowId]) table.rows[rowId] = {}
-        table.rows[rowId][colId] = value
+        // Empty input clears the cell — write null to mirror server NaN.
+        table.rows[rowId][colId] = value === '' ? null : value
 
         const key = cellKey(rowId, colId)
         if (validationError != null) {

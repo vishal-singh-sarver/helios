@@ -4,12 +4,18 @@ import {
   setRowSelection,
   updateCellLocal
 } from 'containers/ProjectScreen/actions'
+import {
+  isReservedColId,
+  type CellValue,
+  type ColumnDef
+} from 'containers/ProjectScreen/types'
 import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { DATETIME_COLUMN_NAME } from 'utils/weatherTable'
 import {
+  selectActiveProjectId,
   selectActiveScenarioId,
   selectActiveWeatherTable,
+  selectAllDataTypes,
   selectAllRowsSelected,
   selectColumnOrder,
   selectColumns,
@@ -19,6 +25,7 @@ import {
 
 function WeatherTable(): React.JSX.Element {
   const dispatch = useDispatch()
+  const projectId = useSelector(selectActiveProjectId)
   const scenarioId = useSelector(selectActiveScenarioId)
   const columns = useSelector(selectColumns)
   const columnOrder = useSelector(selectColumnOrder)
@@ -26,6 +33,7 @@ function WeatherTable(): React.JSX.Element {
   const rowSelection = useSelector(selectRowSelection)
   const allSelected = useSelector(selectAllRowsSelected)
   const table = useSelector(selectActiveWeatherTable)
+  const dataTypes = useSelector(selectAllDataTypes)
 
   const toggleAll = (): void => {
     if (!scenarioId) return
@@ -43,9 +51,10 @@ function WeatherTable(): React.JSX.Element {
     newValue: string,
     originalValue: string
   ): void => {
-    if (!scenarioId || newValue === originalValue) return
+    if (!projectId || !scenarioId || newValue === originalValue) return
     dispatch(
       updateCellLocal({
+        projectId,
         scenarioId,
         rowId,
         colId,
@@ -53,6 +62,17 @@ function WeatherTable(): React.JSX.Element {
         validationError: null
       })
     )
+  }
+
+  const renderHeaderLabel = (col: ColumnDef): string => {
+    if (col.unitId == null) return col.name
+    // Walk every loaded data-type's nested units to find the symbol. Cheap
+    // because the catalog is small; if it grows we can index by unitId.
+    for (const dt of dataTypes) {
+      const unit = dt.units.find((u) => u.id === col.unitId)
+      if (unit) return `${col.name} (${unit.unit})`
+    }
+    return col.name
   }
 
   return (
@@ -72,14 +92,13 @@ function WeatherTable(): React.JSX.Element {
             {columnOrder.map((colId) => {
               const col = columns[colId]
               if (!col) return null
-              const label = col.unit ? `${col.name} (${col.unit})` : col.name
               return (
                 <th
                   key={colId}
                   className="px-3 py-2 text-left font-normal text-neutral-300"
                 >
                   <span className="inline-flex items-center gap-1">
-                    {label}
+                    {renderHeaderLabel(col)}
                     <img src={chevronIcon} alt="" aria-hidden="true" className="h-3 w-3" />
                   </span>
                 </th>
@@ -102,19 +121,19 @@ function WeatherTable(): React.JSX.Element {
                   />
                 </td>
                 {columnOrder.map((colId) => {
-                  const col = columns[colId]
-                  const value = row[colId] ?? ''
-                  const readOnly = col?.name === DATETIME_COLUMN_NAME
+                  const value: CellValue = row[colId] ?? null
+                  const display = value ?? ''
+                  const readOnly = isReservedColId(colId)
                   return (
                     <td key={colId} className="px-3 py-2">
                       {readOnly ? (
-                        <span>{value}</span>
+                        <span>{display}</span>
                       ) : (
                         <CellInput
                           rowId={rowId}
                           colId={colId}
-                          value={value}
-                          onCommit={(next) => handleCellBlur(rowId, colId, next, value)}
+                          value={display}
+                          onCommit={(next) => handleCellBlur(rowId, colId, next, display)}
                         />
                       )}
                     </td>

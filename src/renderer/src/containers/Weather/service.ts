@@ -1,13 +1,98 @@
-import type { ColumnDef } from 'containers/ProjectScreen/types'
+import type {
+  CellValue,
+  ColumnDef,
+  DataTypeDef,
+  Scenario,
+  WeatherHeader
+} from 'containers/ProjectScreen/types'
 import { api, ApiError } from 'utils/api'
 import { API_ROUTES } from 'utils/constants'
-import type { RawDataRow } from 'utils/weatherTable'
 import messages from './messages'
 
-// Each *Request function has two branches:
-//   1) The mock branch (used today) — resolves locally after a short delay.
-//   2) The real branch — calls utils/api against API_ROUTES.weather.
-// Flip USE_MOCK_API to false once the backend is ready and delete the mocks.
+// ── Catalog ──────────────────────────────────────────────────────────────────
+//
+// Combined endpoint returns each data type with its units nested. One call
+// on ProjectScreen mount populates the full catalog.
+
+export interface DataTypesResponse {
+  data_types: DataTypeDef[]
+}
+
+export function loadDataTypesRequest(): Promise<DataTypesResponse> {
+  return api.get<DataTypesResponse>(API_ROUTES.catalog.dataTypes)
+}
+
+// ── Project (with scenarios) ────────────────────────────────────────────────
+//
+// GET /api/project/{project_id} returns the project, its scenarios, and each
+// scenario's weather_data_headers in one round-trip. We currently consume
+// only the scenarios list; the saga forwards them to listScenariosSucceeded.
+
+export interface ScenarioWithHeaders extends Scenario {
+  weather_data_headers: WeatherHeader[]
+}
+
+export interface GetProjectResponse {
+  project: {
+    id: string
+    name: string
+    latitude: number
+    longitude: number
+    utc_offset: number
+    created_at: string
+    updated_at: string
+    scenarios: ScenarioWithHeaders[]
+  }
+}
+
+export function getProjectRequest(projectId: string): Promise<GetProjectResponse> {
+  return api.get<GetProjectResponse>(API_ROUTES.project.get(projectId))
+}
+
+// ── Headers ──────────────────────────────────────────────────────────────────
+
+export interface HeadersResponse {
+  success: boolean
+  count: number
+  headers: WeatherHeader[]
+}
+
+export function loadHeadersRequest(
+  projectId: string,
+  scenarioId: string
+): Promise<HeadersResponse> {
+  return api.get<HeadersResponse>(API_ROUTES.weather.headers(projectId, scenarioId))
+}
+
+// ── Data (rows) ──────────────────────────────────────────────────────────────
+
+// Wire shape — labels[] is ["date", "time", ...colIds], rows[] are dicts
+// keyed by those labels with numbers / nulls for the data columns.
+export interface DataPage {
+  success: boolean
+  labels: string[]
+  row_count: number
+  total_rows: number
+  column_count: number
+  offset: number
+  limit: number | null
+  rows: Array<Record<string, string | number | null>>
+}
+
+export function loadDataRequest(
+  projectId: string,
+  scenarioId: string
+): Promise<DataPage> {
+  // Pagination is intentionally not used yet — server returns the full
+  // table when limit is omitted.
+  return api.get<DataPage>(API_ROUTES.weather.data(projectId, scenarioId))
+}
+
+// ── Add column / rows (mocked until the next PR) ─────────────────────────────
+//
+// These signatures are wired against the unified /add endpoint shape but the
+// implementations are still placeholders — full server integration lands in
+// the add/update/delete vertical slice.
 
 const USE_MOCK_API = true
 const MOCK_LATENCY_MS = 500
@@ -24,47 +109,10 @@ function delay<T>(ms: number, fn: () => T | Promise<T>): Promise<T> {
   })
 }
 
-// ── Headers (column metadata) ────────────────────────────────────────────────
-
-const MOCK_HEADERS: ColumnDef[] = [
-  { id: 'col_datetime', name: 'date_time', unit: null, datatype: null },
-  { id: 'col_air_temperature', name: 'air_temperature', unit: 'K', datatype: 'air_temperature' },
-  { id: 'col_air_pressure', name: 'air_pressure', unit: 'Pa', datatype: 'air_pressure' }
-]
-
-export interface HeadersResponse {
-  headers: ColumnDef[]
-}
-
-export function loadHeadersRequest(): Promise<HeadersResponse> {
-  if (USE_MOCK_API) return delay(MOCK_LATENCY_MS, () => ({ headers: MOCK_HEADERS }))
-  return api.get<HeadersResponse>(API_ROUTES.weather.headers)
-}
-
-// ── Data (rows) ──────────────────────────────────────────────────────────────
-
-const MOCK_ROWS: RawDataRow[] = Array.from({ length: 5 }, (_, i) => ({
-  date: '2026-04-27',
-  time: `${String(10 + i).padStart(2, '0')}:00`,
-  col_air_temperature: String(293 + i),
-  col_air_pressure: String(101325 - i)
-}))
-
-export interface DataResponse {
-  rows: RawDataRow[]
-}
-
-export function loadDataRequest(): Promise<DataResponse> {
-  if (USE_MOCK_API) return delay(MOCK_LATENCY_MS, () => ({ rows: MOCK_ROWS }))
-  return api.get<DataResponse>(API_ROUTES.weather.data)
-}
-
-// ── Add column ───────────────────────────────────────────────────────────────
-
 export interface AddColumnRequestBody {
   name: string
-  dataTypeId: string
-  dataUnitId: string
+  dataTypeId: number
+  dataUnitId: number
   defaultValue: string
 }
 
@@ -72,9 +120,17 @@ export interface AddColumnResponse {
   column: ColumnDef
 }
 
-export function addColumnRequest(body: AddColumnRequestBody): Promise<AddColumnResponse> {
+export function addColumnRequest(
+  _projectId: string,
+  _scenarioId: string,
+  body: AddColumnRequestBody
+): Promise<AddColumnResponse> {
   if (USE_MOCK_API) return addColumnMock(body)
-  return api.post<AddColumnResponse>(API_ROUTES.weather.addColumn, body)
+  // Real implementation lands in the add/update/delete vertical slice.
+  return api.post<AddColumnResponse>(
+    API_ROUTES.weather.add(_projectId, _scenarioId),
+    body
+  )
 }
 
 function addColumnMock(body: AddColumnRequestBody): Promise<AddColumnResponse> {
@@ -85,18 +141,19 @@ function addColumnMock(body: AddColumnRequestBody): Promise<AddColumnResponse> {
       throw new ApiError(500, messages.addColumn.errors.serverError)
     }
 
+    // Mock returns a synthetic numeric id stringified, mirroring the real
+    // backend (WeatherDataHeader.id stringified).
+    const fakeId = String(Math.floor(Math.random() * 1_000_000))
     return {
       column: {
-        id: `col_${cleanName || crypto.randomUUID().slice(0, 8)}`,
+        id: fakeId,
         name: cleanName,
-        unit: body.dataUnitId || null,
-        datatype: body.dataTypeId || null
+        dataTypeId: body.dataTypeId,
+        unitId: body.dataUnitId
       }
     }
   })
 }
-
-// ── Add rows ─────────────────────────────────────────────────────────────────
 
 export interface AddRowsRequestBody {
   date: string
@@ -105,13 +162,23 @@ export interface AddRowsRequestBody {
   numberOfRows: number
 }
 
+// Row-add returns counters only; saga chains a refetch.
 export interface AddRowsResponse {
-  rows: RawDataRow[]
+  success: boolean
+  row_count: number
+  added_rows: number
 }
 
-export function addRowsRequest(body: AddRowsRequestBody): Promise<AddRowsResponse> {
+export function addRowsRequest(
+  _projectId: string,
+  _scenarioId: string,
+  body: AddRowsRequestBody
+): Promise<AddRowsResponse> {
   if (USE_MOCK_API) return addRowsMock(body)
-  return api.post<AddRowsResponse>(API_ROUTES.weather.addRows, body)
+  return api.post<AddRowsResponse>(
+    API_ROUTES.weather.add(_projectId, _scenarioId),
+    body
+  )
 }
 
 function addRowsMock(body: AddRowsRequestBody): Promise<AddRowsResponse> {
@@ -119,34 +186,27 @@ function addRowsMock(body: AddRowsRequestBody): Promise<AddRowsResponse> {
     if (import.meta.env.DEV && body.numberOfRows < 0) {
       throw new ApiError(500, messages.addRows.errors.serverError)
     }
-
-    const rows: RawDataRow[] = Array.from({ length: body.numberOfRows }, (_, i) => {
-      const row: RawDataRow = { date: body.date, time: body.time }
-      for (const colId of body.columnIds) {
-        if (colId !== 'col_datetime') row[colId] = ''
-      }
-      void i
-      return row
-    })
-
-    return { rows }
+    return { success: true, row_count: body.numberOfRows, added_rows: body.numberOfRows }
   })
 }
 
 // ── Update cell ──────────────────────────────────────────────────────────────
 
 export interface UpdateCellRequestBody {
-  date: string
-  time: string
-  colId: string
-  value: string
+  col: string
+  row: { date: string; time: string }
+  value: string                     // "" clears (NaN)
 }
 
 export interface UpdateCellResponse {
   success: boolean
 }
 
-export function updateCellRequest(body: UpdateCellRequestBody): Promise<UpdateCellResponse> {
+export function updateCellRequest(
+  _projectId: string,
+  _scenarioId: string,
+  body: UpdateCellRequestBody
+): Promise<UpdateCellResponse> {
   if (USE_MOCK_API) {
     return delay(MOCK_LATENCY_MS, () => {
       if (import.meta.env.DEV && body.value === 'FAIL') {
@@ -155,5 +215,21 @@ export function updateCellRequest(body: UpdateCellRequestBody): Promise<UpdateCe
       return { success: true }
     })
   }
-  return api.post<UpdateCellResponse>(API_ROUTES.weather.updateCell, body)
+  return api.post<UpdateCellResponse>(
+    API_ROUTES.weather.update(_projectId, _scenarioId),
+    body
+  )
+}
+
+// ── Helpers used by the load saga to coerce wire shapes ──────────────────────
+
+// Coerce a wire cell value (number | string | null) into the in-memory
+// CellValue (string | null). Numbers are stringified verbatim — display
+// formatting is the renderer's concern.
+export function toCellValue(raw: string | number | null | undefined): CellValue {
+  if (raw == null) return null
+  if (typeof raw === 'number') {
+    return Number.isFinite(raw) ? String(raw) : null
+  }
+  return raw
 }

@@ -1,44 +1,101 @@
 // Domain types for the ProjectScreen slice.
 //
-// Three concerns live here: the data-type registry (loaded from the backend),
-// the active scenario, and the per-scenario WeatherTable. Imported by
-// actions.ts, reducer.ts and selectors.ts to avoid circular deps.
+// Three concerns live here: the catalog (data types and units, loaded from
+// backend), the active project + scenario, and the per-scenario WeatherTable.
+// Imported by actions.ts, reducer.ts and selectors.ts to avoid circular deps.
 
-// ── Data-type registry (loaded from backend) ─────────────────────────────────
+// ── Catalog: data types and units (loaded from backend) ─────────────────────
+//
+// The backend exposes a single combined endpoint:
+//   GET /api/data-types/with-units -> { data_types: DataTypeDef[] }
+// where each data type carries its `units[]` inline. Wire shapes use
+// snake_case; we keep them as-is so the service layer is a pass-through.
 
-export type DataTypeKind = 'number' | 'date' | 'time' | 'integer'
-export type DataTypeScope = 'column' | 'scenario'
-
-export interface UnitDef {
-  id: string
-  symbol: string
+export interface DataUnitDef {
+  id: number
+  unit: string
+  alias: string
+  data_type_id: number
   min: number | null
   max: number | null
+  to_base_factor: number
+  to_base_offset: number
+  is_base: boolean
+  created_at: string
+  updated_at: string
 }
 
 export interface DataTypeDef {
-  id: string
-  displayName: string
+  id: number
+  data_type: string
   description: string
-  scope: DataTypeScope
-  kind: DataTypeKind
-  units: UnitDef[]
-  canonicalUnit: string | null
-  defaultUnit: string | null
+  created_at: string
+  updated_at: string
+  units: DataUnitDef[]
+}
+
+// ── Scenarios (per project) ─────────────────────────────────────────────────
+
+export interface Scenario {
+  id: string                                      // UUID
+  name: string
+  has_weather: boolean
+  created_at: string
+  updated_at: string
 }
 
 // ── Identifiers ──────────────────────────────────────────────────────────────
 
-export type ColId = string   // assigned by the backend (incl. the date-time col)
-export type RowId = string   // client-generated, e.g. `row_${index}`
+// ColId is an opaque string. For backend-managed columns it's the stringified
+// WeatherDataHeader.id ("5", "12"). For the date/time pseudo-columns it's the
+// literal strings "date" and "time". For upload-created columns it's the
+// slugified CSV header (e.g. "air_temperature") — these have no metadata in
+// weather_data_header, so unit/dataType selectors fall back gracefully.
+export type ColId = string
 
-// ── Header / column shape (1:1 with backend metadata) ───────────────────────
+// RowId is client-generated, e.g. `row_${index}`. The backend doesn't have a
+// row id concept — rows are addressed by (date, time).
+export type RowId = string
+
+// Cell value. null === NaN (cleared cell). The cell editor renders null as
+// an empty input, and writing "" to a cell is the way to clear it (the
+// reducer normalizes "" to null at write time).
+export type CellValue = string | null
+
+// Reserved column ids for the date/time pseudo-columns synthesised by the
+// load saga. Never sent to the backend as `col` in update/delete.
+export const DATE_COL_ID: ColId = 'date'
+export const TIME_COL_ID: ColId = 'time'
+
+export function isReservedColId(colId: ColId): boolean {
+  return colId === DATE_COL_ID || colId === TIME_COL_ID
+}
+
+// ── Backend wire shape: weather_data_header row ─────────────────────────────
+
+export interface WeatherHeader {
+  id: number
+  scenario_id: string
+  name: string
+  helios_data_type_id: number
+  unit_id: number
+  status: boolean
+  display_order: number
+  created_at: string
+  updated_at: string
+}
+
+// ── Internal column shape ───────────────────────────────────────────────────
+//
+// Built by the load saga by joining DataPage.labels[] with WeatherHeader[].
+// dataTypeId/unitId are nullable for *every* column, not just date/time —
+// uploaded columns lack metadata and render as bare names.
 
 export interface ColumnDef {
   id: ColId
   name: string
-  unit: string | null         // display symbol, e.g. "K", "Pa"; null for date-time
-  datatype: string | null     // DataTypeDef.id
+  dataTypeId: number | null
+  unitId: number | null
 }
 
 // ── Per-scenario weather table ──────────────────────────────────────────────
@@ -53,7 +110,7 @@ export interface WeatherTable {
   columns: Record<ColId, ColumnDef>
   columnOrder: ColId[]
 
-  rows: Record<RowId, Record<ColId, string>>
+  rows: Record<RowId, Record<ColId, CellValue>>
   rowOrder: RowId[]
 
   validationErrors: Record<RowId, Record<ColId, string>>
@@ -73,16 +130,19 @@ export const emptyWeatherTable = (): WeatherTable => ({
 
 // ── Action payload shapes ────────────────────────────────────────────────────
 
-// LOAD_SCENARIO_SUCCEEDED — saga has already merged separate date/time fields
-// into the date-time ColId before dispatch.
+// LOAD_SCENARIO_SUCCEEDED — saga has already joined labels[] with headers[]
+// and synthesised the date/time pseudo-columns into `columns` at positions 0/1.
 export interface LoadedScenarioPayload {
+  projectId: string
   scenarioId: string
-  columns: ColumnDef[]                           // ordered as displayed
-  rows: Array<Record<ColId, string>>             // ordered, datetime already clubbed
+  columns: ColumnDef[]                            // ordered as displayed
+  rows: Array<Record<ColId, CellValue>>           // null === NaN
 }
 
 // ADD_ROW_REQUESTED — what the dialog dispatches and the saga POSTs.
+// (Add flow is unified server-side under POST .../add; the saga splits.)
 export interface AddRowRequestedPayload {
+  projectId: string
   scenarioId: string
   date: string                                    // start date
   time: string                                    // start time
@@ -90,32 +150,37 @@ export interface AddRowRequestedPayload {
   numberOfRows: number
 }
 
-// ADD_ROW_SUCCEEDED — new rows already merged (datetime clubbed by saga).
+// ADD_ROW_SUCCEEDED — row-add returns counters only (no inline rows). The
+// saga chains LOAD_SCENARIO_REQUESTED on success so the reducer doesn't
+// need an append branch.
 export interface AddRowSucceededPayload {
+  projectId: string
   scenarioId: string
-  rows: Array<Record<ColId, string>>
 }
 
 // ADD_COLUMN_REQUESTED — what the dialog dispatches and the saga POSTs.
 export interface AddColumnRequestedPayload {
+  projectId: string
   scenarioId: string
   name: string
-  dataTypeId: string
-  dataUnitId: string
+  dataTypeId: number
+  dataUnitId: number
   defaultValue: string                            // back-fill into every existing row
 }
 
-// ADD_COLUMN_SUCCEEDED — backend returned the new column metadata.
+// ADD_COLUMN_SUCCEEDED — backend returns the new column metadata.
 export interface AddColumnSucceededPayload {
+  projectId: string
   scenarioId: string
   column: ColumnDef
   defaultValue: string
 }
 
 export interface UpdateCellLocalPayload {
+  projectId: string
   scenarioId: string
   rowId: RowId
   colId: ColId
-  value: string
+  value: string                                   // raw editor value; "" clears (NaN)
   validationError: string | null                  // non-null short-circuits the saga
 }

@@ -7,7 +7,10 @@ import {
   type ColId,
   type ColumnDef,
   type DataTypeDef,
+  type DataUnitDef,
   type RowId,
+  type Scenario,
+  type WeatherHeader,
   type WeatherTable
 } from './types'
 
@@ -16,42 +19,110 @@ import {
 const selectProjectScreenDomain = (state: RootState): ProjectScreenState =>
   state.projectScreen ?? initialState
 
-// ── Data types ───────────────────────────────────────────────────────────────
+// ── Catalog: data types ──────────────────────────────────────────────────────
 
 export const selectDataTypesById = createSelector(
   selectProjectScreenDomain,
-  (s) => s.dataTypes.byId
+  (s) => s.catalog.dataTypes.byId
 )
 
 export const selectAllDataTypes = createSelector(
   selectProjectScreenDomain,
-  (s): DataTypeDef[] => s.dataTypes.allIds.map((id) => s.dataTypes.byId[id]).filter(Boolean)
-)
-
-export const selectColumnDataTypes = createSelector(selectAllDataTypes, (all) =>
-  all.filter((d) => d.scope === 'column')
-)
-
-export const selectScenarioDataTypes = createSelector(selectAllDataTypes, (all) =>
-  all.filter((d) => d.scope === 'scenario')
+  (s): DataTypeDef[] =>
+    s.catalog.dataTypes.allIds.map((id) => s.catalog.dataTypes.byId[id]).filter(Boolean)
 )
 
 export const selectDataTypesLoadStatus = createSelector(
   selectProjectScreenDomain,
-  (s) => s.dataTypes.loadStatus
+  (s) => s.catalog.dataTypes.loadStatus
 )
 
 export const selectDataTypesError = createSelector(
   selectProjectScreenDomain,
-  (s) => s.dataTypes.loadError
+  (s) => s.catalog.dataTypes.loadError
 )
 
 export const makeSelectDataType = (
-  id: string
+  id: number
 ): ((state: RootState) => DataTypeDef | undefined) =>
   createSelector(selectDataTypesById, (byId) => byId[id])
 
-// ── Active scenario ──────────────────────────────────────────────────────────
+// ── Catalog: data units (nested under each data type) ───────────────────────
+
+export const makeSelectDataUnitsForType = (
+  dataTypeId: number
+): ((state: RootState) => DataUnitDef[]) =>
+  createSelector(selectDataTypesById, (byId) => byId[dataTypeId]?.units ?? [])
+
+// Resolve a unit symbol by id, scanning every loaded data-type's nested
+// units. Returns null if the catalog hasn't loaded yet — column header
+// rendering falls back to the bare name in that case.
+export const makeSelectUnitSymbol = (
+  unitId: number | null
+): ((state: RootState) => string | null) =>
+  createSelector(selectAllDataTypes, (types) => {
+    if (unitId == null) return null
+    for (const dt of types) {
+      const unit = dt.units.find((u) => u.id === unitId)
+      if (unit) return unit.unit
+    }
+    return null
+  })
+
+// ── Scenarios (per project) ──────────────────────────────────────────────────
+
+export const selectScenariosByProject = createSelector(
+  selectProjectScreenDomain,
+  (s) => s.scenarios.byProject
+)
+
+export const makeSelectScenariosForProject = (
+  projectId: string
+): ((state: RootState) => Scenario[]) =>
+  createSelector(selectScenariosByProject, (byProject) => {
+    const entry = byProject[projectId]
+    if (!entry) return []
+    return entry.ids.map((id) => entry.byId[id]).filter(Boolean)
+  })
+
+export const makeSelectScenariosLoadStatus = (
+  projectId: string
+): ((state: RootState) => 'idle' | 'loading' | 'loaded' | 'error') =>
+  createSelector(
+    selectScenariosByProject,
+    (byProject) => byProject[projectId]?.loadStatus ?? 'idle'
+  )
+
+// ── Weather headers (per scenario, raw wire shape) ──────────────────────────
+
+export const selectHeadersByScenario = createSelector(
+  selectProjectScreenDomain,
+  (s) => s.headers.byScenario
+)
+
+export const makeSelectHeadersForScenario = (
+  scenarioId: string
+): ((state: RootState) => WeatherHeader[]) =>
+  createSelector(selectHeadersByScenario, (byScenario) => {
+    const entry = byScenario[scenarioId]
+    if (!entry) return []
+    return entry.ids.map((id) => entry.byId[id]).filter(Boolean)
+  })
+
+export const makeSelectHeadersLoadStatus = (
+  scenarioId: string
+): ((state: RootState) => 'idle' | 'loading' | 'loaded' | 'error') =>
+  createSelector(
+    selectHeadersByScenario,
+    (byScenario) => byScenario[scenarioId]?.loadStatus ?? 'idle'
+  )
+
+// ── Active project + scenario ────────────────────────────────────────────────
+
+export const selectActiveProjectId = createSelector(
+  selectProjectScreenDomain,
+  (s) => s.activeProjectId
+)
 
 export const selectActiveScenarioId = createSelector(
   selectProjectScreenDomain,
@@ -67,6 +138,17 @@ export const selectActiveWeatherTable = createSelector(
   selectActiveScenarioId,
   selectByScenario,
   (id, byScenario): WeatherTable | null => (id ? (byScenario[id] ?? null) : null)
+)
+
+export const selectActiveHeaders = createSelector(
+  selectActiveScenarioId,
+  selectHeadersByScenario,
+  (id, byScenario): WeatherHeader[] => {
+    if (!id) return []
+    const entry = byScenario[id]
+    if (!entry) return []
+    return entry.ids.map((hid) => entry.byId[hid]).filter(Boolean)
+  }
 )
 
 export const makeSelectWeatherTable = (
@@ -99,13 +181,13 @@ export const selectRowOrder = createSelector(
 
 export const makeSelectRow = (
   rowId: RowId
-): ((state: RootState) => Record<ColId, string> | undefined) =>
+): ((state: RootState) => Record<ColId, string | null> | undefined) =>
   createSelector(selectActiveWeatherTable, (table) => table?.rows[rowId])
 
 export const makeSelectCellValue = (
   rowId: RowId,
   colId: ColId
-): ((state: RootState) => string | undefined) =>
+): ((state: RootState) => string | null | undefined) =>
   createSelector(selectActiveWeatherTable, (table) => table?.rows[rowId]?.[colId])
 
 export const makeSelectCellSync = (

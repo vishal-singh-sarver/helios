@@ -1,10 +1,24 @@
-// Data types (loaded from backend, cached for the session)
+// Catalog: data types with units (loaded once per session, on project screen mount)
 export const LOAD_DATA_TYPES_REQUESTED = 'app/ProjectScreen/LOAD_DATA_TYPES_REQUESTED' as const
 export const LOAD_DATA_TYPES_SUCCEEDED = 'app/ProjectScreen/LOAD_DATA_TYPES_SUCCEEDED' as const
 export const LOAD_DATA_TYPES_FAILED = 'app/ProjectScreen/LOAD_DATA_TYPES_FAILED' as const
 
-// Active scenario
+// Active project + scenario
+export const SET_ACTIVE_PROJECT = 'app/ProjectScreen/SET_ACTIVE_PROJECT' as const
 export const SET_ACTIVE_SCENARIO = 'app/ProjectScreen/SET_ACTIVE_SCENARIO' as const
+
+// List scenarios (per project)
+export const LIST_SCENARIOS_REQUESTED = 'app/ProjectScreen/LIST_SCENARIOS_REQUESTED' as const
+export const LIST_SCENARIOS_SUCCEEDED = 'app/ProjectScreen/LIST_SCENARIOS_SUCCEEDED' as const
+export const LIST_SCENARIOS_FAILED = 'app/ProjectScreen/LIST_SCENARIOS_FAILED' as const
+
+// Weather headers (per scenario) — raw WeatherHeader[] from
+// /weather_data_header. Stored separately from the joined ColumnDefs so
+// other features can read header metadata (status, display_order, etc.)
+// without going through the table columns.
+export const LOAD_HEADERS_REQUESTED = 'app/ProjectScreen/LOAD_HEADERS_REQUESTED' as const
+export const LOAD_HEADERS_SUCCEEDED = 'app/ProjectScreen/LOAD_HEADERS_SUCCEEDED' as const
+export const LOAD_HEADERS_FAILED = 'app/ProjectScreen/LOAD_HEADERS_FAILED' as const
 
 // Scenario load
 export const LOAD_SCENARIO_REQUESTED = 'app/ProjectScreen/LOAD_SCENARIO_REQUESTED' as const
@@ -16,7 +30,7 @@ export const UPLOAD_FILE_REQUESTED = 'app/ProjectScreen/UPLOAD_FILE_REQUESTED' a
 export const UPLOAD_FILE_SUCCEEDED = 'app/ProjectScreen/UPLOAD_FILE_SUCCEEDED' as const
 export const UPLOAD_FILE_FAILED = 'app/ProjectScreen/UPLOAD_FILE_FAILED' as const
 
-// Add row
+// Add row (saga chains LOAD_SCENARIO_REQUESTED on success — no append branch)
 export const ADD_ROW_REQUESTED = 'app/ProjectScreen/ADD_ROW_REQUESTED' as const
 export const ADD_ROW_SUCCEEDED = 'app/ProjectScreen/ADD_ROW_SUCCEEDED' as const
 export const ADD_ROW_FAILED = 'app/ProjectScreen/ADD_ROW_FAILED' as const
