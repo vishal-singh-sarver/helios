@@ -1,5 +1,6 @@
 import { call, put, race, take, takeLatest, takeLeading } from 'redux-saga/effects'
 import { api } from 'utils/api'
+import { API_ROUTES } from 'utils/constants'
 import { createSseChannel } from 'utils/sse'
 import type { SseMessage } from 'utils/sse'
 import * as actions from './actions'
@@ -11,8 +12,20 @@ import {
   SSE_CONNECT,
   SSE_DISCONNECT
 } from './constants'
-import { toCsv } from './parsers'
-import type { WeatherStatus } from './types'
+import type { ImportedDataset, WeatherStatus } from './types'
+
+// ── Backend payload shapes ─────────────────────────────────────────────────────
+
+interface AddColRequestColumn {
+  name: string
+  datatype: number | null
+  data_unit: number | null
+  values: Array<{ date: string; time: string; value: string }>
+}
+
+interface AddColRequest {
+  column: AddColRequestColumn[]
+}
 
 // ── REST worker ────────────────────────────────────────────────────────────────
 
@@ -84,27 +97,62 @@ export function* pickFileWorker(): Generator {
 
 // ── Import: finalize worker ────────────────────────────────────────────────────
 //
-// Serializes the in-memory dataset to CSV and prompts the user to save it
-// to disk. Temporary stand-in for a real backend POST — when the endpoint
-// lands, swap saveFile/writeFile back to api.post(API_ROUTES.weather.import).
-// takeLeading prevents double-submits while a save is in flight.
+// Single backend call: every column registers and uploads its row data in
+// one /addCol request, with per-column `values: [{date, time, value}, …]`
+// arrays. Non-empty values force PyHelios to register the column AND write
+// the cells atomically — sidesteps the empty-values / /addRow race.
+// project_id and scenario_id come from localStorage.
+
+const pad2 = (n: number): string => String(n).padStart(2, '0')
+
+function fmtDate(iso: string): string {
+  const d = new Date(iso)
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
+}
+
+function fmtTime(iso: string): string {
+  const d = new Date(iso)
+  // Backend expects HH:MM:SS — we don't have second-level precision, so 00.
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:00`
+}
 
 export function* finalizeImportWorker(action: ImportFinalizeRequestedAction): Generator {
   try {
-    const csv = toCsv(action.payload)
-    const baseName = action.payload.filename.replace(/\.[^.]+$/, '')
-    const defaultName = `${baseName}-imported.csv`
-    const savePath = (yield call(
-      window.api.saveFile,
-      [{ name: 'CSV', extensions: ['csv'] }],
-      defaultName
-    )) as string | null
-    if (!savePath) {
-      yield put(actions.importFinalizeFailed('Save cancelled'))
+    const projectId = localStorage.getItem('helios:activeProjectId')
+    const scenarioId = localStorage.getItem('helios:activeScenarioId')
+    if (!projectId || !scenarioId) {
+      yield put(actions.importFinalizeFailed('No active project or scenario'))
       return
     }
-    yield call(window.api.writeFile, savePath, csv)
-    yield put(actions.importFinalizeSucceeded(action.payload))
+
+    const dataset: ImportedDataset = action.payload
+
+    // Pre-compute (date, time) for each record once — reused across columns.
+    // Rows whose date couldn't be parsed (dtIso === null) are skipped.
+    const rowKeys: Array<{ date: string; time: string; recordIdx: number }> = []
+    dataset.records.forEach((r, i) => {
+      if (r.dtIso !== null) {
+        rowKeys.push({ date: fmtDate(r.dtIso), time: fmtTime(r.dtIso), recordIdx: i })
+      }
+    })
+
+    // One column entry per dataset column, each carrying every row's cell
+    // for that column. Backend stores columns + cells atomically.
+    const addColBody: AddColRequest = {
+      column: dataset.columns.map((c) => ({
+        name: c.label,
+        datatype: null,
+        data_unit: null,
+        values: rowKeys.map(({ date, time, recordIdx }) => ({
+          date,
+          time,
+          value: dataset.records[recordIdx].values[c.key] ?? ''
+        }))
+      }))
+    }
+
+    yield call(api.post, API_ROUTES.weather.addCol(projectId, scenarioId), addColBody)
+    yield put(actions.importFinalizeSucceeded(dataset))
   } catch (err) {
     yield put(actions.importFinalizeFailed((err as Error).message))
   }

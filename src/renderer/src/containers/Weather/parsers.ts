@@ -318,9 +318,10 @@ export function tryParseTime(raw: unknown): TimeParts | null {
   let H: number
   let M: number
 
-  // Accepted forms: "HHMM" (no separator), "HH:MM", or "HH MM".
+  // Accepted no-separator forms: "HMM" (3 digits, e.g. CIMIS "100" = 01:00)
+  // or "HHMM" (4 digits). Plus "HH:MM" / "HH MM" with a separator.
   // Anything else — dots, plus, minus, seconds — is rejected.
-  const concat = s.match(/^(\d{2})(\d{2})$/)
+  const concat = s.match(/^(\d{1,2})(\d{2})$/)
   if (concat) {
     H = parseInt(concat[1], 10)
     M = parseInt(concat[2], 10)

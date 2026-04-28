@@ -18,7 +18,9 @@ export const API_ROUTES = {
     delete: (projectId: string) => `/api/project/${projectId}`
   },
   weather: {
-    // TODO: confirm endpoint with backend; placeholder until then.
-    import: '/api/weather/import'
+    addCol: (projectId: string, scenarioId: string): string =>
+      `/api/weather/project/${projectId}/scenario/${scenarioId}/addCol`,
+    addRow: (projectId: string, scenarioId: string): string =>
+      `/api/weather/project/${projectId}/scenario/${scenarioId}/addRow`
   }
 } as const

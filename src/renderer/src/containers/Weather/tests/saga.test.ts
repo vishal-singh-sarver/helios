@@ -79,45 +79,87 @@ describe('pickFileWorker', () => {
 describe('finalizeImportWorker', () => {
   const dataset: ImportedDataset = {
     filename: 'sample.csv',
-    columns: [{ key: '__check__', label: 'check', index: -1 }],
-    records: [{ dtIso: '2026-01-01T00:00:00.000Z', values: { __check__: 'true' } }]
+    columns: [
+      { key: '__check__', label: 'check', index: -1 },
+      { key: '5__temp', label: 'temp', index: 5 }
+    ],
+    records: [
+      {
+        dtIso: '2026-01-01T10:00:00.000Z',
+        values: { __check__: '1', '5__temp': '22.5' }
+      },
+      // Second row has dtIso=null — should be skipped from /addRow.
+      {
+        dtIso: null,
+        values: { __check__: '1', '5__temp': '99.9' }
+      }
+    ]
   }
 
-  it('opens save dialog → writes file → puts succeeded with the dataset', () => {
+  beforeEach(() => {
+    localStorage.setItem('helios:activeProjectId', 'proj-1')
+    localStorage.setItem('helios:activeScenarioId', 'sce-1')
+  })
+
+  afterEach(() => {
+    localStorage.clear()
+  })
+
+  it('fails fast when project or scenario id is missing from localStorage', () => {
+    localStorage.clear()
+    const gen = finalizeImportWorker(actions.importFinalizeRequested(dataset))
+    expect(gen.next().value).toEqual(
+      put(actions.importFinalizeFailed('No active project or scenario'))
+    )
+    expect(gen.next().done).toBe(true)
+  })
+
+  it('POSTs /addCol with all rows packed into per-column values, then puts succeeded', () => {
     const gen = finalizeImportWorker(actions.importFinalizeRequested(dataset))
 
-    // 1) Save dialog with derived default filename
-    const saveCall = gen.next().value as ReturnType<typeof call>
-    expect(saveCall.payload.fn).toBe(window.api.saveFile)
-    expect(saveCall.payload.args[0]).toEqual([{ name: 'CSV', extensions: ['csv'] }])
-    expect(saveCall.payload.args[1]).toBe('sample-imported.csv')
+    const addColCall = gen.next().value as ReturnType<typeof call>
+    expect(addColCall.payload.args[0]).toBe(
+      '/api/weather/project/proj-1/scenario/sce-1/addCol'
+    )
+    // Only one row in `values` per column — the invalid_date record is skipped.
+    expect(addColCall.payload.args[1]).toEqual({
+      column: [
+        {
+          name: 'check',
+          datatype: null,
+          data_unit: null,
+          values: [
+            {
+              date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+              time: expect.stringMatching(/^\d{2}:\d{2}:\d{2}$/),
+              value: '1'
+            }
+          ]
+        },
+        {
+          name: 'temp',
+          datatype: null,
+          data_unit: null,
+          values: [
+            {
+              date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+              time: expect.stringMatching(/^\d{2}:\d{2}:\d{2}$/),
+              value: '22.5'
+            }
+          ]
+        }
+      ]
+    })
 
-    // 2) Write to chosen path
-    const savePath = '/tmp/weather/out.csv'
-    const writeCall = gen.next(savePath).value as ReturnType<typeof call>
-    expect(writeCall.payload.fn).toBe(window.api.writeFile)
-    expect(writeCall.payload.args[0]).toBe(savePath)
-    // CSV body — check header is the first line
-    expect(String(writeCall.payload.args[1]).split('\n')[0]).toBe('Date-Time,check')
-
-    // 3) Succeeded
     expect(gen.next().value).toEqual(put(actions.importFinalizeSucceeded(dataset)))
     expect(gen.next().done).toBe(true)
   })
 
-  it('puts importFinalizeFailed("Save cancelled") when user cancels the save dialog', () => {
+  it('puts importFinalizeFailed when /addCol throws', () => {
     const gen = finalizeImportWorker(actions.importFinalizeRequested(dataset))
-    gen.next() // saveFile
-    expect(gen.next(null).value).toEqual(put(actions.importFinalizeFailed('Save cancelled')))
-    expect(gen.next().done).toBe(true)
-  })
-
-  it('puts importFinalizeFailed when writeFile throws', () => {
-    const gen = finalizeImportWorker(actions.importFinalizeRequested(dataset))
-    gen.next() // saveFile
-    gen.next('/tmp/x.csv') // writeFile
-    const err = new Error('disk full')
-    expect(gen.throw(err).value).toEqual(put(actions.importFinalizeFailed('disk full')))
+    gen.next() // addCol
+    const err = new Error('column conflict')
+    expect(gen.throw(err).value).toEqual(put(actions.importFinalizeFailed('column conflict')))
   })
 })
 

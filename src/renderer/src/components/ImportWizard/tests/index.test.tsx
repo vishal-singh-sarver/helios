@@ -116,10 +116,10 @@ describe('<ImportWizard />', () => {
     expect(dataset.columns.find((c) => c.label === 'year')).toBeUndefined()
     expect(dataset.columns.find((c) => c.label === 'hour')).toBeUndefined()
 
-    // Every record has __check__ = "true" by default
+    // Every record has __check__ = "1" by default (backend uses 0/1 strings)
     expect(dataset.records).toHaveLength(2)
-    expect(dataset.records[0].values.__check__).toBe('true')
-    expect(dataset.records[1].values.__check__).toBe('true')
+    expect(dataset.records[0].values.__check__).toBe('1')
+    expect(dataset.records[1].values.__check__).toBe('1')
 
     // dtIso is set (rows are valid)
     expect(dataset.records[0].dtIso).not.toBeNull()

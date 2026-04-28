@@ -205,7 +205,8 @@ function ImportWizard({
 
     const records: ImportedDatasetRecord[] = parsed.rows.map((row, rowIdx) => {
       const dt = parsedDateTimes[rowIdx] ?? null
-      const values: Record<string, string> = { __check__: 'true' }
+      // Backend stores `check` as 0/1 strings, not 'true'/'false'.
+      const values: Record<string, string> = { __check__: '1' }
       for (const { h, i } of keptIndices) {
         values[`${i}__${h}`] = row[i] ?? ''
       }

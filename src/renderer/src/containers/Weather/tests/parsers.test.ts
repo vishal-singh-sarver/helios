@@ -241,6 +241,12 @@ describe('tryParseTime', () => {
     expect(tryParseTime('1430')).toEqual({ H: 14, M: 30 })
   })
 
+  it('parses HMM (3 digits — CIMIS hour format)', () => {
+    expect(tryParseTime('100')).toEqual({ H: 1, M: 0 })
+    expect(tryParseTime('945')).toEqual({ H: 9, M: 45 })
+    expect(tryParseTime('200')).toEqual({ H: 2, M: 0 })
+  })
+
   it('rejects HH.MM (dot separator not allowed)', () => {
     expect(tryParseTime('14.30')).toBeNull()
   })

@@ -4,11 +4,7 @@ import type { Reducer } from 'redux'
 import { useInjectReducer } from 'utils/injectReducer'
 import { useInjectSaga } from 'utils/injectSaga'
 import loadable from 'utils/loadable'
-import {
-  importFinalizeRequested,
-  importPickFileRequested,
-  importReset
-} from './actions'
+import { importFinalizeRequested, importPickFileRequested, importReset } from './actions'
 import messages from './messages'
 import reducer from './reducer'
 import saga from './saga'
@@ -69,6 +65,17 @@ export function Weather(): React.JSX.Element {
   const handleRequestPickFile = (): void => {
     dispatch(importPickFileRequested())
   }
+  React.useEffect(() => {
+    // TEMP: dummy scenario id until the scenario picker UI is built.
+    // Remove this block once activeScenarioId is set elsewhere.
+    try {
+      if (!localStorage.getItem('helios:activeScenarioId')) {
+        localStorage.setItem('helios:activeScenarioId', '5ed0b26a-f81e-4ca7-9f40-aead2c4da7ec')
+      }
+    } catch {
+      /* storage disabled — ignore */
+    }
+  }, [])
 
   return (
     <div className="flex flex-1 flex-col">
