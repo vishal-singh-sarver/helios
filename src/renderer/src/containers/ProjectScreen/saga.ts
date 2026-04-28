@@ -116,35 +116,41 @@ function* loadScenarioWorker(action: LoadScenarioRequestedAction): Generator {
       call(loadDataRequest, projectId, scenarioId)
     ])) as [WeatherHeader[], DataPage]
 
-    const headersById = new Map<string, ColumnDef>()
-    for (const h of headers) {
-      headersById.set(String(h.id), {
+    // Column order = date/time first, then all backend headers in display
+    // order, then any extra labels (uploaded slugs) not in headers. We can't
+    // rely on dataRes.labels alone — when rows[] is empty the backend may
+    // return labels=["date","time"] only, which would drop the real columns
+    // and break /addRow (it requires every column id as a row key).
+    const sortedHeaders = [...headers].sort(
+      (a, b) => a.display_order - b.display_order
+    )
+    const seen = new Set<ColId>()
+    const columns: ColumnDef[] = []
+
+    const pushCol = (col: ColumnDef): void => {
+      if (seen.has(col.id)) return
+      columns.push(col)
+      seen.add(col.id)
+    }
+
+    pushCol({ id: DATE_COL_ID, name: DATE_COL_ID, dataTypeId: null, unitId: null })
+    pushCol({ id: TIME_COL_ID, name: TIME_COL_ID, dataTypeId: null, unitId: null })
+    for (const h of sortedHeaders) {
+      pushCol({
         id: String(h.id),
         name: h.name,
         dataTypeId: h.helios_data_type_id,
         unitId: h.unit_id
       })
     }
-
-    const columns: ColumnDef[] = dataRes.labels.map((label) => {
-      if (label === DATE_COL_ID || label === TIME_COL_ID) {
-        return { id: label, name: label, dataTypeId: null, unitId: null }
-      }
-      const meta = headersById.get(label)
-      return (
-        meta ?? {
-          id: label,
-          name: label,
-          dataTypeId: null,
-          unitId: null
-        }
-      )
-    })
+    for (const label of dataRes.labels) {
+      pushCol({ id: label, name: label, dataTypeId: null, unitId: null })
+    }
 
     const rows: Array<Record<ColId, CellValue>> = dataRes.rows.map((raw) => {
       const out: Record<ColId, CellValue> = {}
-      for (const colId of dataRes.labels) {
-        out[colId] = toCellValue(raw[colId])
+      for (const col of columns) {
+        out[col.id] = toCellValue(raw[col.id])
       }
       return out
     })
@@ -166,18 +172,54 @@ function* loadScenarioWorker(action: LoadScenarioRequestedAction): Generator {
 
 // ── Add row ──────────────────────────────────────────────────────────────────
 //
-// Row-add returns counters only. Saga chains LOAD_SCENARIO_REQUESTED so the
-// reducer doesn't need an append branch.
+// Backend's /addRow takes a fully-built rows[] array, so the saga expands
+// (startDate, startTime, deltaHours, numberOfRows) into row dicts here. Every
+// column id from columnOrder must appear as a key in each row — backend
+// rejects with "row labels must match existing columns" otherwise. Non-date/
+// time cells are sent as null (cleared / NaN). Returns counters only — saga
+// chains LOAD_SCENARIO_REQUESTED so the reducer doesn't need an append branch.
+
+const HOUR_MS = 60 * 60 * 1000
+
+function pad2(n: number): string {
+  return n < 10 ? `0${n}` : String(n)
+}
+
+function buildRowsForAdd(
+  startDate: string,
+  startTime: string,
+  deltaHours: number,
+  numberOfRows: number,
+  columnIds: ColId[]
+): Array<Record<string, string | null>> {
+  // YYYY-MM-DD + HH:mm parsed in UTC so addition stays linear (no DST shifts).
+  const [y, mo, d] = startDate.split('-').map((v) => Number.parseInt(v, 10))
+  const [h, mi] = startTime.split(':').map((v) => Number.parseInt(v, 10))
+  const baseMs = Date.UTC(y, mo - 1, d, h, mi, 0, 0)
+
+  const out: Array<Record<string, string | null>> = []
+  for (let i = 0; i < numberOfRows; i++) {
+    const ts = new Date(baseMs + i * deltaHours * HOUR_MS)
+    const rowDate = `${ts.getUTCFullYear()}-${pad2(ts.getUTCMonth() + 1)}-${pad2(ts.getUTCDate())}`
+    const rowTime = `${pad2(ts.getUTCHours())}:${pad2(ts.getUTCMinutes())}:00`
+
+    const row: Record<string, string | null> = {}
+    for (const colId of columnIds) {
+      if (colId === DATE_COL_ID) row[colId] = rowDate
+      else if (colId === TIME_COL_ID) row[colId] = rowTime
+      else row[colId] = String(i+1)
+    }
+    out.push(row)
+  }
+  return out
+}
 
 function* addRowWorker(action: AddRowRequestedAction): Generator {
-  const { projectId, scenarioId, date, time, columnIds, numberOfRows } = action.payload
+  const { projectId, scenarioId, date, time, columnIds, numberOfRows, deltaHours } =
+    action.payload
   try {
-    ;(yield call(addRowsRequest, projectId, scenarioId, {
-      date,
-      time,
-      columnIds,
-      numberOfRows
-    })) as AddRowsResponse
+    const rows = buildRowsForAdd(date, time, deltaHours, numberOfRows, columnIds)
+    ;(yield call(addRowsRequest, projectId, scenarioId, { rows })) as AddRowsResponse
 
     yield put(actions.addRowSucceeded(projectId, scenarioId))
     yield put(actions.loadScenarioRequested(projectId, scenarioId))
@@ -187,16 +229,36 @@ function* addRowWorker(action: AddRowRequestedAction): Generator {
 }
 
 // ── Add column ───────────────────────────────────────────────────────────────
+//
+// `values[]` back-fills existing rows on the server. Each entry is
+// { date, time, value } so the backend can address each cell by its row
+// timestamp. If the user supplied a default we emit one entry per existing
+// row; otherwise we send [] and the server leaves new cells as NaN/null.
+// Rows missing date or time are skipped defensively.
 
 function* addColumnWorker(action: AddColumnRequestedAction): Generator {
   const { projectId, scenarioId, name, dataTypeId, dataUnitId, defaultValue } =
     action.payload
   try {
+    const table = (yield select(selectActiveWeatherTable)) as WeatherTable | null
+    const values: Array<{ date: string; time: string; value: string }> = []
+
+    if (defaultValue !== '' && table) {
+      for (const rowId of table.rowOrder) {
+        const row = table.rows[rowId]
+        if (!row) continue
+        const date = row[DATE_COL_ID]
+        const time = row[TIME_COL_ID]
+        if (date == null || time == null) continue
+        values.push({ date, time, value: defaultValue })
+      }
+    }
+
     const res = (yield call(addColumnRequest, projectId, scenarioId, {
       name,
       dataTypeId,
       dataUnitId,
-      defaultValue
+      values
     })) as AddColumnResponse
     yield put(actions.addColumnSucceeded(projectId, scenarioId, res.column, defaultValue))
   } catch (err) {

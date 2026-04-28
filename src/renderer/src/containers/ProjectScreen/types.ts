@@ -140,14 +140,16 @@ export interface LoadedScenarioPayload {
 }
 
 // ADD_ROW_REQUESTED — what the dialog dispatches and the saga POSTs.
-// (Add flow is unified server-side under POST .../add; the saga splits.)
+// Saga expands (date, time, deltaHours, numberOfRows) into N row dicts client-side
+// and POSTs them to /addRow. Non-date/time columns are filled with null.
 export interface AddRowRequestedPayload {
   projectId: string
   scenarioId: string
-  date: string                                    // start date
-  time: string                                    // start time
+  date: string                                    // start date (YYYY-MM-DD)
+  time: string                                    // start time (HH:mm)
   columnIds: ColId[]                              // all columns, in display order
   numberOfRows: number
+  deltaHours: number                              // integer hour gap between rows
 }
 
 // ADD_ROW_SUCCEEDED — row-add returns counters only (no inline rows). The
@@ -159,12 +161,13 @@ export interface AddRowSucceededPayload {
 }
 
 // ADD_COLUMN_REQUESTED — what the dialog dispatches and the saga POSTs.
+// dataTypeId / dataUnitId are optional (backend accepts null).
 export interface AddColumnRequestedPayload {
   projectId: string
   scenarioId: string
   name: string
-  dataTypeId: number
-  dataUnitId: number
+  dataTypeId: number | null
+  dataUnitId: number | null
   defaultValue: string                            // back-fill into every existing row
 }
 

@@ -7,7 +7,6 @@ import type {
 } from 'containers/ProjectScreen/types'
 import { api, ApiError } from 'utils/api'
 import { API_ROUTES } from 'utils/constants'
-import messages from './messages'
 
 // ── Catalog ──────────────────────────────────────────────────────────────────
 //
@@ -88,11 +87,104 @@ export function loadDataRequest(
   return api.get<DataPage>(API_ROUTES.weather.data(projectId, scenarioId))
 }
 
-// ── Add column / rows (mocked until the next PR) ─────────────────────────────
+// ── Add column ───────────────────────────────────────────────────────────────
 //
-// These signatures are wired against the unified /add endpoint shape but the
-// implementations are still placeholders — full server integration lands in
-// the add/update/delete vertical slice.
+// POST /api/weather/.../addCol expects an array of column descriptors:
+//   { column: [ { name, datatype, data_unit, values } ] }
+// `values` back-fills existing rows; each entry is { date, time, value } so
+// the backend can address the correct cell. An empty array leaves rows as
+// NaN/null. `datatype` and `data_unit` are optional.
+
+export interface AddColumnCellValue {
+  date: string
+  time: string
+  value: string
+}
+
+export interface AddColumnRequestBody {
+  name: string
+  dataTypeId: number | null
+  dataUnitId: number | null
+  values: AddColumnCellValue[]
+}
+
+interface AddColumnWireBody {
+  column: Array<{
+    name: string
+    datatype: number | null
+    data_unit: number | null
+    values: AddColumnCellValue[]
+  }>
+}
+
+interface AddColumnWireResponse {
+  success: boolean
+  columns: Array<{
+    id: number
+    name: string
+    datatype_id: number | null
+    data_unit_id: number | null
+  }>
+}
+
+export interface AddColumnResponse {
+  column: ColumnDef
+}
+
+export async function addColumnRequest(
+  projectId: string,
+  scenarioId: string,
+  body: AddColumnRequestBody
+): Promise<AddColumnResponse> {
+  const wire: AddColumnWireBody = {
+    column: [
+      {
+        name: body.name,
+        datatype: body.dataTypeId,
+        data_unit: body.dataUnitId,
+        values: body.values
+      }
+    ]
+  }
+  const res = await api.post<AddColumnWireResponse>(
+    API_ROUTES.weather.addCol(projectId, scenarioId),
+    wire
+  )
+  const wireCol = res.columns[0]
+  if (!wireCol) throw new ApiError(500, 'Server returned no columns')
+  return {
+    column: {
+      id: String(wireCol.id),
+      name: wireCol.name,
+      dataTypeId: wireCol.datatype_id,
+      unitId: wireCol.data_unit_id
+    }
+  }
+}
+
+// ── Add rows ─────────────────────────────────────────────────────────────────
+//
+// POST /api/weather/.../addRow takes a fully-built rows[] array. The saga
+// expands (startDate, startTime, deltaHours, numberOfRows) into row dicts
+// before calling — non-date/time columns default to null.
+
+export interface AddRowsRequestBody {
+  rows: Array<Record<string, string | null>>
+}
+
+export interface AddRowsResponse {
+  success: boolean
+}
+
+export function addRowsRequest(
+  projectId: string,
+  scenarioId: string,
+  body: AddRowsRequestBody
+): Promise<AddRowsResponse> {
+  return api.post<AddRowsResponse>(API_ROUTES.weather.addRow(projectId, scenarioId), body)
+}
+
+// ── Update cell (mocked until backend contract is finalised) ─────────────────
 
 const USE_MOCK_API = true
 const MOCK_LATENCY_MS = 500
@@ -106,87 +198,6 @@ function delay<T>(ms: number, fn: () => T | Promise<T>): Promise<T> {
         reject(err)
       }
     }, ms)
-  })
-}
-
-export interface AddColumnRequestBody {
-  name: string
-  dataTypeId: number
-  dataUnitId: number
-  defaultValue: string
-}
-
-export interface AddColumnResponse {
-  column: ColumnDef
-}
-
-export function addColumnRequest(
-  _projectId: string,
-  _scenarioId: string,
-  body: AddColumnRequestBody
-): Promise<AddColumnResponse> {
-  if (USE_MOCK_API) return addColumnMock(body)
-  // Real implementation lands in the add/update/delete vertical slice.
-  return api.post<AddColumnResponse>(
-    API_ROUTES.weather.add(_projectId, _scenarioId),
-    body
-  )
-}
-
-function addColumnMock(body: AddColumnRequestBody): Promise<AddColumnResponse> {
-  return delay(MOCK_LATENCY_MS, () => {
-    const cleanName = body.name.trim()
-
-    if (import.meta.env.DEV && cleanName.toLowerCase() === 'fail') {
-      throw new ApiError(500, messages.addColumn.errors.serverError)
-    }
-
-    // Mock returns a synthetic numeric id stringified, mirroring the real
-    // backend (WeatherDataHeader.id stringified).
-    const fakeId = String(Math.floor(Math.random() * 1_000_000))
-    return {
-      column: {
-        id: fakeId,
-        name: cleanName,
-        dataTypeId: body.dataTypeId,
-        unitId: body.dataUnitId
-      }
-    }
-  })
-}
-
-export interface AddRowsRequestBody {
-  date: string
-  time: string
-  columnIds: string[]
-  numberOfRows: number
-}
-
-// Row-add returns counters only; saga chains a refetch.
-export interface AddRowsResponse {
-  success: boolean
-  row_count: number
-  added_rows: number
-}
-
-export function addRowsRequest(
-  _projectId: string,
-  _scenarioId: string,
-  body: AddRowsRequestBody
-): Promise<AddRowsResponse> {
-  if (USE_MOCK_API) return addRowsMock(body)
-  return api.post<AddRowsResponse>(
-    API_ROUTES.weather.add(_projectId, _scenarioId),
-    body
-  )
-}
-
-function addRowsMock(body: AddRowsRequestBody): Promise<AddRowsResponse> {
-  return delay(MOCK_LATENCY_MS, () => {
-    if (import.meta.env.DEV && body.numberOfRows < 0) {
-      throw new ApiError(500, messages.addRows.errors.serverError)
-    }
-    return { success: true, row_count: body.numberOfRows, added_rows: body.numberOfRows }
   })
 }
 

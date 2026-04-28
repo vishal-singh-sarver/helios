@@ -31,6 +31,10 @@ export const API_ROUTES = {
       `/api/weather/project/${projectId}/scenario/${scenarioId}/update`,
     add: (projectId: string, scenarioId: string) =>
       `/api/weather/project/${projectId}/scenario/${scenarioId}/add`,
+    addCol: (projectId: string, scenarioId: string) =>
+      `/api/weather/project/${projectId}/scenario/${scenarioId}/addCol`,
+    addRow: (projectId: string, scenarioId: string) =>
+      `/api/weather/project/${projectId}/scenario/${scenarioId}/addRow`,
     delete: (projectId: string, scenarioId: string) =>
       `/api/weather/project/${projectId}/scenario/${scenarioId}/delete`,
     uploadFile: (projectId: string, scenarioId: string) =>

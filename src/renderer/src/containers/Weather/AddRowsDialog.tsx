@@ -19,17 +19,20 @@ export interface AddRowsValues {
   numberOfRows: string
   startDate: string
   startTime: string
+  deltaHours: string
 }
 
 const INITIAL_VALUES: AddRowsValues = {
   numberOfRows: '',
   startDate: '',
-  startTime: ''
+  startTime: '',
+  deltaHours: '1'
 }
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/
 
 const MAX_ROWS = 10_000
+const MAX_DELTA_HOURS = 24 * 365
 
 const CalendarIcon = (
   <img src={calendarIcon} alt="" aria-hidden="true" className="h-4 w-4" />
@@ -117,11 +120,27 @@ function AddRowsDialog({ isOpen, onClose }: AddRowsDialogProps): React.JSX.Eleme
         errors.startTime = 'Start time must be in 24-hour format (00:00–23:59).'
       }
 
+      if (values.deltaHours === '') {
+        errors.deltaHours = 'Delta is required.'
+      } else {
+        const dh = Number.parseInt(values.deltaHours, 10)
+        if (
+          Number.isNaN(dh) ||
+          dh <= 0 ||
+          !/^\d+$/.test(values.deltaHours.trim())
+        ) {
+          errors.deltaHours = 'Delta must be a positive whole number of hours.'
+        } else if (dh > MAX_DELTA_HOURS) {
+          errors.deltaHours = `Delta must be ${MAX_DELTA_HOURS} hours or fewer.`
+        }
+      }
+
       return errors
     },
     onSubmit: (values) => {
       if (loading || !projectId || !scenarioId) return
       const numberOfRows = Number.parseInt(values.numberOfRows, 10)
+      const deltaHours = Number.parseInt(values.deltaHours, 10)
       dispatch(
         addRowRequested(
           projectId,
@@ -129,7 +148,8 @@ function AddRowsDialog({ isOpen, onClose }: AddRowsDialogProps): React.JSX.Eleme
           values.startDate,
           values.startTime,
           columnIds,
-          numberOfRows
+          numberOfRows,
+          deltaHours
         )
       )
       formik.resetForm()
@@ -193,6 +213,17 @@ function AddRowsDialog({ isOpen, onClose }: AddRowsDialogProps): React.JSX.Eleme
           />
         )}
       </div>
+      <FormField
+        labelProps={{ label: 'Delta (hours)' }}
+        inputProps={{
+          ...formik.getFieldProps('deltaHours'),
+          type: 'number',
+          error:
+            formik.touched.deltaHours || formik.values.deltaHours !== ''
+              ? (formik.errors.deltaHours as string | undefined)
+              : undefined
+        }}
+      />
 
       {error && (
         <p role="alert" className="pt-2 text-sm text-red-600">

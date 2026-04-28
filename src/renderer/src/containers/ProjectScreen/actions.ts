@@ -337,10 +337,11 @@ export const addRowRequested = (
   date: string,
   time: string,
   columnIds: ColId[],
-  numberOfRows: number
+  numberOfRows: number,
+  deltaHours: number
 ): AddRowRequestedAction => ({
   type: ADD_ROW_REQUESTED,
-  payload: { projectId, scenarioId, date, time, columnIds, numberOfRows }
+  payload: { projectId, scenarioId, date, time, columnIds, numberOfRows, deltaHours }
 })
 export const addRowSucceeded = (
   projectId: string,
@@ -362,8 +363,8 @@ export const addColumnRequested = (
   projectId: string,
   scenarioId: string,
   name: string,
-  dataTypeId: number,
-  dataUnitId: number,
+  dataTypeId: number | null,
+  dataUnitId: number | null,
   defaultValue: string
 ): AddColumnRequestedAction => ({
   type: ADD_COLUMN_REQUESTED,

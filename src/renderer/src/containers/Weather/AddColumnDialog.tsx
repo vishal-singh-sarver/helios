@@ -64,17 +64,16 @@ function AddColumnDialog({ isOpen, onClose }: AddColumnDialogProps): React.JSX.E
     },
     onSubmit: (values) => {
       if (loading || !projectId || !scenarioId) return
-      // dataType / unit ids are still slugs in this dialog — the next PR
-      // replaces the dropdowns with catalog-driven (numeric id) pickers.
-      // Coerce to 0 for now so the action signature compiles; the saga is
-      // still calling the mock add endpoint, so the value isn't load-bearing.
+      // dataType / unit are optional on the backend. The current dropdown
+      // exposes slugs (no numeric ids yet), so we send null for both until
+      // the catalog-driven picker lands.
       dispatch(
         addColumnRequested(
           projectId,
           scenarioId,
           values.parameterName.trim(),
-          0,
-          0,
+          null,
+          null,
           values.defaultValue
         )
       )
