@@ -3,6 +3,11 @@ import { api } from 'utils/api'
 import { API_ROUTES } from 'utils/constants'
 import { createSseChannel } from 'utils/sse'
 import type { SseMessage } from 'utils/sse'
+import { loadScenarioRequested } from 'containers/ProjectScreen/actions'
+import {
+  LOAD_SCENARIO_SUCCEEDED,
+  LOAD_SCENARIO_FAILED
+} from 'containers/ProjectScreen/constants'
 import * as actions from './actions'
 import type { ImportFinalizeRequestedAction } from './actions'
 import {
@@ -157,6 +162,38 @@ export function* finalizeImportWorker(action: ImportFinalizeRequestedAction): Ge
     }
 
     yield call(api.post, API_ROUTES.weather.addCol(projectId, scenarioId), addColBody)
+
+    // After /addCol, refetch headers + timeseries so the WeatherTable shows
+    // the freshly-imported data. ProjectScreen's loadScenario saga handles
+    // both /weather_data_header and /getAllTimeSeriesData in parallel —
+    // wait for its terminal action (filtered to this scenario) so the
+    // wizard only closes once the table is populated.
+    yield put(loadScenarioRequested(projectId, scenarioId))
+    const isMatch = (a: { type: string; payload?: { scenarioId?: string } }): boolean =>
+      a.payload?.scenarioId === scenarioId
+    const raceResult = (yield race({
+      succeeded: take(
+        (a: { type: string; payload?: { scenarioId?: string } }) =>
+          a.type === LOAD_SCENARIO_SUCCEEDED && isMatch(a)
+      ),
+      failed: take(
+        (a: { type: string; payload?: { scenarioId?: string; error?: string } }) =>
+          a.type === LOAD_SCENARIO_FAILED && isMatch(a)
+      )
+    })) as {
+      succeeded?: { payload: { scenarioId: string } }
+      failed?: { payload: { scenarioId: string; error: string } }
+    }
+
+    if (raceResult.failed) {
+      yield put(
+        actions.importFinalizeFailed(
+          `Imported, but failed to refresh data: ${raceResult.failed.payload.error}`
+        )
+      )
+      return
+    }
+
     yield put(actions.importFinalizeSucceeded(dataset))
   } catch (err) {
     yield put(actions.importFinalizeFailed((err as Error).message))

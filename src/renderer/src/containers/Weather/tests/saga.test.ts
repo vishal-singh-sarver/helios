@@ -5,6 +5,7 @@ import weatherSaga, {
   pickFileWorker
 } from '../saga'
 import { api } from 'utils/api'
+import { loadScenarioRequested } from 'containers/ProjectScreen/actions'
 import * as actions from '../actions'
 import {
   FETCH_STATUS,
@@ -158,7 +159,31 @@ describe('finalizeImportWorker', () => {
       ]
     })
 
-    expect(gen.next().value).toEqual(put(actions.importFinalizeSucceeded(dataset)))
+    // Step 2 — saga dispatches loadScenarioRequested to refresh the table.
+    expect(gen.next().value).toEqual(put(loadScenarioRequested('proj-1', 'sce-1')))
+
+    // Step 3 — saga races on LOAD_SCENARIO_SUCCEEDED / LOAD_SCENARIO_FAILED.
+    // Yield value is the race effect itself; resume the generator with a
+    // "succeeded" branch so the worker proceeds to finalize.
+    gen.next() // race(...)
+    expect(
+      gen.next({ succeeded: { payload: { scenarioId: 'sce-1' } } }).value
+    ).toEqual(put(actions.importFinalizeSucceeded(dataset)))
+    expect(gen.next().done).toBe(true)
+  })
+
+  it('puts importFinalizeFailed when scenario refresh fails', () => {
+    const gen = finalizeImportWorker(actions.importFinalizeRequested(dataset))
+    gen.next() // clear_data
+    gen.next() // addCol
+    gen.next() // put loadScenarioRequested
+    gen.next() // race(...)
+    const failure = gen.next({
+      failed: { payload: { scenarioId: 'sce-1', error: 'header fetch 500' } }
+    }).value
+    expect(failure).toEqual(
+      put(actions.importFinalizeFailed('Imported, but failed to refresh data: header fetch 500'))
+    )
     expect(gen.next().done).toBe(true)
   })
 
