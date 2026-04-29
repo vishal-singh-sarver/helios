@@ -121,6 +121,15 @@ function fmtTime(iso: string): string {
   return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:00`
 }
 
+// Backend rejects non-numeric, non-empty cell values with 400. Per the
+// spec ("non-numeric values are silently skipped per cell"), drop bad
+// cells client-side by sending '' (no-op) instead. Common offenders:
+// CIMIS qc flags ('H', 'M', 'Y'), missing-data sentinels ('N/A', '--').
+function numericOrBlank(raw: string): string {
+  if (raw.trim() === '') return ''
+  return Number.isNaN(Number(raw)) ? '' : raw
+}
+
 export function* finalizeImportWorker(action: ImportFinalizeRequestedAction): Generator {
   try {
     const projectId = localStorage.getItem('helios:activeProjectId')
@@ -147,7 +156,9 @@ export function* finalizeImportWorker(action: ImportFinalizeRequestedAction): Ge
     })
 
     // One column entry per dataset column, each carrying every row's cell
-    // for that column. Backend stores columns + cells atomically.
+    // for that column. Backend stores columns + cells atomically. Bad
+    // cells (non-numeric strings like 'H' / 'N/A') are coerced to '' so
+    // the row still imports — backend treats '' as no-op.
     const addColBody: AddColRequest = {
       column: dataset.columns.map((c) => ({
         name: c.label,
@@ -156,7 +167,7 @@ export function* finalizeImportWorker(action: ImportFinalizeRequestedAction): Ge
         values: rowKeys.map(({ date, time, recordIdx }) => ({
           date,
           time,
-          value: dataset.records[recordIdx].values[c.key] ?? ''
+          value: numericOrBlank(dataset.records[recordIdx].values[c.key] ?? '')
         }))
       }))
     }

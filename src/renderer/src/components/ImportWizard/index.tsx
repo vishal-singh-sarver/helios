@@ -49,6 +49,9 @@ function ImportWizard({
   const [stepIdx, setStepIdx] = useState(0)
   const [parsed, setParsed] = useState<ParseResult | null>(null)
   const [parseError, setParseError] = useState<string | null>(null)
+  // Client-side validation error (shown above the footer). Cleared on
+  // column toggle and at the start of each handleImport call.
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [parsedDateTimes, setParsedDateTimes] = useState<Array<Date | null>>([])
   const [mode, setMode] = useState<DateTimeMode>('group2')
   const [mapping, setMapping] = useState<DateTimeMapping>(INITIAL_MAPPING)
@@ -181,6 +184,7 @@ function ImportWizard({
   }, [])
 
   const handleImport = useCallback((): void => {
+    setSubmitError(null)
     if (!parsed) return
     const dtSet = new Set(dtColumns)
     // Safety net: skip any column whose name exactly matches a date/time
@@ -200,6 +204,23 @@ function ImportWizard({
     const keptIndices = parsed.headers
       .map((h, i) => ({ h, i }))
       .filter(({ h, i }) => !dtSet.has(h) && !isDtName(h) && columnSelection[i] !== false)
+
+    // Backend rejects duplicate column names within a single /addCol batch
+    // with 422. Detect them before sending so the user can rename or
+    // exclude. Also catches collisions with the synthetic "check" column.
+    const labelCounts = new Map<string, number>()
+    for (const lab of ['check', ...keptIndices.map(({ h }) => h.trim())]) {
+      labelCounts.set(lab, (labelCounts.get(lab) ?? 0) + 1)
+    }
+    const duplicates = [...labelCounts.entries()]
+      .filter(([, count]) => count > 1)
+      .map(([label]) => `"${label}"`)
+    if (duplicates.length > 0) {
+      setSubmitError(
+        `Duplicate column name(s): ${duplicates.join(', ')}. Rename in the source file or uncheck duplicates on this step.`
+      )
+      return
+    }
 
     // Synthetic "check" column — always added on import, defaults to true for
     // every record. Lets downstream tools include/exclude rows after import.
@@ -328,12 +349,23 @@ function ImportWizard({
                 parsedDateTimes={parsedDateTimes}
                 dtColumns={dtColumns}
                 columnSelection={columnSelection}
-                onToggleColumn={(i) =>
+                onToggleColumn={(i) => {
+                  setSubmitError(null)
                   setColumnSelection((s) => ({ ...s, [i]: s[i] === false ? true : false }))
-                }
+                }}
               />
             )}
           </div>
+
+          {submitError && (
+            <div className="mx-6 mb-2 flex items-start gap-2 rounded border border-red-900/40 bg-red-900/20 px-3 py-2 text-sm text-red-300">
+              <AlertTriangleIcon className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <strong className="font-semibold">Cannot import: </strong>
+                {submitError}
+              </div>
+            </div>
+          )}
 
           {importError && (
             <div className="mx-6 mb-2 flex items-start gap-2 rounded border border-red-900/40 bg-red-900/20 px-3 py-2 text-sm text-red-300">
