@@ -22,6 +22,9 @@ import {
   ADD_COLUMN_REQUESTED,
   ADD_COLUMN_SUCCEEDED,
   ADD_COLUMN_FAILED,
+  UPDATE_COLUMN_REQUESTED,
+  UPDATE_COLUMN_SUCCEEDED,
+  UPDATE_COLUMN_FAILED,
   UPDATE_CELL_LOCAL,
   UPDATE_CELL_REQUESTED,
   UPDATE_CELL_SUCCEEDED,
@@ -41,6 +44,10 @@ import type {
   RowId,
   Scenario,
   UpdateCellLocalPayload,
+  UpdateColumnFailedPayload,
+  UpdateColumnPatch,
+  UpdateColumnRequestedPayload,
+  UpdateColumnSucceededPayload,
   WeatherHeader
 } from './types'
 
@@ -158,6 +165,20 @@ export interface AddColumnFailedAction extends Idx {
   payload: { projectId: string; scenarioId: string; error: string }
 }
 
+// Update column header (PATCH /weather_data_header/{header_id})
+export interface UpdateColumnRequestedAction extends Idx {
+  type: typeof UPDATE_COLUMN_REQUESTED
+  payload: UpdateColumnRequestedPayload
+}
+export interface UpdateColumnSucceededAction extends Idx {
+  type: typeof UPDATE_COLUMN_SUCCEEDED
+  payload: UpdateColumnSucceededPayload
+}
+export interface UpdateColumnFailedAction extends Idx {
+  type: typeof UPDATE_COLUMN_FAILED
+  payload: UpdateColumnFailedPayload
+}
+
 // Cell edit
 export interface UpdateCellLocalAction extends Idx {
   type: typeof UPDATE_CELL_LOCAL
@@ -216,6 +237,9 @@ export type ProjectScreenAction =
   | AddColumnRequestedAction
   | AddColumnSucceededAction
   | AddColumnFailedAction
+  | UpdateColumnRequestedAction
+  | UpdateColumnSucceededAction
+  | UpdateColumnFailedAction
   | UpdateCellLocalAction
   | UpdateCellRequestedAction
   | UpdateCellSucceededAction
@@ -386,6 +410,35 @@ export const addColumnFailed = (
 ): AddColumnFailedAction => ({
   type: ADD_COLUMN_FAILED,
   payload: { projectId, scenarioId, error }
+})
+
+export const updateColumnRequested = (
+  projectId: string,
+  scenarioId: string,
+  colId: ColId,
+  patch: UpdateColumnPatch,
+  previous: UpdateColumnPatch
+): UpdateColumnRequestedAction => ({
+  type: UPDATE_COLUMN_REQUESTED,
+  payload: { projectId, scenarioId, colId, patch, previous }
+})
+export const updateColumnSucceeded = (
+  projectId: string,
+  scenarioId: string,
+  colId: ColId
+): UpdateColumnSucceededAction => ({
+  type: UPDATE_COLUMN_SUCCEEDED,
+  payload: { projectId, scenarioId, colId }
+})
+export const updateColumnFailed = (
+  projectId: string,
+  scenarioId: string,
+  colId: ColId,
+  previous: UpdateColumnPatch,
+  error: string
+): UpdateColumnFailedAction => ({
+  type: UPDATE_COLUMN_FAILED,
+  payload: { projectId, scenarioId, colId, previous, error }
 })
 
 export const updateCellLocal = (payload: UpdateCellLocalPayload): UpdateCellLocalAction => ({

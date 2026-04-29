@@ -25,6 +25,8 @@ export const API_ROUTES = {
   weather: {
     headers: (projectId: string, scenarioId: string) =>
       `/api/weather/project/${projectId}/scenario/${scenarioId}/weather_data_header`,
+    headerPatch: (projectId: string, scenarioId: string, headerId: number) =>
+      `/api/weather/project/${projectId}/scenario/${scenarioId}/weather_data_header/${headerId}`,
     data: (projectId: string, scenarioId: string) =>
       `/api/weather/project/${projectId}/scenario/${scenarioId}/getAllTimeSeriesData`,
     update: (projectId: string, scenarioId: string) =>

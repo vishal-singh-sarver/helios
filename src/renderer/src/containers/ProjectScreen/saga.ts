@@ -6,6 +6,7 @@ import {
   loadDataRequest,
   loadDataTypesRequest,
   loadHeadersRequest,
+  patchHeaderRequest,
   toCellValue,
   type AddColumnResponse,
   type AddRowsResponse,
@@ -13,6 +14,7 @@ import {
   type DataTypesResponse,
   type GetProjectResponse,
   type HeadersResponse,
+  type PatchHeaderRequestBody,
   type UpdateCellResponse,
   updateCellRequest
 } from 'containers/Weather/service'
@@ -23,7 +25,8 @@ import {
   LIST_SCENARIOS_REQUESTED,
   LOAD_DATA_TYPES_REQUESTED,
   LOAD_SCENARIO_REQUESTED,
-  UPDATE_CELL_LOCAL
+  UPDATE_CELL_LOCAL,
+  UPDATE_COLUMN_REQUESTED
 } from './constants'
 import { selectActiveWeatherTable } from './selectors'
 import type {
@@ -31,7 +34,8 @@ import type {
   AddRowRequestedAction,
   ListScenariosRequestedAction,
   LoadScenarioRequestedAction,
-  UpdateCellLocalAction
+  UpdateCellLocalAction,
+  UpdateColumnRequestedAction
 } from './actions'
 import {
   DATE_COL_ID,
@@ -266,6 +270,55 @@ function* addColumnWorker(action: AddColumnRequestedAction): Generator {
   }
 }
 
+// ── Update column header ─────────────────────────────────────────────────────
+//
+// PATCH /weather_data_header/{header_id} — partial update. The reducer has
+// already applied the optimistic write on _REQUESTED, so this worker only
+// needs to (a) translate the colId to a numeric header id, (b) translate
+// camelCase keys to the wire's snake_case, and (c) roll back on failure by
+// dispatching _FAILED with the snapshot the dispatcher captured.
+
+function* updateColumnWorker(action: UpdateColumnRequestedAction): Generator {
+  const { projectId, scenarioId, colId, patch, previous } = action.payload
+
+  // Only backend-managed columns have a numeric header id. Reserved date/time
+  // and upload-slug columns must be filtered out at the dispatcher; bail
+  // defensively here.
+  const headerId = Number(colId)
+  if (!Number.isFinite(headerId) || headerId <= 0) {
+    yield put(
+      actions.updateColumnFailed(
+        projectId,
+        scenarioId,
+        colId,
+        previous,
+        'Column has no header id'
+      )
+    )
+    return
+  }
+
+  const wire: PatchHeaderRequestBody = {}
+  if (patch.name !== undefined) wire.name = patch.name
+  if (patch.dataTypeId !== undefined) wire.helios_data_type_id = patch.dataTypeId
+  if (patch.unitId !== undefined) wire.unit_id = patch.unitId
+
+  try {
+    yield call(patchHeaderRequest, projectId, scenarioId, headerId, wire)
+    yield put(actions.updateColumnSucceeded(projectId, scenarioId, colId))
+  } catch (err) {
+    yield put(
+      actions.updateColumnFailed(
+        projectId,
+        scenarioId,
+        colId,
+        previous,
+        (err as Error).message
+      )
+    )
+  }
+}
+
 // ── Cell edit ────────────────────────────────────────────────────────────────
 //
 // UPDATE_CELL_LOCAL writes optimistically in the reducer. The saga then
@@ -312,5 +365,6 @@ export default function* projectScreenSaga(): Generator {
   yield takeLatest(LOAD_SCENARIO_REQUESTED, loadScenarioWorker)
   yield takeLatest(ADD_ROW_REQUESTED, addRowWorker)
   yield takeLatest(ADD_COLUMN_REQUESTED, addColumnWorker)
+  yield takeEvery(UPDATE_COLUMN_REQUESTED, updateColumnWorker)
   yield takeEvery(UPDATE_CELL_LOCAL, updateCellWorker)
 }

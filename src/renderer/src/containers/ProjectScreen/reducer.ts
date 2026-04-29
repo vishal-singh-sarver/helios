@@ -23,6 +23,9 @@ import {
   ADD_COLUMN_REQUESTED,
   ADD_COLUMN_SUCCEEDED,
   ADD_COLUMN_FAILED,
+  UPDATE_COLUMN_REQUESTED,
+  UPDATE_COLUMN_SUCCEEDED,
+  UPDATE_COLUMN_FAILED,
   UPDATE_CELL_LOCAL,
   UPDATE_CELL_REQUESTED,
   UPDATE_CELL_SUCCEEDED,
@@ -349,6 +352,37 @@ const projectScreenReducer = (
 
       case ADD_COLUMN_FAILED:
         break
+
+      // ── Update column header (PATCH) ───────────────────────────────────────
+      //
+      // Optimistic: write the patch into the local ColumnDef on _REQUESTED, no-op
+      // on _SUCCEEDED, restore the snapshot on _FAILED. The caller hands the
+      // saga the prior values so we can roll back without re-fetching.
+
+      case UPDATE_COLUMN_REQUESTED: {
+        const { scenarioId, colId, patch } = action.payload
+        const table = draft.byScenario[scenarioId]
+        const col = table?.columns[colId]
+        if (!col) break
+        if (patch.name !== undefined) col.name = patch.name
+        if (patch.dataTypeId !== undefined) col.dataTypeId = patch.dataTypeId
+        if (patch.unitId !== undefined) col.unitId = patch.unitId
+        break
+      }
+
+      case UPDATE_COLUMN_SUCCEEDED:
+        break
+
+      case UPDATE_COLUMN_FAILED: {
+        const { scenarioId, colId, previous } = action.payload
+        const table = draft.byScenario[scenarioId]
+        const col = table?.columns[colId]
+        if (!col) break
+        if (previous.name !== undefined) col.name = previous.name
+        if (previous.dataTypeId !== undefined) col.dataTypeId = previous.dataTypeId
+        if (previous.unitId !== undefined) col.unitId = previous.unitId
+        break
+      }
 
       // ── Cell edit ──────────────────────────────────────────────────────────
 

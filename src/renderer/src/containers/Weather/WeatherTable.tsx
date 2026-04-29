@@ -1,13 +1,15 @@
-import chevronIcon from '@renderer/assets/chevron.svg'
 import {
   setAllRowsSelection,
   setRowSelection,
-  updateCellLocal
+  updateCellLocal,
+  updateColumnRequested
 } from 'containers/ProjectScreen/actions'
 import {
   isReservedColId,
   type CellValue,
-  type ColumnDef
+  type ColumnDef,
+  type DataTypeDef,
+  type UpdateColumnPatch
 } from 'containers/ProjectScreen/types'
 import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
@@ -22,6 +24,15 @@ import {
   selectRowOrder,
   selectRowSelection
 } from './selectors'
+
+// A column is backend-managed (PATCH-able) when its id is a positive integer —
+// the stringified WeatherDataHeader.id. Reserved date/time and upload-slug
+// columns fail this check and stay read-only.
+function isBackendManagedCol(colId: string): boolean {
+  if (isReservedColId(colId)) return false
+  const n = Number(colId)
+  return Number.isFinite(n) && n > 0 && String(n) === colId
+}
 
 function WeatherTable(): React.JSX.Element {
   const dispatch = useDispatch()
@@ -64,15 +75,16 @@ function WeatherTable(): React.JSX.Element {
     )
   }
 
-  const renderHeaderLabel = (col: ColumnDef): string => {
-    if (col.unitId == null) return col.name
-    // Walk every loaded data-type's nested units to find the symbol. Cheap
-    // because the catalog is small; if it grows we can index by unitId.
-    for (const dt of dataTypes) {
-      const unit = dt.units.find((u) => u.id === col.unitId)
-      if (unit) return `${col.name} (${unit.unit})`
-    }
-    return col.name
+  const dispatchHeaderPatch = (
+    col: ColumnDef,
+    patch: UpdateColumnPatch
+  ): void => {
+    if (!projectId || !scenarioId) return
+    const previous: UpdateColumnPatch = {}
+    if (patch.name !== undefined) previous.name = col.name
+    if (patch.dataTypeId !== undefined) previous.dataTypeId = col.dataTypeId
+    if (patch.unitId !== undefined) previous.unitId = col.unitId
+    dispatch(updateColumnRequested(projectId, scenarioId, col.id, patch, previous))
   }
 
   return (
@@ -95,12 +107,17 @@ function WeatherTable(): React.JSX.Element {
               return (
                 <th
                   key={colId}
-                  className="px-3 py-2 text-left font-normal text-neutral-300"
+                  className="px-3 py-2 text-left font-normal text-neutral-300 align-top"
                 >
-                  <span className="inline-flex items-center gap-1">
-                    {renderHeaderLabel(col)}
-                    <img src={chevronIcon} alt="" aria-hidden="true" className="h-3 w-3" />
-                  </span>
+                  {isBackendManagedCol(colId) ? (
+                    <HeaderEditor
+                      col={col}
+                      dataTypes={dataTypes}
+                      onPatch={(patch) => dispatchHeaderPatch(col, patch)}
+                    />
+                  ) : (
+                    <span>{col.name}</span>
+                  )}
                 </th>
               )
             })}
@@ -168,6 +185,99 @@ function CellInput({ rowId, colId, value, onCommit }: CellInputProps): React.JSX
       onBlur={() => onCommit(draft)}
       className="w-full bg-transparent outline-none focus:ring-1 focus:ring-blue-500/40"
     />
+  )
+}
+
+// ── Header editor ────────────────────────────────────────────────────────────
+//
+// Three controls per backend-managed column header: name (text input, commits
+// on blur), data type (select, commits on change), unit (select, commits on
+// change; disabled when no data type is set). Each commit fires one PATCH —
+// the saga + reducer handle optimistic apply / rollback. Per task constraints,
+// changing the data type does not auto-clear or auto-pick a unit.
+
+interface HeaderEditorProps {
+  col: ColumnDef
+  dataTypes: DataTypeDef[]
+  onPatch: (patch: UpdateColumnPatch) => void
+}
+
+function HeaderEditor({ col, dataTypes, onPatch }: HeaderEditorProps): React.JSX.Element {
+  const [nameDraft, setNameDraft] = React.useState(col.name)
+  // Re-sync when the canonical column name changes (rollback, external update).
+  React.useEffect(() => setNameDraft(col.name), [col.name])
+
+  const currentDataType = React.useMemo(
+    () =>
+      col.dataTypeId == null
+        ? undefined
+        : dataTypes.find((dt) => dt.id === col.dataTypeId),
+    [dataTypes, col.dataTypeId]
+  )
+
+  const unitsForType = currentDataType?.units ?? []
+
+  const handleNameBlur = (): void => {
+    const trimmed = nameDraft.trim()
+    if (trimmed === '' || trimmed === col.name) {
+      setNameDraft(col.name)
+      return
+    }
+    onPatch({ name: trimmed })
+  }
+
+  const handleDataTypeChange = (e: React.ChangeEvent<HTMLSelectElement>): void => {
+    const next = e.target.value === '' ? null : Number(e.target.value)
+    if (next === col.dataTypeId) return
+    onPatch({ dataTypeId: next })
+  }
+
+  const handleUnitChange = (e: React.ChangeEvent<HTMLSelectElement>): void => {
+    const next = e.target.value === '' ? null : Number(e.target.value)
+    if (next === col.unitId) return
+    onPatch({ unitId: next })
+  }
+
+  return (
+    <div className="flex flex-col gap-1 min-w-32">
+      <input
+        type="text"
+        aria-label={`Column ${col.id} name`}
+        value={nameDraft}
+        onChange={(e) => setNameDraft(e.target.value)}
+        onBlur={handleNameBlur}
+        className="w-full rounded border border-app-border bg-dark px-2 py-1 text-sm text-neutral-200 outline-none focus:border-neutral-500"
+      />
+      <div className="flex gap-1">
+        <select
+          aria-label={`Column ${col.id} data type`}
+          value={col.dataTypeId == null ? '' : String(col.dataTypeId)}
+          onChange={handleDataTypeChange}
+          className="flex-1 rounded border border-app-border bg-dark px-2 py-1 text-xs text-neutral-200 outline-none focus:border-neutral-500"
+        >
+          <option value="">Data type</option>
+          {dataTypes.map((dt) => (
+            <option key={dt.id} value={String(dt.id)}>
+              {dt.data_type}
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label={`Column ${col.id} unit`}
+          value={col.unitId == null ? '' : String(col.unitId)}
+          onChange={handleUnitChange}
+          disabled={col.dataTypeId == null}
+          className="flex-1 rounded border border-app-border bg-dark px-2 py-1 text-xs text-neutral-200 outline-none focus:border-neutral-500 disabled:opacity-50"
+        >
+          <option value="">{col.dataTypeId == null ? '—' : 'Unit'}</option>
+          {unitsForType.map((u) => (
+            <option key={u.id} value={String(u.id)}>
+              {u.alias ? `${u.unit} (${u.alias})` : u.unit}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
   )
 }
 

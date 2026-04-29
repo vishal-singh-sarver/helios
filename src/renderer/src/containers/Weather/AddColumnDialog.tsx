@@ -7,31 +7,27 @@ import { useFormik } from 'formik'
 import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import messages from './messages'
-import { selectActiveProjectId, selectActiveScenarioId } from './selectors'
+import {
+  selectActiveProjectId,
+  selectActiveScenarioId,
+  selectAllDataTypes
+} from './selectors'
 
 export interface AddColumnValues {
   parameterName: string
-  dataType: string
+  // Stored as string because <select> values are strings; "" === unselected.
+  // Resolved to numeric ids (or null) at submit time.
+  dataTypeId: string
+  unitId: string
   defaultValue: string
 }
 
 const INITIAL_VALUES: AddColumnValues = {
   parameterName: '',
-  dataType: '',
+  dataTypeId: '',
+  unitId: '',
   defaultValue: ''
 }
-
-export const DATA_TYPE_OPTIONS: readonly FormFieldOption[] = [
-  { value: 'direct_normal_radiation', label: 'Direct Normal Radiation' },
-  { value: 'diffuse_horizontal_radiation', label: 'Diffuse Horizontal Radiation' },
-  { value: 'air_temperature', label: 'Air temperature' },
-  { value: 'air_pressure', label: 'Air pressure' },
-  { value: 'wind_speed', label: 'Wind speed' },
-  { value: 'air_humidity', label: 'Air humidity' },
-  { value: 'turbidity', label: 'Turbidity' },
-  { value: 'beta_soil', label: 'Beta_soil (Soil moisture factor)' },
-  { value: 'air_co2', label: 'Air_CO2' }
-]
 
 interface AddColumnDialogProps {
   isOpen: boolean
@@ -45,6 +41,12 @@ function AddColumnDialog({ isOpen, onClose }: AddColumnDialogProps): React.JSX.E
   const dispatch = useDispatch()
   const projectId = useSelector(selectActiveProjectId)
   const scenarioId = useSelector(selectActiveScenarioId)
+  const dataTypes = useSelector(selectAllDataTypes)
+
+  const dataTypeOptions: FormFieldOption[] = React.useMemo(
+    () => dataTypes.map((dt) => ({ value: String(dt.id), label: dt.data_type })),
+    [dataTypes]
+  )
 
   const formik = useFormik<AddColumnValues>({
     initialValues: INITIAL_VALUES,
@@ -55,25 +57,24 @@ function AddColumnDialog({ isOpen, onClose }: AddColumnDialogProps): React.JSX.E
 
       const trimmedName = values.parameterName.trim()
       if (!trimmedName) {
-        errors.parameterName = 'Parameter name is required.'
+        errors.parameterName = 'Column name is required.'
       } else if (trimmedName.length > 50) {
-        errors.parameterName = 'Parameter name must be 50 characters or fewer.'
+        errors.parameterName = 'Column name must be 50 characters or fewer.'
       }
 
       return errors
     },
     onSubmit: (values) => {
       if (loading || !projectId || !scenarioId) return
-      // dataType / unit are optional on the backend. The current dropdown
-      // exposes slugs (no numeric ids yet), so we send null for both until
-      // the catalog-driven picker lands.
+      const dataTypeId = values.dataTypeId === '' ? null : Number(values.dataTypeId)
+      const unitId = values.unitId === '' ? null : Number(values.unitId)
       dispatch(
         addColumnRequested(
           projectId,
           scenarioId,
           values.parameterName.trim(),
-          null,
-          null,
+          dataTypeId,
+          unitId,
           values.defaultValue
         )
       )
@@ -82,15 +83,44 @@ function AddColumnDialog({ isOpen, onClose }: AddColumnDialogProps): React.JSX.E
     }
   })
 
+  // Unit options follow the selected data type. Picking a different data type
+  // clears the unit selection — the user must re-pick (per task constraints,
+  // we don't auto-select the base unit).
+  const selectedDataType = React.useMemo(
+    () =>
+      formik.values.dataTypeId === ''
+        ? undefined
+        : dataTypes.find((dt) => String(dt.id) === formik.values.dataTypeId),
+    [dataTypes, formik.values.dataTypeId]
+  )
+
+  const unitOptions: FormFieldOption[] = React.useMemo(
+    () =>
+      (selectedDataType?.units ?? []).map((u) => ({
+        value: String(u.id),
+        label: u.alias ? `${u.unit} (${u.alias})` : u.unit
+      })),
+    [selectedDataType]
+  )
+
+  const handleDataTypeChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ): void => {
+    formik.setFieldValue('dataTypeId', e.target.value)
+    formik.setFieldValue('unitId', '')
+  }
+
   const handleClose = (): void => {
     formik.resetForm()
     onClose()
   }
 
+  const m = messages.addColumn
+
   return (
-    <Dialog isOpen={isOpen} title={messages.addColumn.dialogTitle} onClose={handleClose}>
+    <Dialog isOpen={isOpen} title={m.dialogTitle} onClose={handleClose}>
       <FormField
-        labelProps={{ label: 'Parameter Name' }}
+        labelProps={{ label: m.fields.name }}
         inputProps={{
           ...formik.getFieldProps('parameterName'),
           error:
@@ -99,16 +129,32 @@ function AddColumnDialog({ isOpen, onClose }: AddColumnDialogProps): React.JSX.E
               : undefined
         }}
       />
+
       <FormField
-        labelProps={{ label: 'Assigned Data Type', optional: true }}
+        labelProps={{ label: m.fields.dataType, optional: true }}
         inputProps={{
-          ...formik.getFieldProps('dataType'),
-          placeholder: 'Select a data type',
-          options: DATA_TYPE_OPTIONS
+          ...formik.getFieldProps('dataTypeId'),
+          onChange: handleDataTypeChange,
+          placeholder: m.placeholders.dataType,
+          options: dataTypeOptions
         }}
       />
+
       <FormField
-        labelProps={{ label: 'Enter Value', optional: true }}
+        labelProps={{ label: m.fields.unit, optional: true }}
+        inputProps={{
+          ...formik.getFieldProps('unitId'),
+          placeholder:
+            formik.values.dataTypeId === ''
+              ? m.placeholders.unitDisabled
+              : m.placeholders.unit,
+          disabled: formik.values.dataTypeId === '',
+          options: unitOptions
+        }}
+      />
+
+      <FormField
+        labelProps={{ label: m.fields.value, optional: true }}
         inputProps={formik.getFieldProps('defaultValue')}
       />
 
@@ -124,7 +170,7 @@ function AddColumnDialog({ isOpen, onClose }: AddColumnDialogProps): React.JSX.E
           disabled={loading}
           className="rounded bg-neutral-200 px-3 py-1 text-sm text-black hover:bg-neutral-100 disabled:opacity-50"
         >
-          {messages.addColumn.cancelButton}
+          {m.cancelButton}
         </button>
         <button
           onClick={() => formik.submitForm()}
@@ -134,10 +180,10 @@ function AddColumnDialog({ isOpen, onClose }: AddColumnDialogProps): React.JSX.E
           {loading ? (
             <span className="flex items-center gap-2">
               <Spinner />
-              {messages.addColumn.submitButtonBusy}
+              {m.submitButtonBusy}
             </span>
           ) : (
-            messages.addColumn.submitButton
+            m.submitButton
           )}
         </button>
       </div>

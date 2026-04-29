@@ -179,6 +179,38 @@ export interface AddColumnSucceededPayload {
   defaultValue: string
 }
 
+// UPDATE_COLUMN_REQUESTED — partial update of a single column header. At
+// least one of `name` / `dataTypeId` / `unitId` is set; undefined means
+// "leave alone". The reducer snapshots the prior values into `previous` so
+// _FAILED can roll back without re-fetching.
+export interface UpdateColumnPatch {
+  name?: string
+  dataTypeId?: number | null
+  unitId?: number | null
+}
+
+export interface UpdateColumnRequestedPayload {
+  projectId: string
+  scenarioId: string
+  colId: ColId
+  patch: UpdateColumnPatch
+  previous: UpdateColumnPatch
+}
+
+export interface UpdateColumnSucceededPayload {
+  projectId: string
+  scenarioId: string
+  colId: ColId
+}
+
+export interface UpdateColumnFailedPayload {
+  projectId: string
+  scenarioId: string
+  colId: ColId
+  previous: UpdateColumnPatch
+  error: string
+}
+
 export interface UpdateCellLocalPayload {
   projectId: string
   scenarioId: string

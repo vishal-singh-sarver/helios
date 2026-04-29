@@ -6,6 +6,17 @@ const messages = {
     submitButton: 'Add',
     submitButtonBusy: 'Adding…',
     cancelButton: 'Cancel',
+    fields: {
+      name: 'Column Name',
+      dataType: 'Data Type',
+      unit: 'Unit Type',
+      value: 'Enter Value'
+    },
+    placeholders: {
+      dataType: 'Select a data type',
+      unit: 'Select a unit',
+      unitDisabled: 'Pick a data type first'
+    },
     errors: {
       duplicateName: 'A column with this name already exists',
       serverError: 'Failed to add column'

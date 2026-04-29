@@ -40,6 +40,12 @@ export const ADD_COLUMN_REQUESTED = 'app/ProjectScreen/ADD_COLUMN_REQUESTED' as 
 export const ADD_COLUMN_SUCCEEDED = 'app/ProjectScreen/ADD_COLUMN_SUCCEEDED' as const
 export const ADD_COLUMN_FAILED = 'app/ProjectScreen/ADD_COLUMN_FAILED' as const
 
+// Patch column header (name / data type / unit). Optimistic write on
+// _REQUESTED, rollback to the prior values on _FAILED.
+export const UPDATE_COLUMN_REQUESTED = 'app/ProjectScreen/UPDATE_COLUMN_REQUESTED' as const
+export const UPDATE_COLUMN_SUCCEEDED = 'app/ProjectScreen/UPDATE_COLUMN_SUCCEEDED' as const
+export const UPDATE_COLUMN_FAILED = 'app/ProjectScreen/UPDATE_COLUMN_FAILED' as const
+
 // Cell edit. UPDATE_CELL_LOCAL is the synchronous optimistic write fired
 // from the cell on blur. The saga then dispatches UPDATE_CELL_REQUESTED only
 // when local validation passed (validationError === null).

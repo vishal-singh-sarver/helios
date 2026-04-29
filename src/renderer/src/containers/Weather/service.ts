@@ -162,6 +162,34 @@ export async function addColumnRequest(
   }
 }
 
+// ── Patch header ─────────────────────────────────────────────────────────────
+//
+// PATCH /api/weather/.../weather_data_header/{header_id} — partial update of
+// a single header (name / data type / unit / display_order). Wire field names
+// are snake_case; the renderer carries camelCase elsewhere.
+
+export interface PatchHeaderRequestBody {
+  name?: string
+  helios_data_type_id?: number | null
+  unit_id?: number | null
+  display_order?: number
+}
+
+// Backend currently returns a bare string on success; we don't read it.
+export type PatchHeaderResponse = string
+
+export function patchHeaderRequest(
+  projectId: string,
+  scenarioId: string,
+  headerId: number,
+  body: PatchHeaderRequestBody
+): Promise<PatchHeaderResponse> {
+  return api.patch<PatchHeaderResponse>(
+    API_ROUTES.weather.headerPatch(projectId, scenarioId, headerId),
+    body
+  )
+}
+
 // ── Add rows ─────────────────────────────────────────────────────────────────
 //
 // POST /api/weather/.../addRow takes a fully-built rows[] array. The saga
@@ -185,6 +213,10 @@ export function addRowsRequest(
 }
 
 // ── Update cell ──────────────────────────────────────────────────────────────
+//
+// Backend expects a batched payload: { updates: [{ col, row, value }, ...] }
+// (fail-fast). Saga still calls per-edit with one update; the wrapper is here
+// so callers don't need to know about the wire shape.
 
 export interface UpdateCellRequestBody {
   col: string
@@ -192,8 +224,13 @@ export interface UpdateCellRequestBody {
   value: string                     // "" clears (NaN)
 }
 
+interface UpdateCellWireBody {
+  updates: UpdateCellRequestBody[]
+}
+
 export interface UpdateCellResponse {
   success: boolean
+  updated_count: number
 }
 
 export function updateCellRequest(
@@ -201,9 +238,10 @@ export function updateCellRequest(
   scenarioId: string,
   body: UpdateCellRequestBody
 ): Promise<UpdateCellResponse> {
+  const wire: UpdateCellWireBody = { updates: [body] }
   return api.post<UpdateCellResponse>(
     API_ROUTES.weather.update(projectId, scenarioId),
-    body
+    wire
   )
 }
 
