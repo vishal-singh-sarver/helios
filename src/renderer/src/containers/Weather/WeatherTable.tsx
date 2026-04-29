@@ -1,3 +1,4 @@
+import deleteIcon from '@renderer/assets/delete.svg'
 import {
   setAllRowsSelection,
   setRowSelection,
@@ -92,7 +93,7 @@ function WeatherTable(): React.JSX.Element {
       <table className="w-full border-collapse text-sm text-neutral-200">
         <thead className="bg-neutral-900">
           <tr className="border-b border-app-border">
-            <th className="w-12 px-3 py-2 text-left">
+            <th className="w-12 border-r border-app-border px-3 py-2 text-left align-middle">
               <input
                 type="checkbox"
                 aria-label="Select all rows"
@@ -104,31 +105,38 @@ function WeatherTable(): React.JSX.Element {
             {columnOrder.map((colId) => {
               const col = columns[colId]
               if (!col) return null
+              const managed = isBackendManagedCol(colId)
+              const widthCls = managed ? 'w-40 min-w-40 max-w-40' : 'w-32 min-w-32 max-w-32'
+              const alignCls = managed ? 'align-top' : 'align-middle'
               return (
                 <th
                   key={colId}
-                  className="px-3 py-2 text-left font-normal text-neutral-300 align-top"
+                  className={`${widthCls} ${alignCls} border-r border-app-border px-3 py-2 text-left font-normal text-neutral-300`}
                 >
-                  {isBackendManagedCol(colId) ? (
+                  {managed ? (
                     <HeaderEditor
                       col={col}
                       dataTypes={dataTypes}
                       onPatch={(patch) => dispatchHeaderPatch(col, patch)}
                     />
                   ) : (
-                    <span>{col.name}</span>
+                    <span className="block truncate">{col.name}</span>
                   )}
                 </th>
               )
             })}
+            <th className="w-20 min-w-20 max-w-20 border-r border-app-border px-3 py-2 text-left align-middle font-normal text-neutral-300">
+              Action
+            </th>
+            <th aria-hidden className="w-auto" />
           </tr>
         </thead>
         <tbody>
           {rowOrder.map((rowId) => {
             const row = table?.rows[rowId] ?? {}
             return (
-              <tr key={rowId} className="border-b border-app-border">
-                <td className="w-12 px-3 py-2">
+              <tr key={rowId} className="h-9 border-b border-app-border">
+                <td className="w-12 border-r border-app-border px-3 py-2">
                   <input
                     type="checkbox"
                     aria-label={`Select ${rowId}`}
@@ -141,10 +149,16 @@ function WeatherTable(): React.JSX.Element {
                   const value: CellValue = row[colId] ?? null
                   const display = value ?? ''
                   const readOnly = isReservedColId(colId)
+                  const widthCls = readOnly
+                    ? 'w-32 min-w-32 max-w-32'
+                    : 'w-40 min-w-40 max-w-40'
                   return (
-                    <td key={colId} className="px-3 py-2">
+                    <td
+                      key={colId}
+                      className={`${widthCls} border-r border-app-border px-3 py-2`}
+                    >
                       {readOnly ? (
-                        <span>{display}</span>
+                        <span className="block truncate">{display}</span>
                       ) : (
                         <CellInput
                           rowId={rowId}
@@ -156,6 +170,16 @@ function WeatherTable(): React.JSX.Element {
                     </td>
                   )
                 })}
+                <td className="w-20 min-w-20 max-w-20 border-r border-app-border px-3 py-2">
+                  <button
+                    type="button"
+                    aria-label={`Delete row ${rowId}`}
+                    className="rounded p-1 hover:bg-neutral-800"
+                  >
+                    <img src={deleteIcon} alt="" className="h-4 w-4" />
+                  </button>
+                </td>
+                <td aria-hidden className="w-auto" />
               </tr>
             )
           })}
@@ -226,20 +250,8 @@ function HeaderEditor({ col, dataTypes, onPatch }: HeaderEditorProps): React.JSX
     onPatch({ name: trimmed })
   }
 
-  const handleDataTypeChange = (e: React.ChangeEvent<HTMLSelectElement>): void => {
-    const next = e.target.value === '' ? null : Number(e.target.value)
-    if (next === col.dataTypeId) return
-    onPatch({ dataTypeId: next })
-  }
-
-  const handleUnitChange = (e: React.ChangeEvent<HTMLSelectElement>): void => {
-    const next = e.target.value === '' ? null : Number(e.target.value)
-    if (next === col.unitId) return
-    onPatch({ unitId: next })
-  }
-
   return (
-    <div className="flex flex-col gap-1 min-w-32">
+    <div className="flex w-full flex-col gap-1">
       <input
         type="text"
         aria-label={`Column ${col.id} name`}
@@ -248,35 +260,155 @@ function HeaderEditor({ col, dataTypes, onPatch }: HeaderEditorProps): React.JSX
         onBlur={handleNameBlur}
         className="w-full rounded border border-app-border bg-dark px-2 py-1 text-sm text-neutral-200 outline-none focus:border-neutral-500"
       />
-      <div className="flex gap-1">
-        <select
-          aria-label={`Column ${col.id} data type`}
-          value={col.dataTypeId == null ? '' : String(col.dataTypeId)}
-          onChange={handleDataTypeChange}
-          className="flex-1 rounded border border-app-border bg-dark px-2 py-1 text-xs text-neutral-200 outline-none focus:border-neutral-500"
+      <div className="flex items-center gap-1">
+        <DataTypeUnitPicker
+          col={col}
+          dataTypes={dataTypes}
+          currentDataType={currentDataType}
+          unitsForType={unitsForType}
+          onPatch={onPatch}
+        />
+        <button
+          type="button"
+          aria-label={`Delete column ${col.id}`}
+          className="shrink-0 rounded p-1 hover:bg-neutral-800"
         >
-          <option value="">Data type</option>
-          {dataTypes.map((dt) => (
-            <option key={dt.id} value={String(dt.id)}>
-              {dt.data_type}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label={`Column ${col.id} unit`}
-          value={col.unitId == null ? '' : String(col.unitId)}
-          onChange={handleUnitChange}
-          disabled={col.dataTypeId == null}
-          className="flex-1 rounded border border-app-border bg-dark px-2 py-1 text-xs text-neutral-200 outline-none focus:border-neutral-500 disabled:opacity-50"
-        >
-          <option value="">{col.dataTypeId == null ? '—' : 'Unit'}</option>
-          {unitsForType.map((u) => (
-            <option key={u.id} value={String(u.id)}>
-              {u.alias ? `${u.unit} (${u.alias})` : u.unit}
-            </option>
-          ))}
-        </select>
+          <img src={deleteIcon} alt="" className="h-4 w-4" />
+        </button>
       </div>
+    </div>
+  )
+}
+
+// ── Combined data-type / unit picker ────────────────────────────────────────
+//
+// One button + popover. The popover has two steps:
+//   1. Data type list (shown when no data type is set, or after the user clicks
+//      "Back to Assign Type").
+//   2. Unit list for the chosen data type, with a "Back to Assign Type" header
+//      link that returns to step 1.
+// Picking a data type does not auto-clear the unit (per saga contract); it
+// patches dataTypeId only and advances to step 2. Picking a unit patches unitId
+// and closes the popover.
+
+interface DataTypeUnitPickerProps {
+  col: ColumnDef
+  dataTypes: DataTypeDef[]
+  currentDataType: DataTypeDef | undefined
+  unitsForType: DataTypeDef['units']
+  onPatch: (patch: UpdateColumnPatch) => void
+}
+
+function DataTypeUnitPicker({
+  col,
+  dataTypes,
+  currentDataType,
+  unitsForType,
+  onPatch
+}: DataTypeUnitPickerProps): React.JSX.Element {
+  const [open, setOpen] = React.useState(false)
+  const [view, setView] = React.useState<'type' | 'unit'>(
+    col.dataTypeId == null ? 'type' : 'unit'
+  )
+  const wrapRef = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    if (!open) return
+    setView(col.dataTypeId == null ? 'type' : 'unit')
+  }, [open, col.dataTypeId])
+
+  React.useEffect(() => {
+    if (!open) return
+    const onDocClick = (e: MouseEvent): void => {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [open])
+
+  const currentUnit = currentDataType?.units.find((u) => u.id === col.unitId)
+
+  const buttonLabel = currentUnit
+    ? currentUnit.alias
+      ? `${currentUnit.unit} (${currentUnit.alias})`
+      : currentUnit.unit
+    : currentDataType
+      ? currentDataType.data_type
+      : 'Data Type'
+
+  const pickDataType = (dtId: number): void => {
+    if (dtId !== col.dataTypeId) onPatch({ dataTypeId: dtId })
+    setView('unit')
+  }
+
+  const pickUnit = (unitId: number): void => {
+    if (unitId !== col.unitId) onPatch({ unitId })
+    setOpen(false)
+  }
+
+  return (
+    <div ref={wrapRef} className="relative min-w-0 flex-1">
+      <button
+        type="button"
+        aria-label={`Column ${col.id} data type and unit`}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-1 rounded border border-app-border bg-dark px-2 py-1 text-xs text-neutral-200 outline-none hover:border-neutral-500 focus:border-neutral-500"
+      >
+        <span className="truncate">{buttonLabel}</span>
+        <span aria-hidden className="text-neutral-400">▾</span>
+      </button>
+      {open && (
+        <div
+          role="listbox"
+          className="absolute left-0 top-full z-20 mt-1 max-h-64 w-48 overflow-auto rounded border border-app-border bg-neutral-900 shadow-lg"
+        >
+          {view === 'unit' && (
+            <button
+              type="button"
+              onClick={() => setView('type')}
+              className="flex w-full items-center gap-1 border-b border-app-border px-3 py-2 text-left text-xs text-blue-400 hover:bg-neutral-800"
+            >
+              <span aria-hidden>‹</span> Back to Assign Type
+            </button>
+          )}
+          {view === 'type' &&
+            dataTypes.map((dt) => (
+              <button
+                key={dt.id}
+                type="button"
+                role="option"
+                aria-selected={dt.id === col.dataTypeId}
+                onClick={() => pickDataType(dt.id)}
+                className={`block w-full px-3 py-2 text-left text-xs hover:bg-neutral-800 ${
+                  dt.id === col.dataTypeId ? 'text-neutral-100' : 'text-neutral-300'
+                }`}
+              >
+                {dt.data_type}
+              </button>
+            ))}
+          {view === 'unit' &&
+            (unitsForType.length === 0 ? (
+              <div className="px-3 py-2 text-xs text-neutral-500">No units</div>
+            ) : (
+              unitsForType.map((u) => (
+                <button
+                  key={u.id}
+                  type="button"
+                  role="option"
+                  aria-selected={u.id === col.unitId}
+                  onClick={() => pickUnit(u.id)}
+                  className={`block w-full px-3 py-2 text-left text-xs hover:bg-neutral-800 ${
+                    u.id === col.unitId ? 'text-neutral-100' : 'text-neutral-300'
+                  }`}
+                >
+                  {u.alias ? `${u.unit} (${u.alias})` : u.unit}
+                </button>
+              ))
+            ))}
+        </div>
+      )}
     </div>
   )
 }

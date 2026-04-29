@@ -211,7 +211,7 @@ function buildRowsForAdd(
     for (const colId of columnIds) {
       if (colId === DATE_COL_ID) row[colId] = rowDate
       else if (colId === TIME_COL_ID) row[colId] = rowTime
-      else row[colId] = String(i+1)
+      else row[colId] = "0"
     }
     out.push(row)
   }
