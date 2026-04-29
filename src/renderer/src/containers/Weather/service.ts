@@ -184,23 +184,6 @@ export function addRowsRequest(
   return api.post<AddRowsResponse>(API_ROUTES.weather.addRow(projectId, scenarioId), body)
 }
 
-// ── Update cell (mocked until backend contract is finalised) ─────────────────
-
-const USE_MOCK_API = true
-const MOCK_LATENCY_MS = 500
-
-function delay<T>(ms: number, fn: () => T | Promise<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      try {
-        Promise.resolve(fn()).then(resolve, reject)
-      } catch (err) {
-        reject(err)
-      }
-    }, ms)
-  })
-}
-
 // ── Update cell ──────────────────────────────────────────────────────────────
 
 export interface UpdateCellRequestBody {
@@ -214,20 +197,12 @@ export interface UpdateCellResponse {
 }
 
 export function updateCellRequest(
-  _projectId: string,
-  _scenarioId: string,
+  projectId: string,
+  scenarioId: string,
   body: UpdateCellRequestBody
 ): Promise<UpdateCellResponse> {
-  if (USE_MOCK_API) {
-    return delay(MOCK_LATENCY_MS, () => {
-      if (import.meta.env.DEV && body.value === 'FAIL') {
-        throw new ApiError(500, 'Failed to update cell')
-      }
-      return { success: true }
-    })
-  }
   return api.post<UpdateCellResponse>(
-    API_ROUTES.weather.update(_projectId, _scenarioId),
+    API_ROUTES.weather.update(projectId, scenarioId),
     body
   )
 }
