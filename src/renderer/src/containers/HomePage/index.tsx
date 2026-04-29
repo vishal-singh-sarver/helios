@@ -10,6 +10,7 @@ import MenuBar from '@renderer/components/MenuBar'
 import ProjectsTable from '@renderer/components/ProjectsTable'
 import SearchBar from '@renderer/components/SearchBar'
 import Sidebar from '@renderer/components/Sidebar'
+import { setActiveProject } from 'containers/ProjectScreen/actions'
 import { useFormik } from 'formik'
 import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
@@ -207,6 +208,7 @@ export function HomePage(): React.JSX.Element {
               } catch {
                 /* storage disabled — navigation still proceeds */
               }
+              dispatch(setActiveProject(projectId))
               dispatch(navigate('project'))
             }}
             onRequestDelete={handleRequestDelete}

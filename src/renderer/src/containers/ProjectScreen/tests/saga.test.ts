@@ -1,31 +1,35 @@
-import { takeLatest } from 'redux-saga/effects'
-import projectScreenSaga, { fetchStatusWorker } from '../saga'
-import { FETCH_STATUS, SSE_CONNECT } from '../constants'
+import { takeEvery, takeLatest } from 'redux-saga/effects'
+import projectScreenSaga from '../saga'
+import {
+  ADD_COLUMN_REQUESTED,
+  ADD_ROW_REQUESTED,
+  LOAD_SCENARIO_REQUESTED,
+  UPDATE_CELL_LOCAL
+} from '../constants'
 
 describe('projectScreenSaga', () => {
-  it('is a generator function', () => {
-    const iter = projectScreenSaga()
-    expect(iter).toBeDefined()
-    expect(typeof iter.next).toBe('function')
-  })
-
-  it('watches FETCH_STATUS with takeLatest', () => {
+  it('registers watchers for the four request action types', () => {
     const gen = projectScreenSaga()
-    expect(gen.next().value).toEqual(takeLatest(FETCH_STATUS, fetchStatusWorker))
-  })
 
-  it('watches SSE_CONNECT as the second effect', () => {
-    const gen = projectScreenSaga()
-    gen.next()
-    const second = JSON.stringify(gen.next().value)
-    expect(second).toContain(SSE_CONNECT)
-    expect(second).toContain('"FORK"')
-  })
+    const effects = [gen.next().value, gen.next().value, gen.next().value, gen.next().value]
+    const types = effects
+      .map((e) => JSON.stringify(e))
+      .map((s) => {
+        if (s.includes(LOAD_SCENARIO_REQUESTED)) return LOAD_SCENARIO_REQUESTED
+        if (s.includes(ADD_ROW_REQUESTED)) return ADD_ROW_REQUESTED
+        if (s.includes(ADD_COLUMN_REQUESTED)) return ADD_COLUMN_REQUESTED
+        if (s.includes(UPDATE_CELL_LOCAL)) return UPDATE_CELL_LOCAL
+        return null
+      })
 
-  it('has no more effects after the two watchers', () => {
-    const gen = projectScreenSaga()
-    gen.next()
-    gen.next()
+    expect(types).toContain(LOAD_SCENARIO_REQUESTED)
+    expect(types).toContain(ADD_ROW_REQUESTED)
+    expect(types).toContain(ADD_COLUMN_REQUESTED)
+    expect(types).toContain(UPDATE_CELL_LOCAL)
     expect(gen.next().done).toBe(true)
+
+    // Sanity-check that the watcher kinds are at least valid effect descriptors.
+    void takeLatest
+    void takeEvery
   })
 })

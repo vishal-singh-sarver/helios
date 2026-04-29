@@ -4,20 +4,31 @@ import Tooltip from '../Tooltip'
 
 export interface FormFieldLabelProps {
   label: string
-  helpText: string
-  helpAriaLabel: string
+  optional?: boolean
+  helpText?: string
+  helpAriaLabel?: string
   helpPlace?: PlacesType
+}
+
+export interface FormFieldOption {
+  value: string
+  label: string
 }
 
 export interface FormFieldInputProps {
   name: string
   value: string
-  onChange: React.ChangeEventHandler<HTMLInputElement>
-  onBlur: React.FocusEventHandler<HTMLInputElement>
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void
+  onBlur: (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => void
   error?: string
   type?: string
   placeholder?: string
   disabled?: boolean
+  options?: readonly FormFieldOption[]
+  iconLeft?: React.ReactNode
+  onIconLeftClick?: () => void
+  inputRef?: React.Ref<HTMLInputElement>
+  lang?: string
 }
 
 interface FormFieldProps {
@@ -26,33 +37,84 @@ interface FormFieldProps {
 }
 
 function FormField({ labelProps, inputProps }: FormFieldProps): React.JSX.Element {
-  const { label, helpText, helpAriaLabel, helpPlace } = labelProps
-  const { error, type = 'text', placeholder = 'Enter', disabled = false, ...restInputProps } = inputProps
+  const { label, optional = false, helpText, helpAriaLabel, helpPlace } = labelProps
+  const {
+    error,
+    type = 'text',
+    placeholder = 'Enter',
+    disabled = false,
+    options,
+    iconLeft,
+    onIconLeftClick,
+    inputRef,
+    ...restInputProps
+  } = inputProps
   const errorId = useId()
+
+  const baseClassName =
+    'mt-1 h-9 w-full rounded border border-app-border bg-dark text-sm text-white outline-none focus:border-neutral-500'
+  const paddedClassName = iconLeft ? `${baseClassName} pl-9 pr-3` : `${baseClassName} px-3`
 
   return (
     <div className="block text-sm text-neutral-300">
       <label htmlFor={restInputProps.name} className="flex items-center gap-1">
         {label}
-        <span className="text-red-400">*</span>
-        <Tooltip
-          text={helpText}
-          ariaLabel={helpAriaLabel}
-          place={helpPlace}
-        />
+        {!optional && <span className="text-red-400">*</span>}
+        {helpText && helpAriaLabel && (
+          <Tooltip text={helpText} ariaLabel={helpAriaLabel} place={helpPlace} />
+        )}
       </label>
 
-      <input
-        {...restInputProps}
-        id={restInputProps.name}
-        type={type}
-        placeholder={placeholder}
-        disabled={disabled}
-        aria-describedby={error ? errorId : undefined}
-        aria-invalid={!!error}
-        className="mt-1 h-9 w-full rounded border border-app-border bg-dark 
-        px-3 text-sm text-white outline-none focus:border-neutral-500"
-      />
+      {options ? (
+        <select
+          {...restInputProps}
+          id={restInputProps.name}
+          disabled={disabled}
+          aria-describedby={error ? errorId : undefined}
+          aria-invalid={!!error}
+          className={`${baseClassName} px-3`}
+        >
+          <option value="">{placeholder}</option>
+          {options.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <div className="relative">
+          {iconLeft &&
+            (onIconLeftClick ? (
+              <button
+                type="button"
+                onClick={onIconLeftClick}
+                disabled={disabled}
+                aria-label={`Open ${restInputProps.name} picker`}
+                className="absolute inset-y-0 left-3 top-1 flex items-center text-neutral-400 hover:text-neutral-200 disabled:opacity-50"
+              >
+                {iconLeft}
+              </button>
+            ) : (
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-y-0 left-3 top-1 flex items-center text-neutral-400"
+              >
+                {iconLeft}
+              </span>
+            ))}
+          <input
+            ref={inputRef}
+            {...restInputProps}
+            id={restInputProps.name}
+            type={type}
+            placeholder={placeholder}
+            disabled={disabled}
+            aria-describedby={error ? errorId : undefined}
+            aria-invalid={!!error}
+            className={paddedClassName}
+          />
+        </div>
+      )}
 
       {error && (
         <p id={errorId} className="mt-1 text-xs text-red-400" role="alert">

@@ -5,11 +5,9 @@ import { useInjectReducer } from 'utils/injectReducer'
 import { useInjectSaga } from 'utils/injectSaga'
 import loadable from 'utils/loadable'
 import { importFinalizeRequested, importPickFileRequested, importReset } from './actions'
-import messages from './messages'
 import reducer from './reducer'
 import saga from './saga'
 import {
-  selectDataset,
   selectFileError,
   selectFileLoading,
   selectImportError,
@@ -17,6 +15,8 @@ import {
   selectPickedFile
 } from './selectors'
 import type { ImportedDataset } from './types'
+import WeatherTable from './WeatherTable'
+import WeatherToolbar from './WeatherToolbar'
 
 // Lazy-load the wizard chunk on first open. The Stepper, parsers, and step
 // components don't need to be in the Weather screen's initial bundle.
@@ -32,7 +32,6 @@ export function Weather(): React.JSX.Element {
   const pickedFile = useSelector(selectPickedFile)
   const importing = useSelector(selectImporting)
   const importError = useSelector(selectImportError)
-  const dataset = useSelector(selectDataset)
 
   const [showWizard, setShowWizard] = useState(false)
   // Tracks the previous `importing` value across renders so we can detect a
@@ -78,19 +77,9 @@ export function Weather(): React.JSX.Element {
   }, [])
 
   return (
-    <div className="flex flex-1 flex-col">
-      <div className="flex items-center justify-between border-b border-app-border px-6 py-4">
-        <h1 className="text-lg font-medium text-neutral-100">{messages.header}</h1>
-        <button type="button" onClick={openWizard} className="button-primary">
-          {messages.importTriggerButton}
-        </button>
-      </div>
-
-      <div className="flex flex-1 items-center justify-center px-6 text-sm text-neutral-400">
-        {dataset
-          ? `Imported ${dataset.records.length} records from ${dataset.filename}.`
-          : 'No weather data imported yet.'}
-      </div>
+    <div className="flex flex-1 flex-col overflow-hidden">
+      <WeatherToolbar onUploadFile={openWizard} />
+      <WeatherTable />
 
       {showWizard && (
         <ImportWizard

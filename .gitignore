@@ -10,6 +10,11 @@ out/
 release/
 linux-installer/payload/Helios
 
+# CMake artifacts (build/ itself contains tracked installer assets — only ignore the cmake junk)
+build/.cmake/
+build/CMakeCache.txt
+build/CMakeFiles/
+
 # Backend Python Build Artifacts
 backend-api/venv/
 backend-api/build/

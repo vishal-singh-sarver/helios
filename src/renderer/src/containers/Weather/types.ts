@@ -20,8 +20,34 @@ export interface PickedFile {
 
 // Re-export the pure-data types so containers/Weather is the single
 // import surface for anything related to weather data.
-export type {
-  ImportedDataset,
-  ImportedDatasetColumn,
-  ImportedDatasetRecord
-} from './parsers'
+export type { ImportedDataset, ImportedDatasetColumn, ImportedDatasetRecord } from './parsers'
+// ── Add column ────────────────────────────────────────────────────────────────
+
+export interface AddColumnPayload {
+  parameterName: string
+  dataType: string
+  defaultValue: string
+}
+
+export interface AddColumnResponse {
+  success: boolean
+  column_id: string
+  parameterName: string
+  dataType: string
+  defaultValue: string
+}
+
+// ── Add rows ──────────────────────────────────────────────────────────────────
+
+export interface AddRowsPayload {
+  numberOfRows: number
+  startDate: string
+  startTime: string
+}
+
+export interface AddRowsResponse {
+  success: boolean
+  rows_added: number
+  startDate: string
+  startTime: string
+}
