@@ -21,6 +21,8 @@ export const API_ROUTES = {
     addCol: (projectId: string, scenarioId: string): string =>
       `/api/weather/project/${projectId}/scenario/${scenarioId}/addCol`,
     addRow: (projectId: string, scenarioId: string): string =>
-      `/api/weather/project/${projectId}/scenario/${scenarioId}/addRow`
+      `/api/weather/project/${projectId}/scenario/${scenarioId}/addRow`,
+    clearData: (projectId: string, scenarioId: string): string =>
+      `/api/weather/project/${projectId}/scenario/${scenarioId}/clear_data`
   }
 } as const

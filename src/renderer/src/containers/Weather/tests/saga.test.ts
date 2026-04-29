@@ -114,9 +114,16 @@ describe('finalizeImportWorker', () => {
     expect(gen.next().done).toBe(true)
   })
 
-  it('POSTs /addCol with all rows packed into per-column values, then puts succeeded', () => {
+  it('DELETEs /clear_data, then POSTs /addCol, then puts succeeded', () => {
     const gen = finalizeImportWorker(actions.importFinalizeRequested(dataset))
 
+    // Step 0 — clear any prior weather data for this scenario.
+    const clearCall = gen.next().value as ReturnType<typeof call>
+    expect(clearCall.payload.args[0]).toBe(
+      '/api/weather/project/proj-1/scenario/sce-1/clear_data'
+    )
+
+    // Step 1 — addCol with all rows inline.
     const addColCall = gen.next().value as ReturnType<typeof call>
     expect(addColCall.payload.args[0]).toBe(
       '/api/weather/project/proj-1/scenario/sce-1/addCol'
@@ -155,8 +162,16 @@ describe('finalizeImportWorker', () => {
     expect(gen.next().done).toBe(true)
   })
 
+  it('puts importFinalizeFailed when /clear_data throws', () => {
+    const gen = finalizeImportWorker(actions.importFinalizeRequested(dataset))
+    gen.next() // clear_data
+    const err = new Error('cannot clear')
+    expect(gen.throw(err).value).toEqual(put(actions.importFinalizeFailed('cannot clear')))
+  })
+
   it('puts importFinalizeFailed when /addCol throws', () => {
     const gen = finalizeImportWorker(actions.importFinalizeRequested(dataset))
+    gen.next() // clear_data
     gen.next() // addCol
     const err = new Error('column conflict')
     expect(gen.throw(err).value).toEqual(put(actions.importFinalizeFailed('column conflict')))

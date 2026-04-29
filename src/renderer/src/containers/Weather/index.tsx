@@ -70,7 +70,7 @@ export function Weather(): React.JSX.Element {
     // Remove this block once activeScenarioId is set elsewhere.
     try {
       if (!localStorage.getItem('helios:activeScenarioId')) {
-        localStorage.setItem('helios:activeScenarioId', '5ed0b26a-f81e-4ca7-9f40-aead2c4da7ec')
+        localStorage.setItem('helios:activeScenarioId', 'bd3d8f2d-fb7e-4496-b545-4d9ec24b3217')
       }
     } catch {
       /* storage disabled — ignore */

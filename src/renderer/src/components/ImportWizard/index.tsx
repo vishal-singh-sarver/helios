@@ -183,9 +183,23 @@ function ImportWizard({
   const handleImport = useCallback((): void => {
     if (!parsed) return
     const dtSet = new Set(dtColumns)
+    // Safety net: skip any column whose name exactly matches a date/time
+    // keyword (case-insensitive), even if the user didn't map it. The
+    // synthetic "Date-Time" is encoded into each value's {date,time} fields,
+    // so these columns would be redundant in the payload.
+    const DT_NAME_KEYWORDS = new Set([
+      'year',
+      'month',
+      'day',
+      'hour',
+      'minute',
+      'date',
+      'time'
+    ])
+    const isDtName = (h: string): boolean => DT_NAME_KEYWORDS.has(h.trim().toLowerCase())
     const keptIndices = parsed.headers
       .map((h, i) => ({ h, i }))
-      .filter(({ h, i }) => !dtSet.has(h) && columnSelection[i] !== false)
+      .filter(({ h, i }) => !dtSet.has(h) && !isDtName(h) && columnSelection[i] !== false)
 
     // Synthetic "check" column — always added on import, defaults to true for
     // every record. Lets downstream tools include/exclude rows after import.

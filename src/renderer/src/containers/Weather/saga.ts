@@ -127,6 +127,11 @@ export function* finalizeImportWorker(action: ImportFinalizeRequestedAction): Ge
 
     const dataset: ImportedDataset = action.payload
 
+    // Step 0 — wipe any existing weather data for this scenario so the new
+    // import doesn't collide with stale columns/rows. Idempotent on empty
+    // scenarios.
+    yield call(api.delete, API_ROUTES.weather.clearData(projectId, scenarioId))
+
     // Pre-compute (date, time) for each record once — reused across columns.
     // Rows whose date couldn't be parsed (dtIso === null) are skipped.
     const rowKeys: Array<{ date: string; time: string; recordIdx: number }> = []

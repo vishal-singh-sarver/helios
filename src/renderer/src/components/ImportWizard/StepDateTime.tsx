@@ -40,10 +40,22 @@ export default function StepDateTime({
   onChangeDateFormat,
   stats
 }: StepDateTimeProps): React.JSX.Element {
-  const colOptions: SelectOption[] = useMemo(
-    () => parsed.headers.map((h, i) => ({ value: h, label: `${i + 1}: ${h}` })),
-    [parsed.headers]
-  )
+  // Build the dropdown options for one slot — excludes columns already in
+  // use by *other* slots in the current mapping. Each column can only be
+  // assigned once. The current slot's own value is preserved in the list so
+  // it stays visible as the selected option.
+  const optionsExcluding = (currentSlot: keyof DateTimeMapping): SelectOption[] => {
+    const slots: Array<keyof DateTimeMapping> =
+      mode === 'group1' ? ['year', 'month', 'day', 'hour', 'minute'] : ['date', 'time']
+    const used = new Set<string>()
+    for (const s of slots) {
+      const v = mapping[s]
+      if (s !== currentSlot && v !== null) used.add(v)
+    }
+    return parsed.headers
+      .map((h, i) => ({ value: h, label: `${i + 1}: ${h}` }))
+      .filter((o) => !used.has(o.value))
+  }
 
   const previewRows: PreviewRow[] = useMemo(() => {
     return parsed.rows.slice(0, 5).map((row) => {
@@ -116,7 +128,7 @@ export default function StepDateTime({
                   <Select
                     value={mapping[key]}
                     onChange={(v) => onChangeMapping(key, v)}
-                    options={colOptions}
+                    options={optionsExcluding(key)}
                   />
                 </div>
               </div>
@@ -138,7 +150,7 @@ export default function StepDateTime({
                 <Select
                   value={mapping.date}
                   onChange={(v) => onChangeMapping('date', v)}
-                  options={colOptions}
+                  options={optionsExcluding('date')}
                   placeholder="-- column --"
                 />
               </div>
@@ -149,7 +161,7 @@ export default function StepDateTime({
                 <Select
                   value={mapping.time}
                   onChange={(v) => onChangeMapping('time', v)}
-                  options={colOptions}
+                  options={optionsExcluding('time')}
                 />
               </div>
             </div>
