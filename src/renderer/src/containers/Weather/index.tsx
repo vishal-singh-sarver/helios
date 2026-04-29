@@ -64,17 +64,17 @@ export function Weather(): React.JSX.Element {
   const handleRequestPickFile = (): void => {
     dispatch(importPickFileRequested())
   }
-  React.useEffect(() => {
-    // TEMP: dummy scenario id until the scenario picker UI is built.
-    // Remove this block once activeScenarioId is set elsewhere.
-    try {
-      if (!localStorage.getItem('helios:activeScenarioId')) {
-        localStorage.setItem('helios:activeScenarioId', 'bd3d8f2d-fb7e-4496-b545-4d9ec24b3217')
-      }
-    } catch {
-      /* storage disabled — ignore */
-    }
-  }, [])
+  // React.useEffect(() => {
+  //   // TEMP: dummy scenario id until the scenario picker UI is built.
+  //   // Remove this block once activeScenarioId is set elsewhere.
+  //   try {
+  //     if (!localStorage.getItem('helios:activeScenarioId')) {
+  //       localStorage.setItem('helios:activeScenarioId', 'bd3d8f2d-fb7e-4496-b545-4d9ec24b3217')
+  //     }
+  //   } catch {
+  //     /* storage disabled — ignore */
+  //   }
+  // }, [])
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
