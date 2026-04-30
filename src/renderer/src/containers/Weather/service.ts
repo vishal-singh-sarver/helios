@@ -162,6 +162,42 @@ export async function addColumnRequest(
   }
 }
 
+// Bulk variant — sends N columns in one POST. Used by the empty-scenario
+// seed flow which creates `date-time` and `check` together. Returns the
+// newly created ColumnDefs in the same order they were submitted.
+export async function addColumnsRequest(
+  projectId: string,
+  scenarioId: string,
+  bodies: AddColumnRequestBody[]
+): Promise<{ columns: ColumnDef[] }> {
+  const wire: AddColumnWireBody = {
+    column: bodies.map((b) => ({
+      name: b.name,
+      datatype: b.dataTypeId,
+      data_unit: b.dataUnitId,
+      values: b.values
+    }))
+  }
+  const res = await api.post<AddColumnWireResponse>(
+    API_ROUTES.weather.addCol(projectId, scenarioId),
+    wire
+  )
+  if (res.columns.length !== bodies.length) {
+    throw new ApiError(
+      500,
+      `Expected ${bodies.length} columns from server, got ${res.columns.length}`
+    )
+  }
+  return {
+    columns: res.columns.map((c) => ({
+      id: String(c.id),
+      name: c.name,
+      dataTypeId: c.datatype_id,
+      unitId: c.data_unit_id
+    }))
+  }
+}
+
 // ── Patch header ─────────────────────────────────────────────────────────────
 //
 // PATCH /api/weather/.../weather_data_header/{header_id} — partial update of

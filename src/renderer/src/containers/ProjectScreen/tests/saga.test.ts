@@ -3,30 +3,37 @@ import projectScreenSaga from '../saga'
 import {
   ADD_COLUMN_REQUESTED,
   ADD_ROW_REQUESTED,
+  LIST_SCENARIOS_REQUESTED,
+  LOAD_DATA_TYPES_REQUESTED,
   LOAD_SCENARIO_REQUESTED,
-  UPDATE_CELL_LOCAL
+  SEED_DEFAULT_COLUMNS_REQUESTED,
+  UPDATE_CELL_LOCAL,
+  UPDATE_COLUMN_REQUESTED
 } from '../constants'
 
 describe('projectScreenSaga', () => {
-  it('registers watchers for the four request action types', () => {
+  it('registers watchers for every request action type the screen handles', () => {
     const gen = projectScreenSaga()
+    const expected = [
+      LOAD_DATA_TYPES_REQUESTED,
+      LIST_SCENARIOS_REQUESTED,
+      LOAD_SCENARIO_REQUESTED,
+      SEED_DEFAULT_COLUMNS_REQUESTED,
+      ADD_ROW_REQUESTED,
+      ADD_COLUMN_REQUESTED,
+      UPDATE_COLUMN_REQUESTED,
+      UPDATE_CELL_LOCAL
+    ]
 
-    const effects = [gen.next().value, gen.next().value, gen.next().value, gen.next().value]
-    const types = effects
-      .map((e) => JSON.stringify(e))
-      .map((s) => {
-        if (s.includes(LOAD_SCENARIO_REQUESTED)) return LOAD_SCENARIO_REQUESTED
-        if (s.includes(ADD_ROW_REQUESTED)) return ADD_ROW_REQUESTED
-        if (s.includes(ADD_COLUMN_REQUESTED)) return ADD_COLUMN_REQUESTED
-        if (s.includes(UPDATE_CELL_LOCAL)) return UPDATE_CELL_LOCAL
-        return null
-      })
-
-    expect(types).toContain(LOAD_SCENARIO_REQUESTED)
-    expect(types).toContain(ADD_ROW_REQUESTED)
-    expect(types).toContain(ADD_COLUMN_REQUESTED)
-    expect(types).toContain(UPDATE_CELL_LOCAL)
+    const seen = new Set<string>()
+    for (let i = 0; i < expected.length; i++) {
+      const step = gen.next()
+      const serialised = JSON.stringify(step.value)
+      for (const t of expected) if (serialised.includes(t)) seen.add(t)
+    }
     expect(gen.next().done).toBe(true)
+
+    for (const t of expected) expect(seen).toContain(t)
 
     // Sanity-check that the watcher kinds are at least valid effect descriptors.
     void takeLatest

@@ -63,5 +63,6 @@ export {
   selectDataTypesLoadStatus,
   selectHeadersByScenario,
   selectRowOrder,
-  selectRowSelection
+  selectRowSelection,
+  selectSelectableDataTypes
 } from 'containers/ProjectScreen/selectors'

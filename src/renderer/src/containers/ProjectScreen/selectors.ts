@@ -3,6 +3,7 @@ import type { RootState } from 'store/reducers'
 import { initialState, type ProjectScreenState } from './reducer'
 import {
   cellKey,
+  CHECK_DATA_TYPE_NAME,
   type CellSyncStatus,
   type ColId,
   type ColumnDef,
@@ -30,6 +31,15 @@ export const selectAllDataTypes = createSelector(
   selectProjectScreenDomain,
   (s): DataTypeDef[] =>
     s.catalog.dataTypes.allIds.map((id) => s.catalog.dataTypes.byId[id]).filter(Boolean)
+)
+
+// User-facing data-type list — excludes the dedicated `check` data type so
+// it never appears in the column header's data-type dropdown. The seed
+// worker still stamps it on the seeded check column, and `selectAllDataTypes`
+// keeps it for unit-symbol lookups and current-type display.
+export const selectSelectableDataTypes = createSelector(
+  selectAllDataTypes,
+  (types): DataTypeDef[] => types.filter((dt) => dt.data_type !== CHECK_DATA_TYPE_NAME)
 )
 
 export const selectDataTypesLoadStatus = createSelector(

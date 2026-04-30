@@ -10,7 +10,7 @@ import messages from './messages'
 import {
   selectActiveProjectId,
   selectActiveScenarioId,
-  selectAllDataTypes
+  selectSelectableDataTypes
 } from './selectors'
 
 export interface AddColumnValues {
@@ -41,7 +41,7 @@ function AddColumnDialog({ isOpen, onClose }: AddColumnDialogProps): React.JSX.E
   const dispatch = useDispatch()
   const projectId = useSelector(selectActiveProjectId)
   const scenarioId = useSelector(selectActiveScenarioId)
-  const dataTypes = useSelector(selectAllDataTypes)
+  const dataTypes = useSelector(selectSelectableDataTypes)
 
   const dataTypeOptions: FormFieldOption[] = React.useMemo(
     () => dataTypes.map((dt) => ({ value: String(dt.id), label: dt.data_type })),

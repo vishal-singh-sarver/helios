@@ -67,8 +67,30 @@ export type CellValue = string | null
 export const DATE_COL_ID: ColId = 'date'
 export const TIME_COL_ID: ColId = 'time'
 
+// `date-time` and `check` are real backend columns (created by the empty-
+// scenario seed). The load saga overrides their backend-assigned numeric ids
+// with these literal strings so the renderer can identify them by colId
+// without joining on name. `date-time` is display-only (built from the row's
+// date + time on render); `check` is a 0/1 flag toggled via updateCell.
+export const DATE_TIME_COL_ID: ColId = 'date-time'
+export const CHECK_COL_ID: ColId = 'check'
+
+// The names the seed POSTs and the load saga matches against. Backend
+// returns these verbatim in the headers list.
+export const DATE_TIME_COL_NAME = 'date-time'
+export const CHECK_COL_NAME = 'check'
+
+// Catalog name of the dedicated `check` data type. The seed worker resolves
+// this name to its numeric id (helios_data_type_id) and stamps it on the
+// seeded check column.
+export const CHECK_DATA_TYPE_NAME = 'check'
+
+// True when the colId refers to a column whose cell is not user-editable as a
+// raw value: the date/time pseudo-columns and the merged date-time display
+// column. `check` is not reserved — its cell IS editable, just via a checkbox
+// instead of a text input.
 export function isReservedColId(colId: ColId): boolean {
-  return colId === DATE_COL_ID || colId === TIME_COL_ID
+  return colId === DATE_COL_ID || colId === TIME_COL_ID || colId === DATE_TIME_COL_ID
 }
 
 // ── Backend wire shape: weather_data_header row ─────────────────────────────

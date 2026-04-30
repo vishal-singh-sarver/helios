@@ -1,6 +1,7 @@
-import { all, call, put, select, takeEvery, takeLatest } from 'redux-saga/effects'
+import { all, call, put, select, take, takeEvery, takeLatest } from 'redux-saga/effects'
 import {
   addColumnRequest,
+  addColumnsRequest,
   addRowsRequest,
   getProjectRequest,
   loadDataRequest,
@@ -23,26 +24,39 @@ import {
   ADD_COLUMN_REQUESTED,
   ADD_ROW_REQUESTED,
   LIST_SCENARIOS_REQUESTED,
+  LOAD_DATA_TYPES_FAILED,
   LOAD_DATA_TYPES_REQUESTED,
+  LOAD_DATA_TYPES_SUCCEEDED,
   LOAD_SCENARIO_REQUESTED,
+  SEED_DEFAULT_COLUMNS_REQUESTED,
   UPDATE_CELL_LOCAL,
   UPDATE_COLUMN_REQUESTED
 } from './constants'
-import { selectActiveWeatherTable } from './selectors'
+import {
+  selectActiveWeatherTable,
+  selectAllDataTypes,
+  selectDataTypesLoadStatus
+} from './selectors'
 import type {
   AddColumnRequestedAction,
   AddRowRequestedAction,
   ListScenariosRequestedAction,
   LoadScenarioRequestedAction,
+  SeedDefaultColumnsRequestedAction,
   UpdateCellLocalAction,
   UpdateColumnRequestedAction
 } from './actions'
 import {
+  CHECK_COL_NAME,
+  CHECK_DATA_TYPE_NAME,
   DATE_COL_ID,
+  DATE_TIME_COL_NAME,
   TIME_COL_ID,
   type CellValue,
   type ColId,
   type ColumnDef,
+  type DataTypeDef,
+  type LoadStatus,
   type WeatherHeader,
   type WeatherTable
 } from './types'
@@ -120,6 +134,16 @@ function* loadScenarioWorker(action: LoadScenarioRequestedAction): Generator {
       call(loadDataRequest, projectId, scenarioId)
     ])) as [WeatherHeader[], DataPage]
 
+    // Empty bootstrap: a freshly-created scenario with no headers and no rows
+    // gets seeded with the two default columns (date-time + check). On
+    // success, re-enter LOAD_SCENARIO_REQUESTED so the table picks up the
+    // new headers without duplicating the merge logic here. Older scenarios
+    // that already have data are left alone.
+    if (headers.length === 0 && dataRes.rows.length === 0) {
+      yield put(actions.seedDefaultColumnsRequested(projectId, scenarioId))
+      return
+    }
+
     // Column order = date/time first, then all backend headers in display
     // order, then any extra labels (uploaded slugs) not in headers. We can't
     // rely on dataRes.labels alone — when rows[] is empty the backend may
@@ -174,6 +198,48 @@ function* loadScenarioWorker(action: LoadScenarioRequestedAction): Generator {
   }
 }
 
+// ── Seed default columns ─────────────────────────────────────────────────────
+//
+// Empty-scenario bootstrap. POSTs date-time + check in a single addCol call
+// with values=[] (no existing rows to back-fill), then re-enters
+// LOAD_SCENARIO_REQUESTED so the table picks up the new headers. On failure
+// we do *not* re-enter — that would loop forever against a persistent error.
+
+function* seedDefaultColumnsWorker(
+  action: SeedDefaultColumnsRequestedAction
+): Generator {
+  const { projectId, scenarioId } = action.payload
+  try {
+    // Resolve the helios_data_type_id for the `check` data type. The catalog
+    // is fetched in parallel with the scenarios on mount, so it's almost
+    // always loaded by the time we get here — but if it's still in flight,
+    // block on the success/failure action so we don't seed with null.
+    const status = (yield select(selectDataTypesLoadStatus)) as LoadStatus
+    if (status === 'idle' || status === 'loading') {
+      yield take([LOAD_DATA_TYPES_SUCCEEDED, LOAD_DATA_TYPES_FAILED])
+    }
+    const dataTypes = (yield select(selectAllDataTypes)) as DataTypeDef[]
+    const checkDataTypeId =
+      dataTypes.find((dt) => dt.data_type === CHECK_DATA_TYPE_NAME)?.id ?? null
+
+    yield call(addColumnsRequest, projectId, scenarioId, [
+      {
+        name: CHECK_COL_NAME,
+        dataTypeId: checkDataTypeId,
+        dataUnitId: null,
+        values: []
+      },
+      { name: DATE_TIME_COL_NAME, dataTypeId: null, dataUnitId: null, values: [] }
+    ])
+    yield put(actions.seedDefaultColumnsSucceeded(projectId, scenarioId))
+    yield put(actions.loadScenarioRequested(projectId, scenarioId))
+  } catch (err) {
+    yield put(
+      actions.seedDefaultColumnsFailed(projectId, scenarioId, (err as Error).message)
+    )
+  }
+}
+
 // ── Add row ──────────────────────────────────────────────────────────────────
 //
 // Backend's /addRow takes a fully-built rows[] array, so the saga expands
@@ -194,7 +260,8 @@ function buildRowsForAdd(
   startTime: string,
   deltaHours: number,
   numberOfRows: number,
-  columnIds: ColId[]
+  columnIds: ColId[],
+  columns: Record<ColId, ColumnDef>
 ): Array<Record<string, string | null>> {
   // YYYY-MM-DD + HH:mm parsed in UTC so addition stays linear (no DST shifts).
   const [y, mo, d] = startDate.split('-').map((v) => Number.parseInt(v, 10))
@@ -209,9 +276,25 @@ function buildRowsForAdd(
 
     const row: Record<string, string | null> = {}
     for (const colId of columnIds) {
-      if (colId === DATE_COL_ID) row[colId] = rowDate
-      else if (colId === TIME_COL_ID) row[colId] = rowTime
-      else row[colId] = "0"
+      if (colId === DATE_COL_ID) {
+        row[colId] = rowDate
+        continue
+      }
+      if (colId === TIME_COL_ID) {
+        row[colId] = rowTime
+        continue
+      }
+      // New rows default to checked.
+      if (columns[colId]?.name === CHECK_COL_NAME) {
+        row[colId] = '1'
+        continue
+      }
+      // Backend rejects /addRow when any column id is missing from the row
+      // dict ("row labels must match existing columns"), so we always include
+      // every key. The date-time column gets "0" like the other defaults —
+      // the renderer ignores the stored value and computes its display from
+      // the row's date + time.
+      row[colId] = '0'
     }
     out.push(row)
   }
@@ -222,7 +305,16 @@ function* addRowWorker(action: AddRowRequestedAction): Generator {
   const { projectId, scenarioId, date, time, columnIds, numberOfRows, deltaHours } =
     action.payload
   try {
-    const rows = buildRowsForAdd(date, time, deltaHours, numberOfRows, columnIds)
+    const table = (yield select(selectActiveWeatherTable)) as WeatherTable | null
+    const columns = table?.columns ?? {}
+    const rows = buildRowsForAdd(
+      date,
+      time,
+      deltaHours,
+      numberOfRows,
+      columnIds,
+      columns
+    )
     ;(yield call(addRowsRequest, projectId, scenarioId, { rows })) as AddRowsResponse
 
     yield put(actions.addRowSucceeded(projectId, scenarioId))
@@ -331,10 +423,14 @@ function* updateCellWorker(action: UpdateCellLocalAction): Generator {
   if (validationError != null) return
   if (colId === DATE_COL_ID || colId === TIME_COL_ID) return
 
-  yield put(actions.updateCellRequested(projectId, scenarioId, rowId, colId))
-
   const table = (yield select(selectActiveWeatherTable)) as WeatherTable | null
   if (!table) return
+
+  // Display-only column — value is computed from row.date + row.time on
+  // render and is never persisted, so bail before firing the network call.
+  if (table.columns[colId]?.name === DATE_TIME_COL_NAME) return
+
+  yield put(actions.updateCellRequested(projectId, scenarioId, rowId, colId))
 
   const row = table.rows[rowId]
   if (!row) return
@@ -363,6 +459,7 @@ export default function* projectScreenSaga(): Generator {
   yield takeLatest(LOAD_DATA_TYPES_REQUESTED, loadDataTypesWorker)
   yield takeLatest(LIST_SCENARIOS_REQUESTED, listScenariosWorker)
   yield takeLatest(LOAD_SCENARIO_REQUESTED, loadScenarioWorker)
+  yield takeLatest(SEED_DEFAULT_COLUMNS_REQUESTED, seedDefaultColumnsWorker)
   yield takeLatest(ADD_ROW_REQUESTED, addRowWorker)
   yield takeLatest(ADD_COLUMN_REQUESTED, addColumnWorker)
   yield takeEvery(UPDATE_COLUMN_REQUESTED, updateColumnWorker)

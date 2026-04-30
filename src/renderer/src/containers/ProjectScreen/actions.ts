@@ -22,6 +22,9 @@ import {
   ADD_COLUMN_REQUESTED,
   ADD_COLUMN_SUCCEEDED,
   ADD_COLUMN_FAILED,
+  SEED_DEFAULT_COLUMNS_REQUESTED,
+  SEED_DEFAULT_COLUMNS_SUCCEEDED,
+  SEED_DEFAULT_COLUMNS_FAILED,
   UPDATE_COLUMN_REQUESTED,
   UPDATE_COLUMN_SUCCEEDED,
   UPDATE_COLUMN_FAILED,
@@ -165,6 +168,21 @@ export interface AddColumnFailedAction extends Idx {
   payload: { projectId: string; scenarioId: string; error: string }
 }
 
+// Seed default columns (date-time + check) on an empty scenario. Internal
+// to loadScenarioWorker — the component never dispatches this directly.
+export interface SeedDefaultColumnsRequestedAction extends Idx {
+  type: typeof SEED_DEFAULT_COLUMNS_REQUESTED
+  payload: { projectId: string; scenarioId: string }
+}
+export interface SeedDefaultColumnsSucceededAction extends Idx {
+  type: typeof SEED_DEFAULT_COLUMNS_SUCCEEDED
+  payload: { projectId: string; scenarioId: string }
+}
+export interface SeedDefaultColumnsFailedAction extends Idx {
+  type: typeof SEED_DEFAULT_COLUMNS_FAILED
+  payload: { projectId: string; scenarioId: string; error: string }
+}
+
 // Update column header (PATCH /weather_data_header/{header_id})
 export interface UpdateColumnRequestedAction extends Idx {
   type: typeof UPDATE_COLUMN_REQUESTED
@@ -237,6 +255,9 @@ export type ProjectScreenAction =
   | AddColumnRequestedAction
   | AddColumnSucceededAction
   | AddColumnFailedAction
+  | SeedDefaultColumnsRequestedAction
+  | SeedDefaultColumnsSucceededAction
+  | SeedDefaultColumnsFailedAction
   | UpdateColumnRequestedAction
   | UpdateColumnSucceededAction
   | UpdateColumnFailedAction
@@ -409,6 +430,29 @@ export const addColumnFailed = (
   error: string
 ): AddColumnFailedAction => ({
   type: ADD_COLUMN_FAILED,
+  payload: { projectId, scenarioId, error }
+})
+
+export const seedDefaultColumnsRequested = (
+  projectId: string,
+  scenarioId: string
+): SeedDefaultColumnsRequestedAction => ({
+  type: SEED_DEFAULT_COLUMNS_REQUESTED,
+  payload: { projectId, scenarioId }
+})
+export const seedDefaultColumnsSucceeded = (
+  projectId: string,
+  scenarioId: string
+): SeedDefaultColumnsSucceededAction => ({
+  type: SEED_DEFAULT_COLUMNS_SUCCEEDED,
+  payload: { projectId, scenarioId }
+})
+export const seedDefaultColumnsFailed = (
+  projectId: string,
+  scenarioId: string,
+  error: string
+): SeedDefaultColumnsFailedAction => ({
+  type: SEED_DEFAULT_COLUMNS_FAILED,
   payload: { projectId, scenarioId, error }
 })
 

@@ -6,8 +6,13 @@ import {
   updateColumnRequested
 } from 'containers/ProjectScreen/actions'
 import {
+  CHECK_COL_NAME,
+  DATE_COL_ID,
+  DATE_TIME_COL_NAME,
+  TIME_COL_ID,
   isReservedColId,
   type CellValue,
+  type ColId,
   type ColumnDef,
   type DataTypeDef,
   type UpdateColumnPatch
@@ -18,21 +23,35 @@ import {
   selectActiveProjectId,
   selectActiveScenarioId,
   selectActiveWeatherTable,
-  selectAllDataTypes,
   selectAllRowsSelected,
   selectColumnOrder,
   selectColumns,
   selectRowOrder,
-  selectRowSelection
+  selectRowSelection,
+  selectSelectableDataTypes
 } from './selectors'
 
 // A column is backend-managed (PATCH-able) when its id is a positive integer —
-// the stringified WeatherDataHeader.id. Reserved date/time and upload-slug
-// columns fail this check and stay read-only.
-function isBackendManagedCol(colId: string): boolean {
-  if (isReservedColId(colId)) return false
-  const n = Number(colId)
-  return Number.isFinite(n) && n > 0 && String(n) === colId
+// the stringified WeatherDataHeader.id. Reserved date/time, upload-slug, and
+// the seeded date-time/check columns fail this check and stay read-only.
+function isBackendManagedCol(col: ColumnDef): boolean {
+  if (isReservedColId(col.id)) return false
+  if (col.name === DATE_TIME_COL_NAME || col.name === CHECK_COL_NAME) return false
+  const n = Number(col.id)
+  return Number.isFinite(n) && n > 0 && String(n) === col.id
+}
+
+// "2026-02-26" + "10:00:00" → "02/26/2026 10:00". Returns "" when either
+// half is missing so the merged cell renders blank, matching how unfilled
+// date/time cells render today.
+function formatDateTime(date: CellValue, time: CellValue): string {
+  if (date == null || time == null) return ''
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date)
+  if (!m) return ''
+  const [, y, mo, d] = m
+  const hhmm = time.slice(0, 5)
+  if (!/^\d{2}:\d{2}$/.test(hhmm)) return ''
+  return `${mo}/${d}/${y} ${hhmm}`
 }
 
 function WeatherTable(): React.JSX.Element {
@@ -45,7 +64,7 @@ function WeatherTable(): React.JSX.Element {
   const rowSelection = useSelector(selectRowSelection)
   const allSelected = useSelector(selectAllRowsSelected)
   const table = useSelector(selectActiveWeatherTable)
-  const dataTypes = useSelector(selectAllDataTypes)
+  const dataTypes = useSelector(selectSelectableDataTypes)
 
   const toggleAll = (): void => {
     if (!scenarioId) return
@@ -88,6 +107,75 @@ function WeatherTable(): React.JSX.Element {
     dispatch(updateColumnRequested(projectId, scenarioId, col.id, patch, previous))
   }
 
+  // Resolve the colIds for the two seeded columns once per render. Backend
+  // assigns numeric ids on creation, so we identify them by name. Returns
+  // null when the active scenario predates the seed (older scenarios are not
+  // back-filled — they keep showing date/time as separate read-only columns
+  // and the leftmost UI checkbox stays bound to rowSelection).
+  const checkColId = React.useMemo(() => findColIdByName(columns, CHECK_COL_NAME), [columns])
+  const dateTimeColId = React.useMemo(
+    () => findColIdByName(columns, DATE_TIME_COL_NAME),
+    [columns]
+  )
+
+  // Columns rendered in the table body: hide check (rendered as the leftmost
+  // checkbox column instead) and hide the raw date/time pseudo-columns when
+  // the merged date-time column is present.
+  const visibleColumnOrder = React.useMemo(
+    () =>
+      columnOrder.filter((colId) => {
+        if (colId === checkColId) return false
+        if (dateTimeColId != null && (colId === DATE_COL_ID || colId === TIME_COL_ID)) {
+          return false
+        }
+        return true
+      }),
+    [columnOrder, checkColId, dateTimeColId]
+  )
+
+  // Per-row check-cell handler. Toggle flips "1" ↔ "0" via the same
+  // optimistic UPDATE_CELL_LOCAL path the saga already handles for normal
+  // cell edits — so the value persists round-trip.
+  const toggleCheck = (rowId: string, currentValue: CellValue): void => {
+    if (!projectId || !scenarioId || !checkColId) return
+    const next = currentValue === '1' ? '0' : '1'
+    dispatch(
+      updateCellLocal({
+        projectId,
+        scenarioId,
+        rowId,
+        colId: checkColId,
+        value: next,
+        validationError: null
+      })
+    )
+  }
+
+  // Header select-all when the check column is present: dispatch one
+  // UPDATE_CELL_LOCAL per row, flipping every row to match the inverse of
+  // "are they all currently checked". `allChecked` is `false` when the table
+  // is empty, mirroring the existing rowSelection behavior.
+  const allChecked =
+    checkColId != null &&
+    rowOrder.length > 0 &&
+    rowOrder.every((rowId) => (table?.rows[rowId]?.[checkColId] ?? null) === '1')
+  const toggleAllCheck = (): void => {
+    if (!projectId || !scenarioId || !checkColId) return
+    const next = allChecked ? '0' : '1'
+    for (const rowId of rowOrder) {
+      dispatch(
+        updateCellLocal({
+          projectId,
+          scenarioId,
+          rowId,
+          colId: checkColId,
+          value: next,
+          validationError: null
+        })
+      )
+    }
+  }
+
   return (
     <div className="scrollbar-custom flex-1 overflow-auto bg-dark">
       <table className="w-full border-collapse text-sm text-neutral-200">
@@ -97,16 +185,21 @@ function WeatherTable(): React.JSX.Element {
               <input
                 type="checkbox"
                 aria-label="Select all rows"
-                checked={allSelected}
-                onChange={toggleAll}
+                checked={checkColId != null ? allChecked : allSelected}
+                onChange={checkColId != null ? toggleAllCheck : toggleAll}
                 className="h-4 w-4 accent-blue-600"
               />
             </th>
-            {columnOrder.map((colId) => {
+            {visibleColumnOrder.map((colId) => {
               const col = columns[colId]
               if (!col) return null
-              const managed = isBackendManagedCol(colId)
-              const widthCls = managed ? 'w-40 min-w-40 max-w-40' : 'w-32 min-w-32 max-w-32'
+              const managed = isBackendManagedCol(col)
+              const isDateTime = colId === dateTimeColId
+              const widthCls = isDateTime
+                ? 'w-[269px] min-w-[269px] max-w-[269px]'
+                : managed
+                  ? 'w-40 min-w-40 max-w-40'
+                  : 'w-32 min-w-32 max-w-32'
               const alignCls = managed ? 'align-top' : 'align-middle'
               return (
                 <th
@@ -134,28 +227,43 @@ function WeatherTable(): React.JSX.Element {
         <tbody>
           {rowOrder.map((rowId) => {
             const row = table?.rows[rowId] ?? {}
+            const checkValue: CellValue =
+              checkColId != null ? (row[checkColId] ?? null) : null
             return (
               <tr key={rowId} className="h-9 border-b border-app-border">
                 <td className="w-12 border-r border-app-border px-3 py-2">
                   <input
                     type="checkbox"
                     aria-label={`Select ${rowId}`}
-                    checked={rowSelection[rowId] === true}
-                    onChange={() => toggleRow(rowId)}
+                    checked={
+                      checkColId != null
+                        ? checkValue === '1'
+                        : rowSelection[rowId] === true
+                    }
+                    onChange={
+                      checkColId != null
+                        ? () => toggleCheck(rowId, checkValue)
+                        : () => toggleRow(rowId)
+                    }
                     className="h-4 w-4 accent-blue-600"
                   />
                 </td>
-                {columnOrder.map((colId) => {
+                {visibleColumnOrder.map((colId) => {
                   const value: CellValue = row[colId] ?? null
-                  const display = value ?? ''
-                  const readOnly = isReservedColId(colId)
-                  const widthCls = readOnly
-                    ? 'w-32 min-w-32 max-w-32'
-                    : 'w-40 min-w-40 max-w-40'
+                  const isDateTime = colId === dateTimeColId
+                  const display = isDateTime
+                    ? formatDateTime(row[DATE_COL_ID] ?? null, row[TIME_COL_ID] ?? null)
+                    : (value ?? '')
+                  const readOnly = isReservedColId(colId) || isDateTime
+                  const widthCls = isDateTime
+                    ? 'w-[269px] min-w-[269px] max-w-[269px]'
+                    : readOnly
+                      ? 'w-32 min-w-32 max-w-32'
+                      : 'w-40 min-w-40 max-w-40'
                   return (
                     <td
                       key={colId}
-                      className={`${widthCls} border-r border-app-border px-3 py-2`}
+                      className={`${widthCls} h-9 border-r border-app-border px-3 py-2`}
                     >
                       {readOnly ? (
                         <span className="block truncate">{display}</span>
@@ -187,6 +295,16 @@ function WeatherTable(): React.JSX.Element {
       </table>
     </div>
   )
+}
+
+function findColIdByName(
+  columns: Record<ColId, ColumnDef>,
+  name: string
+): ColId | null {
+  for (const colId in columns) {
+    if (columns[colId]?.name === name) return colId
+  }
+  return null
 }
 
 interface CellInputProps {

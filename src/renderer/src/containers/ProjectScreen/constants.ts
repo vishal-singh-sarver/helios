@@ -40,6 +40,17 @@ export const ADD_COLUMN_REQUESTED = 'app/ProjectScreen/ADD_COLUMN_REQUESTED' as 
 export const ADD_COLUMN_SUCCEEDED = 'app/ProjectScreen/ADD_COLUMN_SUCCEEDED' as const
 export const ADD_COLUMN_FAILED = 'app/ProjectScreen/ADD_COLUMN_FAILED' as const
 
+// Seed default columns (date-time + check) for a freshly created scenario
+// that has no headers and no rows. Fired from inside loadScenarioWorker; on
+// success the saga re-enters LOAD_SCENARIO_REQUESTED so the table picks up
+// the newly created backend columns.
+export const SEED_DEFAULT_COLUMNS_REQUESTED =
+  'app/ProjectScreen/SEED_DEFAULT_COLUMNS_REQUESTED' as const
+export const SEED_DEFAULT_COLUMNS_SUCCEEDED =
+  'app/ProjectScreen/SEED_DEFAULT_COLUMNS_SUCCEEDED' as const
+export const SEED_DEFAULT_COLUMNS_FAILED =
+  'app/ProjectScreen/SEED_DEFAULT_COLUMNS_FAILED' as const
+
 // Patch column header (name / data type / unit). Optimistic write on
 // _REQUESTED, rollback to the prior values on _FAILED.
 export const UPDATE_COLUMN_REQUESTED = 'app/ProjectScreen/UPDATE_COLUMN_REQUESTED' as const
