@@ -1,13 +1,26 @@
-import { call, put, race, take, takeLatest, takeLeading } from 'redux-saga/effects'
+import { call, put, race, select, take, takeLatest, takeLeading } from 'redux-saga/effects'
 import { api } from 'utils/api'
 import { API_ROUTES } from 'utils/constants'
 import { createSseChannel } from 'utils/sse'
 import type { SseMessage } from 'utils/sse'
 import { loadScenarioRequested } from 'containers/ProjectScreen/actions'
 import {
+  LOAD_DATA_TYPES_FAILED,
+  LOAD_DATA_TYPES_SUCCEEDED,
   LOAD_SCENARIO_SUCCEEDED,
   LOAD_SCENARIO_FAILED
 } from 'containers/ProjectScreen/constants'
+import {
+  selectAllDataTypes,
+  selectDataTypesLoadStatus
+} from 'containers/ProjectScreen/selectors'
+import {
+  CHECK_COL_NAME,
+  CHECK_DATA_TYPE_NAME,
+  DATE_TIME_COL_NAME,
+  type DataTypeDef,
+  type LoadStatus
+} from 'containers/ProjectScreen/types'
 import * as actions from './actions'
 import type { ImportFinalizeRequestedAction } from './actions'
 import {
@@ -146,19 +159,59 @@ export function* finalizeImportWorker(action: ImportFinalizeRequestedAction): Ge
       }
     })
 
+    // Resolve the helios_data_type_id for the `check` data type so the seeded
+    // check column carries the right metadata (the WeatherTable hides it by
+    // name and binds the leftmost UI checkbox to its 1/0 cells). Mirrors the
+    // empty-scenario seed worker — block on the catalog's terminal action if
+    // it's still in flight.
+    const status = (yield select(selectDataTypesLoadStatus)) as LoadStatus
+    if (status === 'idle' || status === 'loading') {
+      yield take([LOAD_DATA_TYPES_SUCCEEDED, LOAD_DATA_TYPES_FAILED])
+    }
+    const dataTypes = (yield select(selectAllDataTypes)) as DataTypeDef[]
+    const checkDataTypeId =
+      dataTypes.find((dt) => dt.data_type === CHECK_DATA_TYPE_NAME)?.id ?? null
+
     // One column entry per dataset column, each carrying every row's cell
-    // for that column. Backend stores columns + cells atomically.
+    // for that column. Backend stores columns + cells atomically. The seeded
+    // check + date-time columns are prepended so the imported scenario
+    // matches the empty-scenario bootstrap shape (check defaults to '1';
+    // date-time is display-only, '0' is the placeholder used by addRow).
+    // CSV columns whose label collides with a seeded name are dropped — the
+    // backend rejects duplicate names in the request body, and the seeded
+    // versions carry the right metadata (check's data-type id) and defaults.
+    const reservedNames = new Set([
+      CHECK_COL_NAME.toLowerCase(),
+      DATE_TIME_COL_NAME.toLowerCase()
+    ])
+    const csvColumns = dataset.columns.filter(
+      (c) => !reservedNames.has(c.label.toLowerCase())
+    )
     const addColBody: AddColRequest = {
-      column: dataset.columns.map((c) => ({
-        name: c.label,
-        datatype: null,
-        data_unit: null,
-        values: rowKeys.map(({ date, time, recordIdx }) => ({
-          date,
-          time,
-          value: dataset.records[recordIdx].values[c.key] ?? ''
+      column: [
+        {
+          name: CHECK_COL_NAME,
+          datatype: checkDataTypeId,
+          data_unit: null,
+          values: rowKeys.map(({ date, time }) => ({ date, time, value: '1' }))
+        },
+        {
+          name: DATE_TIME_COL_NAME,
+          datatype: null,
+          data_unit: null,
+          values: rowKeys.map(({ date, time }) => ({ date, time, value: '0' }))
+        },
+        ...csvColumns.map((c) => ({
+          name: c.label,
+          datatype: null,
+          data_unit: null,
+          values: rowKeys.map(({ date, time, recordIdx }) => ({
+            date,
+            time,
+            value: dataset.records[recordIdx].values[c.key] ?? ''
+          }))
         }))
-      }))
+      ]
     }
 
     yield call(api.post, API_ROUTES.weather.addCol(projectId, scenarioId), addColBody)
