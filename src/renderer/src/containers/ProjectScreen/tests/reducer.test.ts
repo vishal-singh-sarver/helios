@@ -217,11 +217,16 @@ describe('projectScreenReducer', () => {
   })
 
   describe('selection', () => {
+    it('LOAD_SCENARIO_SUCCEEDED seeds every row as selected', () => {
+      const loaded = projectScreenReducer(initialState, actions.loadScenarioSucceeded(samplePayload))
+      expect(loaded.byScenario[SCN].rowSelection).toEqual({ row_0: true, row_1: true })
+    })
+
     it('SET_ROW_SELECTION toggles one row', () => {
       const loaded = projectScreenReducer(initialState, actions.loadScenarioSucceeded(samplePayload))
-      const result = projectScreenReducer(loaded, actions.setRowSelection(SCN, 'row_1', true))
-      expect(result.byScenario[SCN].rowSelection.row_1).toBe(true)
-      expect(result.byScenario[SCN].rowSelection.row_0).toBeUndefined()
+      const result = projectScreenReducer(loaded, actions.setRowSelection(SCN, 'row_1', false))
+      expect(result.byScenario[SCN].rowSelection.row_1).toBe(false)
+      expect(result.byScenario[SCN].rowSelection.row_0).toBe(true)
     })
 
     it('SET_ALL_ROWS_SELECTION toggles every visible row', () => {

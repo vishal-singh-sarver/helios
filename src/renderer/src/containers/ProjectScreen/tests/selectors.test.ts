@@ -182,9 +182,13 @@ describe('per-cell factories', () => {
 })
 
 describe('selection selectors', () => {
+  it('selectAllRowsSelected is true after a fresh scenario load', () => {
+    expect(selectAllRowsSelected(wrap(buildLoadedState()))).toBe(true)
+  })
+
   it('selectAllRowsSelected is false when at least one row unselected', () => {
     let state = buildLoadedState()
-    state = projectScreenReducer(state, actions.setRowSelection(SCN, 'row_0', true))
+    state = projectScreenReducer(state, actions.setRowSelection(SCN, 'row_0', false))
     expect(selectAllRowsSelected(wrap(state))).toBe(false)
   })
 
@@ -196,7 +200,7 @@ describe('selection selectors', () => {
 
   it('makeSelectRowSelected reflects per-row state', () => {
     let state = buildLoadedState()
-    state = projectScreenReducer(state, actions.setRowSelection(SCN, 'row_1', true))
+    state = projectScreenReducer(state, actions.setRowSelection(SCN, 'row_0', false))
     expect(makeSelectRowSelected('row_0')(wrap(state))).toBe(false)
     expect(makeSelectRowSelected('row_1')(wrap(state))).toBe(true)
   })

@@ -295,6 +295,7 @@ const projectScreenReducer = (
           const rowId = rowIdAt(i)
           fresh.rows[rowId] = { ...rowData }
           fresh.rowOrder.push(rowId)
+          fresh.rowSelection[rowId] = true
         })
 
         draft.byScenario[scenarioId] = fresh
