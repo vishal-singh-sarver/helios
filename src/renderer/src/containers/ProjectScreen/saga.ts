@@ -35,6 +35,8 @@ import {
   UPDATE_COLUMN_REQUESTED
 } from './constants'
 import { STORAGE_KEYS } from 'utils/storageKeys'
+import { ApiError } from 'utils/api'
+import { navigate } from 'store/navigationReducer'
 import {
   selectActiveWeatherTable,
   selectAllDataTypes,
@@ -111,7 +113,22 @@ function* listScenariosWorker(action: ListScenariosRequestedAction): Generator {
     yield put(actions.loadScenarioRequested(projectId, first.id))
   } catch (err) {
     yield put(actions.listScenariosFailed(projectId, (err as Error).message))
+    if (isStaleIdError(err)) yield call(bounceToHome)
   }
+}
+
+// Treat 4xx responses (404 not found, 400 invalid uuid, 403 forbidden) as
+// "the saved id is no longer valid" and fall back to home. 5xx and network
+// errors stay on the project screen so a transient backend hiccup doesn't
+// wipe the user's context.
+function isStaleIdError(err: unknown): boolean {
+  return err instanceof ApiError && err.status >= 400 && err.status < 500
+}
+
+function* bounceToHome(): Generator {
+  yield call([localStorage, 'removeItem'], STORAGE_KEYS.activeProjectId)
+  yield call([localStorage, 'removeItem'], STORAGE_KEYS.activeScenarioId)
+  yield put(navigate('home'))
 }
 
 // ── Load scenario ────────────────────────────────────────────────────────────
@@ -218,6 +235,7 @@ function* loadScenarioWorker(action: LoadScenarioRequestedAction): Generator {
     yield put(
       actions.loadScenarioFailed(projectId, scenarioId, (err as Error).message)
     )
+    if (isStaleIdError(err)) yield call(bounceToHome)
   }
 }
 
