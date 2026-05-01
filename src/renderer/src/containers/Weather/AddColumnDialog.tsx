@@ -10,6 +10,8 @@ import messages from './messages'
 import {
   selectActiveProjectId,
   selectActiveScenarioId,
+  selectAddColumnError,
+  selectAddColumnLoading,
   selectSelectableDataTypes
 } from './selectors'
 
@@ -35,13 +37,12 @@ interface AddColumnDialogProps {
 }
 
 function AddColumnDialog({ isOpen, onClose }: AddColumnDialogProps): React.JSX.Element {
-  const [loading] = React.useState(false)
-  const [error] = React.useState<string | null>(null)
-
   const dispatch = useDispatch()
   const projectId = useSelector(selectActiveProjectId)
   const scenarioId = useSelector(selectActiveScenarioId)
   const dataTypes = useSelector(selectSelectableDataTypes)
+  const loading = useSelector(selectAddColumnLoading)
+  const error = useSelector(selectAddColumnError)
 
   const dataTypeOptions: FormFieldOption[] = React.useMemo(
     () => dataTypes.map((dt) => ({ value: String(dt.id), label: dt.data_type })),
@@ -68,6 +69,9 @@ function AddColumnDialog({ isOpen, onClose }: AddColumnDialogProps): React.JSX.E
       if (loading || !projectId || !scenarioId) return
       const dataTypeId = values.dataTypeId === '' ? null : Number(values.dataTypeId)
       const unitId = values.unitId === '' ? null : Number(values.unitId)
+      // Don't close here — the toolbar listens for the loading→idle
+      // transition and only closes when the request actually succeeded.
+      // On failure the dialog stays open with the error banner visible.
       dispatch(
         addColumnRequested(
           projectId,
@@ -78,10 +82,17 @@ function AddColumnDialog({ isOpen, onClose }: AddColumnDialogProps): React.JSX.E
           values.defaultValue
         )
       )
-      formik.resetForm()
-      onClose()
     }
   })
+
+  // Reset the form whenever the dialog closes — covers both user Cancel and
+  // success-driven close from the toolbar.
+  React.useEffect(() => {
+    if (!isOpen) formik.resetForm()
+    // formik is intentionally omitted: we only want this on isOpen edges,
+    // and including formik would re-fire on every keystroke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen])
 
   // Unit options follow the selected data type. Picking a different data type
   // clears the unit selection — the user must re-pick (per task constraints,
@@ -111,7 +122,7 @@ function AddColumnDialog({ isOpen, onClose }: AddColumnDialogProps): React.JSX.E
   }
 
   const handleClose = (): void => {
-    formik.resetForm()
+    if (loading) return
     onClose()
   }
 

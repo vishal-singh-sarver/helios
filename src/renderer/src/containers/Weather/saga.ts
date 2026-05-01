@@ -3,6 +3,7 @@ import { api } from 'utils/api'
 import { API_ROUTES } from 'utils/constants'
 import { createSseChannel } from 'utils/sse'
 import type { SseMessage } from 'utils/sse'
+import { STORAGE_KEYS } from 'utils/storageKeys'
 import { loadScenarioRequested } from 'containers/ProjectScreen/actions'
 import {
   LOAD_DATA_TYPES_FAILED,
@@ -11,14 +12,12 @@ import {
   LOAD_SCENARIO_FAILED
 } from 'containers/ProjectScreen/constants'
 import {
-  selectAllDataTypes,
+  selectCheckDataTypeId,
   selectDataTypesLoadStatus
 } from 'containers/ProjectScreen/selectors'
 import {
   CHECK_COL_NAME,
-  CHECK_DATA_TYPE_NAME,
   DATE_TIME_COL_NAME,
-  type DataTypeDef,
   type LoadStatus
 } from 'containers/ProjectScreen/types'
 import * as actions from './actions'
@@ -134,10 +133,19 @@ function fmtTime(iso: string): string {
   return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:00`
 }
 
+// Predicate factory for `take` that matches actions whose payload is scoped
+// to a specific scenario. Used by the import-finalize race against the
+// chained scenario refresh.
+const matchScenarioAction = (
+  type: string,
+  scenarioId: string
+) => (a: { type: string; payload?: { scenarioId?: string } }): boolean =>
+  a.type === type && a.payload?.scenarioId === scenarioId
+
 export function* finalizeImportWorker(action: ImportFinalizeRequestedAction): Generator {
   try {
-    const projectId = localStorage.getItem('helios:activeProjectId')
-    const scenarioId = localStorage.getItem('helios:activeScenarioId')
+    const projectId = localStorage.getItem(STORAGE_KEYS.activeProjectId)
+    const scenarioId = localStorage.getItem(STORAGE_KEYS.activeScenarioId)
     if (!projectId || !scenarioId) {
       yield put(actions.importFinalizeFailed('No active project or scenario'))
       return
@@ -168,9 +176,7 @@ export function* finalizeImportWorker(action: ImportFinalizeRequestedAction): Ge
     if (status === 'idle' || status === 'loading') {
       yield take([LOAD_DATA_TYPES_SUCCEEDED, LOAD_DATA_TYPES_FAILED])
     }
-    const dataTypes = (yield select(selectAllDataTypes)) as DataTypeDef[]
-    const checkDataTypeId =
-      dataTypes.find((dt) => dt.data_type === CHECK_DATA_TYPE_NAME)?.id ?? null
+    const checkDataTypeId = (yield select(selectCheckDataTypeId)) as number | null
 
     // One column entry per dataset column, each carrying every row's cell
     // for that column. Backend stores columns + cells atomically. The seeded
@@ -222,17 +228,9 @@ export function* finalizeImportWorker(action: ImportFinalizeRequestedAction): Ge
     // wait for its terminal action (filtered to this scenario) so the
     // wizard only closes once the table is populated.
     yield put(loadScenarioRequested(projectId, scenarioId))
-    const isMatch = (a: { type: string; payload?: { scenarioId?: string } }): boolean =>
-      a.payload?.scenarioId === scenarioId
     const raceResult = (yield race({
-      succeeded: take(
-        (a: { type: string; payload?: { scenarioId?: string } }) =>
-          a.type === LOAD_SCENARIO_SUCCEEDED && isMatch(a)
-      ),
-      failed: take(
-        (a: { type: string; payload?: { scenarioId?: string; error?: string } }) =>
-          a.type === LOAD_SCENARIO_FAILED && isMatch(a)
-      )
+      succeeded: take(matchScenarioAction(LOAD_SCENARIO_SUCCEEDED, scenarioId)),
+      failed: take(matchScenarioAction(LOAD_SCENARIO_FAILED, scenarioId))
     })) as {
       succeeded?: { payload: { scenarioId: string } }
       failed?: { payload: { scenarioId: string; error: string } }

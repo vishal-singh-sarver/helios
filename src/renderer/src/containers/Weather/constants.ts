@@ -16,3 +16,10 @@ export const IMPORT_FINALIZE_REQUESTED = 'app/Weather/IMPORT_FINALIZE_REQUESTED'
 export const IMPORT_FINALIZE_SUCCEEDED = 'app/Weather/IMPORT_FINALIZE_SUCCEEDED' as const
 export const IMPORT_FINALIZE_FAILED = 'app/Weather/IMPORT_FINALIZE_FAILED' as const
 export const IMPORT_RESET = 'app/Weather/IMPORT_RESET' as const
+
+// Wizard open / close. Held in Redux so the saga can auto-close the wizard
+// on IMPORT_FINALIZE_SUCCEEDED — the alternative (a useState-based "previous
+// importing" sentinel in the component) is fragile and pushes saga semantics
+// into render.
+export const IMPORT_WIZARD_OPENED = 'app/Weather/IMPORT_WIZARD_OPENED' as const
+export const IMPORT_WIZARD_CLOSED = 'app/Weather/IMPORT_WIZARD_CLOSED' as const

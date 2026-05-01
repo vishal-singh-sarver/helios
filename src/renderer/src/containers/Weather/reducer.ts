@@ -12,7 +12,9 @@ import {
   IMPORT_FINALIZE_REQUESTED,
   IMPORT_FINALIZE_SUCCEEDED,
   IMPORT_FINALIZE_FAILED,
-  IMPORT_RESET
+  IMPORT_RESET,
+  IMPORT_WIZARD_OPENED,
+  IMPORT_WIZARD_CLOSED
 } from './constants'
 import type { WeatherAction } from './actions'
 import type {
@@ -43,6 +45,9 @@ export interface WeatherState {
   importing: boolean
   importError: string | null
   dataset: ImportedDataset | null
+
+  // Wizard open/close — derived in render from this flag.
+  wizardOpen: boolean
 }
 
 export const initialState: WeatherState = {
@@ -58,7 +63,9 @@ export const initialState: WeatherState = {
 
   importing: false,
   importError: null,
-  dataset: null
+  dataset: null,
+
+  wizardOpen: false
 }
 
 // ── Reducer ────────────────────────────────────────────────────────────────────
@@ -121,6 +128,10 @@ const weatherReducer = (state: WeatherState = initialState, action: WeatherActio
         // Clear pick state so next open starts clean.
         draft.pickedFile = null
         draft.fileError = null
+        // Auto-close the wizard on successful import — the table refresh
+        // is already complete (the saga waits for LOAD_SCENARIO_SUCCEEDED
+        // before dispatching this action).
+        draft.wizardOpen = false
         break
 
       case IMPORT_FINALIZE_FAILED:
@@ -137,6 +148,27 @@ const weatherReducer = (state: WeatherState = initialState, action: WeatherActio
         // Note: dataset is intentionally preserved across resets so a previous
         // successful import remains available even if the wizard is reopened
         // and cancelled.
+        break
+
+      case IMPORT_WIZARD_OPENED:
+        // Reset every transient flow state so the wizard always starts clean.
+        draft.wizardOpen = true
+        draft.fileLoading = false
+        draft.fileError = null
+        draft.pickedFile = null
+        draft.importing = false
+        draft.importError = null
+        break
+
+      case IMPORT_WIZARD_CLOSED:
+        // Same reset as OPENED so a cancelled wizard doesn't leave stale
+        // state that the next open would inherit.
+        draft.wizardOpen = false
+        draft.fileLoading = false
+        draft.fileError = null
+        draft.pickedFile = null
+        draft.importing = false
+        draft.importError = null
         break
     }
   })

@@ -11,21 +11,12 @@ import type { Reducer } from 'redux'
 import { navigate } from 'store/navigationReducer'
 import { useInjectReducer } from 'utils/injectReducer'
 import { useInjectSaga } from 'utils/injectSaga'
+import { STORAGE_KEYS } from 'utils/storageKeys'
 import { TOOLBAR_ITEMS } from '../../types/project'
 import { listScenariosRequested, loadDataTypesRequested, setActiveProject } from './actions'
 import reducer from './reducer'
 import saga from './saga'
-import { selectActiveProjectId } from './selectors'
-
-// HomePage writes `helios:activeProjectId` to localStorage on row click.
-// We hydrate from it here so a refresh on the project screen still has a
-// project — and so the scenarios fetch below has something to scope to.
-const PROJECT_ID_STORAGE_KEY = 'helios:activeProjectId'
-
-// `helios:activeScenarioId` is project-screen-scoped: the saga writes it on
-// listScenariosSucceeded and we clear it on project screen unmount so it
-// doesn't linger in localStorage once the user navigates back to Home.
-const SCENARIO_ID_STORAGE_KEY = 'helios:activeScenarioId'
+import { selectActiveProject, selectActiveProjectId } from './selectors'
 
 // Help text — mirrors the strings used in HomePage's New Project dialog so
 // the user sees the same guidance whether they're creating a project or
@@ -58,6 +49,7 @@ export function ProjectScreen(): React.JSX.Element {
 
   const dispatch = useDispatch()
   const activeProjectId = useSelector(selectActiveProjectId)
+  const activeProject = useSelector(selectActiveProject)
 
   // Load the data-types-with-units catalog once per mount. The reducer
   // dedupes by overwriting, so re-mounting the screen refreshes the slice.
@@ -67,7 +59,7 @@ export function ProjectScreen(): React.JSX.Element {
 
   React.useEffect(() => {
     if (activeProjectId == null) {
-      const stored = localStorage.getItem(PROJECT_ID_STORAGE_KEY)
+      const stored = localStorage.getItem(STORAGE_KEYS.activeProjectId)
       if (stored) dispatch(setActiveProject(stored))
     }
   }, [activeProjectId, dispatch])
@@ -85,31 +77,31 @@ export function ProjectScreen(): React.JSX.Element {
   // doesn't show up in localStorage on Home.
   React.useEffect(() => {
     return () => {
-      localStorage.removeItem(SCENARIO_ID_STORAGE_KEY)
+      localStorage.removeItem(STORAGE_KEYS.activeScenarioId)
     }
   }, [])
 
   const [latitude, setLatitude] = React.useState('')
   const [longitude, setLongitude] = React.useState('')
-  const [utcOffset] = React.useState('')
+  const [utcOffset, setUtcOffset] = React.useState('')
 
-  const [utcOffsetDisabled, setUtcOffsetDisabled] = React.useState(true)
-
-  const [projectRunning, setProjectRunning] = React.useState(false)
-
-  // Placeholders until the setters are wired to real controls.
-  void setUtcOffsetDisabled
-  void setProjectRunning
+  // Seed the header inputs from the project metadata once it lands. Re-seed
+  // when the project id flips (so a switch to another project replaces the
+  // displayed values), but not on every metadata refresh — otherwise the
+  // user's in-progress edits would be clobbered.
+  const seededProjectIdRef = React.useRef<string | null>(null)
+  React.useEffect(() => {
+    if (!activeProject) return
+    if (seededProjectIdRef.current === activeProject.id) return
+    seededProjectIdRef.current = activeProject.id
+    setLatitude(String(activeProject.latitude))
+    setLongitude(String(activeProject.longitude))
+    setUtcOffset(activeProject.utc_offset)
+  }, [activeProject])
 
   // Validity drives only the red-border indicator — no text errors.
   const latitudeInvalid = !isLatitudeValid(latitude)
   const longitudeInvalid = !isLongitudeValid(longitude)
-
-  // Compose the effective disabled flags.
-  //   - Latitude / Longitude: locked only while a run is in progress.
-  //   - UTC Offset: locked when formula-driven OR when a run is in progress.
-  const coordsLocked = projectRunning
-  const utcLocked = projectRunning || utcOffsetDisabled
 
   return (
     <div className="flex flex-col h-full">
@@ -120,7 +112,6 @@ export function ProjectScreen(): React.JSX.Element {
             label="Latitude"
             value={latitude}
             onChange={setLatitude}
-            disabled={coordsLocked}
             invalid={latitudeInvalid}
             labelAdornment={<Tooltip text={LATITUDE_HELP} ariaLabel="Show latitude help" />}
           />
@@ -129,12 +120,14 @@ export function ProjectScreen(): React.JSX.Element {
             label="Longitude"
             value={longitude}
             onChange={setLongitude}
-            disabled={coordsLocked}
             invalid={longitudeInvalid}
             labelAdornment={<Tooltip text={LONGITUDE_HELP} ariaLabel="Show longitude help" />}
           />
 
-          <LabeledField label="UTC Offset" value={utcOffset} disabled={utcLocked} />
+          {/* UTC offset comes from the project record on the server. Kept
+              read-only here until edit-and-save is wired — value is seeded
+              from activeProject in the effect above. */}
+          <LabeledField label="UTC Offset" value={utcOffset} disabled />
         </div>
       </Header>
 
@@ -148,4 +141,3 @@ export function ProjectScreen(): React.JSX.Element {
 }
 
 export default ProjectScreen
-

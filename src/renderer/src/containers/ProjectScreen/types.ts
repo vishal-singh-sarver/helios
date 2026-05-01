@@ -34,6 +34,21 @@ export interface DataTypeDef {
   units: DataUnitDef[]
 }
 
+// ── Project metadata ────────────────────────────────────────────────────────
+//
+// Subset of GET /api/project/{id} that the project screen needs in order
+// to populate the header inputs (latitude, longitude, utc offset). The
+// full response also includes nested scenarios + weather_data_headers,
+// which we route into the dedicated scenarios / headers slices instead.
+
+export interface ProjectMetadata {
+  id: string
+  name: string
+  latitude: number
+  longitude: number
+  utc_offset: string                              // wire shape: "+05:00"
+}
+
 // ── Scenarios (per project) ─────────────────────────────────────────────────
 
 export interface Scenario {

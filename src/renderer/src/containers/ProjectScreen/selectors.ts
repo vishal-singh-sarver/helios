@@ -3,6 +3,7 @@ import type { RootState } from 'store/reducers'
 import { initialState, type ProjectScreenState } from './reducer'
 import {
   cellKey,
+  CHECK_COL_NAME,
   CHECK_DATA_TYPE_NAME,
   type CellSyncStatus,
   type ColId,
@@ -40,6 +41,16 @@ export const selectAllDataTypes = createSelector(
 export const selectSelectableDataTypes = createSelector(
   selectAllDataTypes,
   (types): DataTypeDef[] => types.filter((dt) => dt.data_type !== CHECK_DATA_TYPE_NAME)
+)
+
+// Single source of truth for the seeded `check` column's data-type id. Used
+// by both the empty-scenario seed saga and the import-finalize saga to stamp
+// the right helios_data_type_id on the seeded column. Returns null until
+// the catalog has loaded.
+export const selectCheckDataTypeId = createSelector(
+  selectAllDataTypes,
+  (types): number | null =>
+    types.find((dt) => dt.data_type === CHECK_DATA_TYPE_NAME)?.id ?? null
 )
 
 export const selectDataTypesLoadStatus = createSelector(
@@ -132,6 +143,11 @@ export const makeSelectHeadersLoadStatus = (
 export const selectActiveProjectId = createSelector(
   selectProjectScreenDomain,
   (s) => s.activeProjectId
+)
+
+export const selectActiveProject = createSelector(
+  selectProjectScreenDomain,
+  (s) => s.activeProject
 )
 
 export const selectActiveScenarioId = createSelector(
@@ -235,10 +251,55 @@ export const selectAllRowsSelected = createSelector(
   }
 )
 
+// ColId of the seeded `check` column when present. Backend assigns a numeric
+// id at creation time, so we identify by name. Returns null on older
+// scenarios that predate the seed (which keep showing date/time as separate
+// read-only columns and bind the leftmost UI checkbox to rowSelection).
+export const selectCheckColId = createSelector(
+  selectColumns,
+  (columns): ColId | null => {
+    for (const colId of Object.keys(columns)) {
+      if (columns[colId]?.name === CHECK_COL_NAME) return colId
+    }
+    return null
+  }
+)
+
+// True iff a check column is present AND every row's check cell is "1".
+// Empty tables return false, mirroring rowSelection's all-selected semantics
+// (and matching the legacy inline computation in WeatherTable).
+export const selectAllChecked = createSelector(
+  selectActiveWeatherTable,
+  selectCheckColId,
+  (table, checkColId): boolean => {
+    if (!table || checkColId == null || table.rowOrder.length === 0) return false
+    return table.rowOrder.every((rowId) => (table.rows[rowId]?.[checkColId] ?? null) === '1')
+  }
+)
+
 export const makeSelectRowSelected = (
   rowId: RowId
 ): ((state: RootState) => boolean) =>
   createSelector(selectRowSelection, (sel) => sel[rowId] === true)
+
+// ── Mutation flow status (add column / add row) ─────────────────────────────
+
+export const selectAddColumnLoading = createSelector(
+  selectProjectScreenDomain,
+  (s) => s.addColumn.loading
+)
+export const selectAddColumnError = createSelector(
+  selectProjectScreenDomain,
+  (s) => s.addColumn.error
+)
+export const selectAddRowLoading = createSelector(
+  selectProjectScreenDomain,
+  (s) => s.addRow.loading
+)
+export const selectAddRowError = createSelector(
+  selectProjectScreenDomain,
+  (s) => s.addRow.error
+)
 
 // ── Domain export (for tests / advanced consumers) ───────────────────────────
 

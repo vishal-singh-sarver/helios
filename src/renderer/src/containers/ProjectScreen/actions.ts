@@ -7,6 +7,7 @@ import {
   LIST_SCENARIOS_REQUESTED,
   LIST_SCENARIOS_SUCCEEDED,
   LIST_SCENARIOS_FAILED,
+  LOAD_PROJECT_SUCCEEDED,
   LOAD_HEADERS_REQUESTED,
   LOAD_HEADERS_SUCCEEDED,
   LOAD_HEADERS_FAILED,
@@ -44,6 +45,7 @@ import type {
   ColumnDef,
   DataTypeDef,
   LoadedScenarioPayload,
+  ProjectMetadata,
   RowId,
   Scenario,
   UpdateCellLocalPayload,
@@ -82,6 +84,12 @@ export interface SetActiveProjectAction extends Idx {
 export interface SetActiveScenarioAction extends Idx {
   type: typeof SET_ACTIVE_SCENARIO
   payload: { scenarioId: string }
+}
+
+// Project metadata
+export interface LoadProjectSucceededAction extends Idx {
+  type: typeof LOAD_PROJECT_SUCCEEDED
+  payload: ProjectMetadata
 }
 
 // List scenarios (per project)
@@ -237,6 +245,7 @@ export type ProjectScreenAction =
   | LoadDataTypesFailedAction
   | SetActiveProjectAction
   | SetActiveScenarioAction
+  | LoadProjectSucceededAction
   | ListScenariosRequestedAction
   | ListScenariosSucceededAction
   | ListScenariosFailedAction
@@ -284,6 +293,12 @@ export const loadDataTypesFailed = (payload: string): LoadDataTypesFailedAction 
 export const setActiveProject = (projectId: string): SetActiveProjectAction => ({
   type: SET_ACTIVE_PROJECT,
   payload: { projectId }
+})
+export const loadProjectSucceeded = (
+  payload: ProjectMetadata
+): LoadProjectSucceededAction => ({
+  type: LOAD_PROJECT_SUCCEEDED,
+  payload
 })
 export const setActiveScenario = (scenarioId: string): SetActiveScenarioAction => ({
   type: SET_ACTIVE_SCENARIO,

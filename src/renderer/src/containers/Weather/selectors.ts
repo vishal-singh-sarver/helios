@@ -25,6 +25,10 @@ export const selectImporting = createSelector(selectWeatherDomain, (s) => s.impo
 export const selectImportError = createSelector(selectWeatherDomain, (s) => s.importError)
 export const selectDataset = createSelector(selectWeatherDomain, (s) => s.dataset)
 
+// Wizard open/close — held in Redux so the saga can auto-close the wizard
+// on IMPORT_FINALIZE_SUCCEEDED.
+export const selectWizardOpen = createSelector(selectWeatherDomain, (s) => s.wizardOpen)
+
 // ── Legacy factory (kept for test compatibility) ───────────────────────────────
 
 const makeSelectWeather = () => createSelector(selectWeatherDomain, (s) => s)
@@ -51,11 +55,18 @@ export {
   makeSelectRowSelected,
   makeSelectUnitSymbol,
   selectActiveHeaders,
+  selectActiveProject,
   selectActiveProjectId,
   selectActiveScenarioId,
   selectActiveWeatherTable,
+  selectAddColumnError,
+  selectAddColumnLoading,
+  selectAddRowError,
+  selectAddRowLoading,
+  selectAllChecked,
   selectAllDataTypes,
   selectAllRowsSelected,
+  selectCheckColId,
   selectColumnOrder,
   selectColumns,
   selectDataTypesById,

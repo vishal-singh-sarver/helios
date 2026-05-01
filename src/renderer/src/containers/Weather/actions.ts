@@ -11,7 +11,9 @@ import {
   IMPORT_FINALIZE_REQUESTED,
   IMPORT_FINALIZE_SUCCEEDED,
   IMPORT_FINALIZE_FAILED,
-  IMPORT_RESET
+  IMPORT_RESET,
+  IMPORT_WIZARD_OPENED,
+  IMPORT_WIZARD_CLOSED
 } from './constants'
 import type { ImportedDataset, PickedFile, WeatherStatus, WeatherStreamEvent } from './types'
 
@@ -66,6 +68,11 @@ export type ImportFinalizeFailedAction = {
 // Reset both flows (e.g. wizard closed without finishing)
 export type ImportResetAction = { type: typeof IMPORT_RESET }
 
+// Wizard open/close — held in Redux so the saga can auto-close on import
+// success and the component doesn't need a "prev importing" sentinel.
+export type ImportWizardOpenedAction = { type: typeof IMPORT_WIZARD_OPENED }
+export type ImportWizardClosedAction = { type: typeof IMPORT_WIZARD_CLOSED }
+
 export type WeatherAction =
   | FetchStatusAction
   | FetchStatusSuccessAction
@@ -80,6 +87,8 @@ export type WeatherAction =
   | ImportFinalizeSucceededAction
   | ImportFinalizeFailedAction
   | ImportResetAction
+  | ImportWizardOpenedAction
+  | ImportWizardClosedAction
 
 // ── Action creators ────────────────────────────────────────────────────────────
 
@@ -122,3 +131,10 @@ export const importFinalizeFailed = (payload: string): ImportFinalizeFailedActio
 })
 
 export const importReset = (): ImportResetAction => ({ type: IMPORT_RESET })
+
+export const importWizardOpened = (): ImportWizardOpenedAction => ({
+  type: IMPORT_WIZARD_OPENED
+})
+export const importWizardClosed = (): ImportWizardClosedAction => ({
+  type: IMPORT_WIZARD_CLOSED
+})

@@ -12,6 +12,8 @@ import messages from './messages'
 import {
   selectActiveProjectId,
   selectActiveScenarioId,
+  selectAddRowError,
+  selectAddRowLoading,
   selectColumnOrder
 } from './selectors'
 
@@ -58,13 +60,12 @@ interface AddRowsDialogProps {
 }
 
 function AddRowsDialog({ isOpen, onClose }: AddRowsDialogProps): React.JSX.Element {
-  const [loading] = React.useState(false)
-  const [error] = React.useState<string | null>(null)
-
   const dispatch = useDispatch()
   const projectId = useSelector(selectActiveProjectId)
   const scenarioId = useSelector(selectActiveScenarioId)
   const columnIds = useSelector(selectColumnOrder)
+  const loading = useSelector(selectAddRowLoading)
+  const error = useSelector(selectAddRowError)
 
   const startDateRef = React.useRef<HTMLInputElement>(null)
   const startTimeRef = React.useRef<HTMLInputElement>(null)
@@ -141,6 +142,9 @@ function AddRowsDialog({ isOpen, onClose }: AddRowsDialogProps): React.JSX.Eleme
       if (loading || !projectId || !scenarioId) return
       const numberOfRows = Number.parseInt(values.numberOfRows, 10)
       const deltaHours = Number.parseInt(values.deltaHours, 10)
+      // Don't close here — the toolbar listens for the loading→idle
+      // transition and closes only on success. The dialog stays open with
+      // the error banner on failure so the user can retry.
       dispatch(
         addRowRequested(
           projectId,
@@ -152,13 +156,19 @@ function AddRowsDialog({ isOpen, onClose }: AddRowsDialogProps): React.JSX.Eleme
           deltaHours
         )
       )
-      formik.resetForm()
-      onClose()
     }
   })
 
+  // Reset the form whenever the dialog closes — covers both user Cancel and
+  // success-driven close from the toolbar.
+  React.useEffect(() => {
+    if (!isOpen) formik.resetForm()
+    // formik is intentionally omitted; we only want isOpen edge transitions.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen])
+
   const handleClose = (): void => {
-    formik.resetForm()
+    if (loading) return
     onClose()
   }
 

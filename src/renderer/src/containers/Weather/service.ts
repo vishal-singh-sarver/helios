@@ -37,7 +37,9 @@ export interface GetProjectResponse {
     name: string
     latitude: number
     longitude: number
-    utc_offset: number
+    // Wire shape is the signed timezone string ("+05:00", "-08:00"), not
+    // a number — this header is displayed verbatim on the project screen.
+    utc_offset: string
     created_at: string
     updated_at: string
     scenarios: ScenarioWithHeaders[]

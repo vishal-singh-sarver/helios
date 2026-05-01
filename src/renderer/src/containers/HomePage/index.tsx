@@ -17,6 +17,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { navigate } from 'store/navigationReducer'
 import { useInjectReducer } from 'utils/injectReducer'
 import { useInjectSaga } from 'utils/injectSaga'
+import { STORAGE_KEYS } from 'utils/storageKeys'
 import { FormValues, INITIAL_VALUES, SidebarItem, TOOLBAR_ITEMS } from '../../types/project'
 import { createProject, deleteProject, fetchRecentProjects, resetCreateProject } from './actions'
 import messages from './messages'
@@ -204,7 +205,7 @@ export function HomePage(): React.JSX.Element {
             onCreateNew={openNewProjectDialog}
             onRowClick={(projectId) => {
               try {
-                localStorage.setItem('helios:activeProjectId', projectId)
+                localStorage.setItem(STORAGE_KEYS.activeProjectId, projectId)
               } catch {
                 /* storage disabled — navigation still proceeds */
               }

@@ -12,6 +12,11 @@ export const LIST_SCENARIOS_REQUESTED = 'app/ProjectScreen/LIST_SCENARIOS_REQUES
 export const LIST_SCENARIOS_SUCCEEDED = 'app/ProjectScreen/LIST_SCENARIOS_SUCCEEDED' as const
 export const LIST_SCENARIOS_FAILED = 'app/ProjectScreen/LIST_SCENARIOS_FAILED' as const
 
+// Project metadata (id/name/latitude/longitude/utc_offset). Populated
+// from the same GET /project/{id} response that drives LIST_SCENARIOS,
+// dispatched separately so reducers handling each slice stay focused.
+export const LOAD_PROJECT_SUCCEEDED = 'app/ProjectScreen/LOAD_PROJECT_SUCCEEDED' as const
+
 // Weather headers (per scenario) — raw WeatherHeader[] from
 // /weather_data_header. Stored separately from the joined ColumnDefs so
 // other features can read header metadata (status, display_order, etc.)

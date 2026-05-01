@@ -1,4 +1,4 @@
-import { all, call, put, select, take, takeEvery, takeLatest } from 'redux-saga/effects'
+import { all, call, put, race, select, take, takeEvery, takeLatest } from 'redux-saga/effects'
 import {
   addColumnRequest,
   addColumnsRequest,
@@ -27,14 +27,17 @@ import {
   LOAD_DATA_TYPES_FAILED,
   LOAD_DATA_TYPES_REQUESTED,
   LOAD_DATA_TYPES_SUCCEEDED,
+  LOAD_SCENARIO_FAILED,
   LOAD_SCENARIO_REQUESTED,
+  LOAD_SCENARIO_SUCCEEDED,
   SEED_DEFAULT_COLUMNS_REQUESTED,
   UPDATE_CELL_LOCAL,
   UPDATE_COLUMN_REQUESTED
 } from './constants'
+import { STORAGE_KEYS } from 'utils/storageKeys'
 import {
   selectActiveWeatherTable,
-  selectAllDataTypes,
+  selectCheckDataTypeId,
   selectDataTypesLoadStatus
 } from './selectors'
 import type {
@@ -48,14 +51,12 @@ import type {
 } from './actions'
 import {
   CHECK_COL_NAME,
-  CHECK_DATA_TYPE_NAME,
   DATE_COL_ID,
   DATE_TIME_COL_NAME,
   TIME_COL_ID,
   type CellValue,
   type ColId,
   type ColumnDef,
-  type DataTypeDef,
   type LoadStatus,
   type WeatherHeader,
   type WeatherTable
@@ -79,18 +80,29 @@ function* loadDataTypesWorker(): Generator {
 // Chains LOAD_SCENARIO_REQUESTED so the table populates without a second
 // round-trip from the component.
 
-const SCENARIO_ID_STORAGE_KEY = 'helios:activeScenarioId'
-
 function* listScenariosWorker(action: ListScenariosRequestedAction): Generator {
   const { projectId } = action.payload
   try {
     const res = (yield call(getProjectRequest, projectId)) as GetProjectResponse
-    const scenarios = res.project.scenarios
+    const project = res.project
+    // Project metadata (latitude/longitude/utc_offset) drives the header
+    // inputs on the project screen — dispatch it before the scenarios list
+    // so the header has data to render even if scenarios is empty.
+    yield put(
+      actions.loadProjectSucceeded({
+        id: project.id,
+        name: project.name,
+        latitude: project.latitude,
+        longitude: project.longitude,
+        utc_offset: project.utc_offset
+      })
+    )
+    const scenarios = project.scenarios
     yield put(actions.listScenariosSucceeded(projectId, scenarios))
 
     const first = scenarios[0]
     if (!first) return
-    yield call([localStorage, 'setItem'], SCENARIO_ID_STORAGE_KEY, first.id)
+    yield call([localStorage, 'setItem'], STORAGE_KEYS.activeScenarioId, first.id)
     yield put(actions.setActiveScenario(first.id))
     yield put(actions.loadScenarioRequested(projectId, first.id))
   } catch (err) {
@@ -205,6 +217,25 @@ function* loadScenarioWorker(action: LoadScenarioRequestedAction): Generator {
 // LOAD_SCENARIO_REQUESTED so the table picks up the new headers. On failure
 // we do *not* re-enter — that would loop forever against a persistent error.
 
+// Wait for LOAD_SCENARIO_SUCCEEDED / FAILED filtered to this scenario.
+// Lets a saga that triggers a refresh block until the table is actually
+// populated (so its own _SUCCEEDED action can semantically mean "data is
+// visible"). Returns the load error string on failure, null on success.
+function* waitForScenarioLoad(scenarioId: string): Generator<unknown, string | null> {
+  const matchSucceeded = (a: { type: string; payload?: { scenarioId?: string } }): boolean =>
+    a.type === LOAD_SCENARIO_SUCCEEDED && a.payload?.scenarioId === scenarioId
+  const matchFailed = (a: { type: string; payload?: { scenarioId?: string } }): boolean =>
+    a.type === LOAD_SCENARIO_FAILED && a.payload?.scenarioId === scenarioId
+  const result = (yield race({
+    succeeded: take(matchSucceeded),
+    failed: take(matchFailed)
+  })) as {
+    succeeded?: { payload: { scenarioId: string } }
+    failed?: { payload: { scenarioId: string; error: string } }
+  }
+  return result.failed?.payload.error ?? null
+}
+
 function* seedDefaultColumnsWorker(
   action: SeedDefaultColumnsRequestedAction
 ): Generator {
@@ -218,9 +249,7 @@ function* seedDefaultColumnsWorker(
     if (status === 'idle' || status === 'loading') {
       yield take([LOAD_DATA_TYPES_SUCCEEDED, LOAD_DATA_TYPES_FAILED])
     }
-    const dataTypes = (yield select(selectAllDataTypes)) as DataTypeDef[]
-    const checkDataTypeId =
-      dataTypes.find((dt) => dt.data_type === CHECK_DATA_TYPE_NAME)?.id ?? null
+    const checkDataTypeId = (yield select(selectCheckDataTypeId)) as number | null
 
     yield call(addColumnsRequest, projectId, scenarioId, [
       {
@@ -231,8 +260,16 @@ function* seedDefaultColumnsWorker(
       },
       { name: DATE_TIME_COL_NAME, dataTypeId: null, dataUnitId: null, values: [] }
     ])
-    yield put(actions.seedDefaultColumnsSucceeded(projectId, scenarioId))
+    // Re-enter LOAD so the table picks up the seeded headers, and only
+    // dispatch _SUCCEEDED once the load completes — consumers waiting on the
+    // success action can then assume the table is populated.
     yield put(actions.loadScenarioRequested(projectId, scenarioId))
+    const loadError = (yield call(waitForScenarioLoad, scenarioId)) as string | null
+    if (loadError != null) {
+      yield put(actions.seedDefaultColumnsFailed(projectId, scenarioId, loadError))
+      return
+    }
+    yield put(actions.seedDefaultColumnsSucceeded(projectId, scenarioId))
   } catch (err) {
     yield put(
       actions.seedDefaultColumnsFailed(projectId, scenarioId, (err as Error).message)
@@ -255,6 +292,10 @@ function pad2(n: number): string {
   return n < 10 ? `0${n}` : String(n)
 }
 
+// Returns null when (startDate, startTime) doesn't parse — caller fails the
+// saga rather than feeding NaN through `Date.UTC` and producing rows like
+// "NaN-NaN-NaN". Component validation is best-effort (autofill, paste,
+// programmatic dispatch can all bypass it), so the saga must re-validate.
 function buildRowsForAdd(
   startDate: string,
   startTime: string,
@@ -262,11 +303,21 @@ function buildRowsForAdd(
   numberOfRows: number,
   columnIds: ColId[],
   columns: Record<ColId, ColumnDef>
-): Array<Record<string, string | null>> {
+): Array<Record<string, string | null>> | null {
   // YYYY-MM-DD + HH:mm parsed in UTC so addition stays linear (no DST shifts).
-  const [y, mo, d] = startDate.split('-').map((v) => Number.parseInt(v, 10))
-  const [h, mi] = startTime.split(':').map((v) => Number.parseInt(v, 10))
+  const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(startDate)
+  const timeMatch = /^(\d{2}):(\d{2})$/.exec(startTime)
+  if (!dateMatch || !timeMatch) return null
+  const [, ys, mos, ds] = dateMatch
+  const [, hs, mis] = timeMatch
+  const y = Number.parseInt(ys, 10)
+  const mo = Number.parseInt(mos, 10)
+  const d = Number.parseInt(ds, 10)
+  const h = Number.parseInt(hs, 10)
+  const mi = Number.parseInt(mis, 10)
   const baseMs = Date.UTC(y, mo - 1, d, h, mi, 0, 0)
+  if (!Number.isFinite(baseMs)) return null
+  if (!Number.isFinite(deltaHours) || !Number.isFinite(numberOfRows)) return null
 
   const out: Array<Record<string, string | null>> = []
   for (let i = 0; i < numberOfRows; i++) {
@@ -315,10 +366,28 @@ function* addRowWorker(action: AddRowRequestedAction): Generator {
       columnIds,
       columns
     )
+    if (rows === null) {
+      yield put(
+        actions.addRowFailed(
+          projectId,
+          scenarioId,
+          'Invalid start date / time / delta — could not build rows.'
+        )
+      )
+      return
+    }
     ;(yield call(addRowsRequest, projectId, scenarioId, { rows })) as AddRowsResponse
 
-    yield put(actions.addRowSucceeded(projectId, scenarioId))
+    // Re-enter LOAD so the table picks up the new rows, and only dispatch
+    // _SUCCEEDED once the load completes — so a UI consumer can treat
+    // _SUCCEEDED as "rows are visible now".
     yield put(actions.loadScenarioRequested(projectId, scenarioId))
+    const loadError = (yield call(waitForScenarioLoad, scenarioId)) as string | null
+    if (loadError != null) {
+      yield put(actions.addRowFailed(projectId, scenarioId, loadError))
+      return
+    }
+    yield put(actions.addRowSucceeded(projectId, scenarioId))
   } catch (err) {
     yield put(actions.addRowFailed(projectId, scenarioId, (err as Error).message))
   }

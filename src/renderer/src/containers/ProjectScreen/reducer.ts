@@ -10,6 +10,7 @@ import {
   LIST_SCENARIOS_FAILED,
   LIST_SCENARIOS_REQUESTED,
   LIST_SCENARIOS_SUCCEEDED,
+  LOAD_PROJECT_SUCCEEDED,
   LOAD_DATA_TYPES_FAILED,
   LOAD_DATA_TYPES_REQUESTED,
   LOAD_DATA_TYPES_SUCCEEDED,
@@ -39,6 +40,7 @@ import {
   emptyWeatherTable,
   type DataTypeDef,
   type LoadStatus,
+  type ProjectMetadata,
   type RowId,
   type Scenario,
   type WeatherHeader,
@@ -98,13 +100,27 @@ export interface HeadersSlice {
   byScenario: Record<string, HeadersByScenarioEntry>
 }
 
+// Tracks the in-flight state of one-off mutation flows (add column, add
+// row). UI reads `loading` to show a spinner / disable the submit button
+// and `error` to render a banner. `error === null` means "no failure as of
+// the most recent attempt" — including before the first attempt.
+export interface RequestStatus {
+  loading: boolean
+  error: string | null
+}
+
 export interface ProjectScreenState {
   catalog: CatalogSlice
   scenarios: ScenariosSlice
   headers: HeadersSlice
   activeProjectId: string | null
   activeScenarioId: string | null
+  // Subset of GET /project/{id}, populated alongside scenarios. null until
+  // the response lands, and reset to null when the active project changes.
+  activeProject: ProjectMetadata | null
   byScenario: Record<string, WeatherTable>
+  addColumn: RequestStatus
+  addRow: RequestStatus
 }
 
 const emptyDataTypesSlice = (): DataTypesSlice => ({
@@ -128,6 +144,8 @@ const emptyHeadersEntry = (): HeadersByScenarioEntry => ({
   loadError: null
 })
 
+const idleStatus = (): RequestStatus => ({ loading: false, error: null })
+
 export const initialState: ProjectScreenState = {
   catalog: {
     dataTypes: emptyDataTypesSlice()
@@ -136,7 +154,10 @@ export const initialState: ProjectScreenState = {
   headers: { byScenario: {} },
   activeProjectId: null,
   activeScenarioId: null,
-  byScenario: {}
+  activeProject: null,
+  byScenario: {},
+  addColumn: idleStatus(),
+  addRow: idleStatus()
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -206,11 +227,18 @@ const projectScreenReducer = (
         // Switching projects invalidates the active scenario — drop it so the
         // table renders empty until the saga loads the new project's scenarios
         // (otherwise selectActiveWeatherTable keeps returning the prior
-        // scenario's cached rows).
+        // scenario's cached rows). Same idea for activeProject metadata: the
+        // header inputs should not show stale lat/long while the new project
+        // is in flight.
         if (draft.activeProjectId !== action.payload.projectId) {
           draft.activeScenarioId = null
+          draft.activeProject = null
         }
         draft.activeProjectId = action.payload.projectId
+        break
+
+      case LOAD_PROJECT_SUCCEEDED:
+        draft.activeProject = action.payload
         break
 
       case SET_ACTIVE_SCENARIO:
@@ -328,17 +356,31 @@ const projectScreenReducer = (
       // on success. No append branch in the reducer.
 
       case ADD_ROW_REQUESTED:
+        draft.addRow.loading = true
+        draft.addRow.error = null
+        break
+
       case ADD_ROW_SUCCEEDED:
+        draft.addRow.loading = false
+        draft.addRow.error = null
+        break
+
       case ADD_ROW_FAILED:
+        draft.addRow.loading = false
+        draft.addRow.error = action.payload.error
         break
 
       // ── Add column ─────────────────────────────────────────────────────────
 
       case ADD_COLUMN_REQUESTED:
+        draft.addColumn.loading = true
+        draft.addColumn.error = null
         break
 
       case ADD_COLUMN_SUCCEEDED: {
         const { scenarioId, column, defaultValue } = action.payload
+        draft.addColumn.loading = false
+        draft.addColumn.error = null
         const table = draft.byScenario[scenarioId]
         if (!table) break
 
@@ -354,6 +396,8 @@ const projectScreenReducer = (
       }
 
       case ADD_COLUMN_FAILED:
+        draft.addColumn.loading = false
+        draft.addColumn.error = action.payload.error
         break
 
       // ── Update column header (PATCH) ───────────────────────────────────────
