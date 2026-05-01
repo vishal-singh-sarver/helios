@@ -37,9 +37,12 @@ import {
 import { STORAGE_KEYS } from 'utils/storageKeys'
 import {
   selectActiveWeatherTable,
+  selectAllDataTypes,
+  selectByScenario,
   selectCheckDataTypeId,
   selectDataTypesLoadStatus
 } from './selectors'
+import { validateCellValue } from 'containers/Weather/validation'
 import type {
   AddColumnRequestedAction,
   AddRowRequestedAction,
@@ -57,6 +60,7 @@ import {
   type CellValue,
   type ColId,
   type ColumnDef,
+  type DataTypeDef,
   type LoadStatus,
   type WeatherHeader,
   type WeatherTable
@@ -203,10 +207,37 @@ function* loadScenarioWorker(action: LoadScenarioRequestedAction): Generator {
         rows
       })
     )
+
+    // Re-hydrate per-cell validation errors for the freshly loaded table.
+    // Validation state lives in-memory only (Redux), so on app restart the
+    // saved column metadata + cell values come back from the backend but
+    // any prior errors are gone. Walk every column with a dataTypeId +
+    // unitId and re-run validation against the catalog.
+    yield call(revalidateScenarioColumns, scenarioId)
   } catch (err) {
     yield put(
       actions.loadScenarioFailed(projectId, scenarioId, (err as Error).message)
     )
+  }
+}
+
+// Block on the catalog if it's still in flight, then validate every cell
+// in every column whose data type + unit are set. Bails silently if the
+// catalog failed to load — the user just won't see range errors until
+// they re-edit a cell or re-pick the unit.
+function* revalidateScenarioColumns(scenarioId: string): Generator {
+  const status = (yield select(selectDataTypesLoadStatus)) as LoadStatus
+  if (status === 'idle' || status === 'loading') {
+    yield take([LOAD_DATA_TYPES_SUCCEEDED, LOAD_DATA_TYPES_FAILED])
+  }
+  const byScenario = (yield select(selectByScenario)) as Record<string, WeatherTable>
+  const table = byScenario[scenarioId]
+  if (!table) return
+
+  for (const colId of table.columnOrder) {
+    const col = table.columns[colId]
+    if (!col || col.dataTypeId == null || col.unitId == null) continue
+    yield call(revalidateColumn, scenarioId, colId)
   }
 }
 
@@ -478,6 +509,33 @@ function* updateColumnWorker(action: UpdateColumnRequestedAction): Generator {
       )
     )
   }
+
+  // Re-validate AFTER the patch settles — on success, state reflects the
+  // new dataTypeId / unitId; on failure, the reducer has rolled back to
+  // `previous`. Either way, validation errors mirror the persisted state.
+  // Skipped when only `name` changed since name doesn't affect ranges.
+  if (patch.dataTypeId !== undefined || patch.unitId !== undefined) {
+    yield call(revalidateColumn, scenarioId, colId)
+  }
+}
+
+// Walk every row of one column, validating against the catalog's per-unit
+// range. Bails when the catalog hasn't loaded or the column has been
+// removed. Same shape used by loadScenarioWorker (via revalidateScenarioColumns)
+// and updateColumnWorker.
+function* revalidateColumn(scenarioId: string, colId: ColId): Generator {
+  const dataTypes = (yield select(selectAllDataTypes)) as DataTypeDef[]
+  if (dataTypes.length === 0) return
+  const byScenario = (yield select(selectByScenario)) as Record<string, WeatherTable>
+  const table = byScenario[scenarioId]
+  const col = table?.columns[colId]
+  if (!table || !col) return
+  const errors: Record<string, string | null> = {}
+  for (const rowId of table.rowOrder) {
+    const raw = table.rows[rowId]?.[colId]
+    errors[rowId] = validateCellValue(raw ?? '', { col, dataTypes })
+  }
+  yield put(actions.setColumnValidationErrors(scenarioId, colId, errors))
 }
 
 // ── Cell edit ────────────────────────────────────────────────────────────────

@@ -60,7 +60,19 @@ function DataTypeUnitPicker({
       : 'Data Type'
 
   const pickDataType = (dtId: number): void => {
-    if (dtId !== col.dataTypeId) onPatch({ dataTypeId: dtId })
+    if (dtId !== col.dataTypeId) {
+      // The currently-selected unit belongs to the previous data type, so
+      // we must replace it in the same patch — the backend rejects mixed
+      // pairs like {data_type: Y, unit_id: <unit-of-X>} and treats null as
+      // "leave alone", so we can't clear it. Pick the new type's base unit
+      // (or the first one if no base is flagged) as a sensible default.
+      // The picker advances to the unit step so the user can override.
+      const newType = dataTypes.find((dt) => dt.id === dtId)
+      const baseUnit = newType?.units.find((u) => u.is_base) ?? newType?.units[0]
+      const patch: UpdateColumnPatch = { dataTypeId: dtId }
+      if (baseUnit) patch.unitId = baseUnit.id
+      onPatch(patch)
+    }
     setView('unit')
   }
 

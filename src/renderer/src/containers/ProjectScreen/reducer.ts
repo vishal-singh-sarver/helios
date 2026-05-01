@@ -23,6 +23,7 @@ import {
   SET_ACTIVE_PROJECT,
   SET_ACTIVE_SCENARIO,
   SET_ALL_ROWS_SELECTION,
+  SET_COLUMN_VALIDATION_ERRORS,
   SET_ROW_SELECTION,
   UPDATE_CELL_FAILED,
   UPDATE_CELL_LOCAL,
@@ -474,6 +475,31 @@ const projectScreenReducer = (
         const table = draft.byScenario[scenarioId]
         if (!table) break
         table.cellSync[cellKey(rowId, colId)] = 'error'
+        break
+      }
+
+      // ── Bulk per-column validation ─────────────────────────────────────────
+      //
+      // Fired by the saga after a column's data type or unit changes. Each
+      // entry in `errors` is the validation result for one row in that
+      // column: a string sets the error, `null` clears any prior error.
+      // Cell values themselves are not touched.
+
+      case SET_COLUMN_VALIDATION_ERRORS: {
+        const { scenarioId, colId, errors } = action.payload
+        const table = draft.byScenario[scenarioId]
+        if (!table) break
+        for (const rowId in errors) {
+          const msg = errors[rowId]
+          if (msg == null) {
+            if (table.validationErrors[rowId]) {
+              delete table.validationErrors[rowId][colId]
+            }
+          } else {
+            if (!table.validationErrors[rowId]) table.validationErrors[rowId] = {}
+            table.validationErrors[rowId][colId] = msg
+          }
+        }
         break
       }
 

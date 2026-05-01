@@ -33,6 +33,7 @@ import {
   UPDATE_CELL_REQUESTED,
   UPDATE_CELL_SUCCEEDED,
   UPDATE_CELL_FAILED,
+  SET_COLUMN_VALIDATION_ERRORS,
   SET_ROW_SELECTION,
   SET_ALL_ROWS_SELECTION
 } from './constants'
@@ -229,6 +230,18 @@ export interface UpdateCellFailedAction extends Idx {
   }
 }
 
+// Bulk per-column validation. `errors` carries one entry per row in the
+// affected column: a string sets that cell's validationError, `null` clears
+// any prior error. Reducer applies it without touching cell values.
+export interface SetColumnValidationErrorsAction extends Idx {
+  type: typeof SET_COLUMN_VALIDATION_ERRORS
+  payload: {
+    scenarioId: string
+    colId: ColId
+    errors: Record<RowId, string | null>
+  }
+}
+
 // Selection
 export interface SetRowSelectionAction extends Idx {
   type: typeof SET_ROW_SELECTION
@@ -274,6 +287,7 @@ export type ProjectScreenAction =
   | UpdateCellRequestedAction
   | UpdateCellSucceededAction
   | UpdateCellFailedAction
+  | SetColumnValidationErrorsAction
   | SetRowSelectionAction
   | SetAllRowsSelectionAction
 
@@ -531,6 +545,15 @@ export const updateCellFailed = (
 ): UpdateCellFailedAction => ({
   type: UPDATE_CELL_FAILED,
   payload: { projectId, scenarioId, rowId, colId, error }
+})
+
+export const setColumnValidationErrors = (
+  scenarioId: string,
+  colId: ColId,
+  errors: Record<RowId, string | null>
+): SetColumnValidationErrorsAction => ({
+  type: SET_COLUMN_VALIDATION_ERRORS,
+  payload: { scenarioId, colId, errors }
 })
 
 export const setRowSelection = (

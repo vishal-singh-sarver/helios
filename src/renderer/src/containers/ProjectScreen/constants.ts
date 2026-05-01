@@ -70,6 +70,12 @@ export const UPDATE_CELL_REQUESTED = 'app/ProjectScreen/UPDATE_CELL_REQUESTED' a
 export const UPDATE_CELL_SUCCEEDED = 'app/ProjectScreen/UPDATE_CELL_SUCCEEDED' as const
 export const UPDATE_CELL_FAILED = 'app/ProjectScreen/UPDATE_CELL_FAILED' as const
 
+// Bulk per-column validation. Dispatched after a column's data type or
+// unit changes so every cell in that column is re-checked against the new
+// range (covers manually-built columns and upload-imported columns alike).
+export const SET_COLUMN_VALIDATION_ERRORS =
+  'app/ProjectScreen/SET_COLUMN_VALIDATION_ERRORS' as const
+
 // Selection
 export const SET_ROW_SELECTION = 'app/ProjectScreen/SET_ROW_SELECTION' as const
 export const SET_ALL_ROWS_SELECTION = 'app/ProjectScreen/SET_ALL_ROWS_SELECTION' as const

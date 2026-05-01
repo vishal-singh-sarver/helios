@@ -19,6 +19,7 @@ import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import CellInput from './CellInput'
 import HeaderEditor from './HeaderEditor'
+import { validateCellValue } from './validation'
 import {
   selectActiveProjectId,
   selectActiveScenarioId,
@@ -87,6 +88,10 @@ function WeatherTable(): React.JSX.Element {
     originalValue: string
   ): void => {
     if (!projectId || !scenarioId || newValue === originalValue) return
+    const col = columns[colId]
+    const validationError = col
+      ? validateCellValue(newValue, { col, dataTypes })
+      : null
     dispatch(
       updateCellLocal({
         projectId,
@@ -94,7 +99,7 @@ function WeatherTable(): React.JSX.Element {
         rowId,
         colId,
         value: newValue,
-        validationError: null
+        validationError
       })
     )
   }
