@@ -18,9 +18,11 @@ import {
 import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import CellInput from './CellInput'
+import DateTimeHeader, { type DateFormat } from './DateTimeHeader'
 import HeaderEditor from './HeaderEditor'
 import { validateCellValue } from './validation'
 import {
+  selectActiveProject,
   selectActiveProjectId,
   selectActiveScenarioId,
   selectActiveWeatherTable,
@@ -47,14 +49,37 @@ function isBackendManagedCol(col: ColumnDef): boolean {
 // "2026-02-26" + "10:00:00" → "02/26/2026 10:00". Returns "" when either
 // half is missing so the merged cell renders blank, matching how unfilled
 // date/time cells render today.
-function formatDateTime(date: CellValue, time: CellValue): string {
+function formatDateTime(
+  date: CellValue,
+  time: CellValue,
+  format: DateFormat,
+  utcOffset: string
+): string {
   if (date == null || time == null) return ''
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date)
   if (!m) return ''
   const [, y, mo, d] = m
   const hhmm = time.slice(0, 5)
   if (!/^\d{2}:\d{2}$/.test(hhmm)) return ''
-  return `${mo}/${d}/${y} ${hhmm}`
+  const ss = /^\d{2}:\d{2}:(\d{2})/.exec(time)?.[1] ?? '00'
+  switch (format) {
+    case 'MM/DD/YYYY HH:MM':
+      return `${mo}/${d}/${y} ${hhmm}`
+    case 'DD/MM/YYYY HH:MM':
+      return `${d}/${mo}/${y} ${hhmm}`
+    case 'MM-DD-YYYY HH:MM':
+      return `${mo}-${d}-${y} ${hhmm}`
+    case 'DD-MM-YYYY HH:MM':
+      return `${d}-${mo}-${y} ${hhmm}`
+    case 'YYYY-MM-DD HH:MM':
+      return `${y}-${mo}-${d} ${hhmm}`
+    case 'YYYYMMDDHH':
+      return `${y}${mo}${d}${hhmm.slice(0, 2)}`
+    case 'YYYY-MM-DDTHH:MM:SS-HH:MM':
+      return `${y}-${mo}-${d}T${hhmm}:${ss}${utcOffset || '+00:00'}`
+    case 'YYYY-MM-DDTHH:MM:SSZ':
+      return `${y}-${mo}-${d}T${hhmm}:${ss}`
+  }
 }
 
 function WeatherTable(): React.JSX.Element {
@@ -70,6 +95,8 @@ function WeatherTable(): React.JSX.Element {
   const checkColId = useSelector(selectCheckColId)
   const table = useSelector(selectActiveWeatherTable)
   const dataTypes = useSelector(selectSelectableDataTypes)
+  const activeProject = useSelector(selectActiveProject)
+  const [dateFormat, setDateFormat] = React.useState<DateFormat>('MM/DD/YYYY HH:MM')
 
   const toggleAll = (): void => {
     if (!scenarioId) return
@@ -176,12 +203,18 @@ function WeatherTable(): React.JSX.Element {
     }
   }
 
+  // Vertical divider rendered as an absolutely-positioned pseudo-element so
+  // the line can be shorter than the header cell — centered, ~60% of the
+  // cell height, 2px wide. The cell needs `relative` to anchor it.
+  const headerDivider =
+    "relative after:absolute after:right-0 after:top-[20%] after:bottom-[20%] after:w-0.5 after:bg-white/40 after:content-['']"
+
   return (
     <div className="scrollbar-custom flex-1 overflow-auto bg-dark">
       <table className="w-full border-collapse text-sm text-neutral-200">
         <thead className="bg-neutral-900">
           <tr className="border-b border-app-border">
-            <th className="w-12 border-r border-app-border px-3 py-2 text-left align-middle">
+            <th className={`w-12 ${headerDivider} px-3 py-2 text-left align-middle`}>
               <input
                 type="checkbox"
                 aria-label="Select all rows"
@@ -204,7 +237,7 @@ function WeatherTable(): React.JSX.Element {
               return (
                 <th
                   key={colId}
-                  className={`${widthCls} ${alignCls} border-r border-app-border px-3 py-2 text-left font-normal text-neutral-300`}
+                  className={`${widthCls} ${alignCls} ${headerDivider} px-3 py-2 text-left font-normal text-neutral-300`}
                 >
                   {managed ? (
                     <HeaderEditor
@@ -212,13 +245,15 @@ function WeatherTable(): React.JSX.Element {
                       dataTypes={dataTypes}
                       onPatch={(patch) => dispatchHeaderPatch(col, patch)}
                     />
+                  ) : isDateTime ? (
+                    <DateTimeHeader value={dateFormat} onChange={setDateFormat} />
                   ) : (
                     <span className="block truncate">{col.name}</span>
                   )}
                 </th>
               )
             })}
-            <th className="w-20 min-w-20 max-w-20 border-r border-app-border px-3 py-2 text-left align-middle font-normal text-neutral-300">
+            <th className={`w-20 min-w-20 max-w-20 ${headerDivider} px-3 py-2 text-left align-middle font-normal text-neutral-300`}>
               Action
             </th>
             <th aria-hidden className="w-auto" />
@@ -252,7 +287,12 @@ function WeatherTable(): React.JSX.Element {
                   const value: CellValue = row[colId] ?? null
                   const isDateTime = colId === dateTimeColId
                   const display = isDateTime
-                    ? formatDateTime(row[DATE_COL_ID] ?? null, row[TIME_COL_ID] ?? null)
+                    ? formatDateTime(
+                        row[DATE_COL_ID] ?? null,
+                        row[TIME_COL_ID] ?? null,
+                        dateFormat,
+                        activeProject?.utc_offset ?? ''
+                      )
                     : (value ?? '')
                   const readOnly = isReservedColId(colId) || isDateTime
                   const widthCls = isDateTime
