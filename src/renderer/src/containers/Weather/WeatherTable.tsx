@@ -326,10 +326,24 @@ function WeatherTable(): React.JSX.Element {
                       : readOnly
                         ? 'w-32 min-w-32 max-w-32'
                         : 'w-[162px] min-w-[162px] max-w-[162px]'
+                    // Error indicator uses `outline` (not `border`) so it
+                    // doesn't get eaten by `border-collapse` at the shared
+                    // edge with a left/right neighbor. `-outline-offset-1`
+                    // pulls it 1px inside the cell so it sits exactly where
+                    // a 1px border would render visually. The cell still
+                    // renders its `border-r` column separator underneath —
+                    // they coexist because outline is a separate paint layer.
+                    // Read-only cells can never carry a validation error.
+                    const cellError = readOnly
+                      ? null
+                      : (table?.validationErrors?.[rowId]?.[colId] ?? null)
+                    const borderCls = cellError
+                      ? 'border-r border-app-border outline outline-1 -outline-offset-1 outline-[#F04438]'
+                      : 'border-r border-app-border'
                     return (
                       <td
                         key={colId}
-                        className={`${widthCls} h-9 border-r border-app-border`}
+                        className={`${widthCls} h-9 ${borderCls}`}
                       >
                         {readOnly ? (
                           <span className="block truncate px-3">{display}</span>

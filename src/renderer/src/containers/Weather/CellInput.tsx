@@ -20,13 +20,10 @@ function CellInput({ rowId, colId, value, onCommit }: CellInputProps): React.JSX
   const selectError = React.useMemo(() => makeSelectCellError(rowId, colId), [rowId, colId])
   const error = useSelector(selectError)
 
-  // The error indicator reuses the same ring treatment as the focus state
-  // — only the color and the always-on flag change. Focus state (no error):
-  // 2px inset blue ring on focus. Error state: 2px inset red ring (#F04438
-  // from the Figma "Border error" token), shown unconditionally.
-  const inputCls = error
-    ? 'h-full w-full bg-transparent px-4 pr-8 outline-none ring-2 ring-inset ring-[#F04438]'
-    : 'h-full w-full bg-transparent px-4 outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500/60'
+  // Error visual is the cell <td>'s red border (rendered by WeatherTable);
+  // here we only reserve right-side room for the info icon when in error
+  // and keep the blue focus ring for the editing state.
+  const inputCls = `h-full w-full bg-transparent px-4 ${error ? 'pr-8' : ''} outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500/60`
 
   return (
     <div className="relative flex h-full w-full items-center">

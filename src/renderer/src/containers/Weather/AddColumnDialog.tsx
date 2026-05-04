@@ -28,7 +28,9 @@ const INITIAL_VALUES: AddColumnValues = {
   parameterName: '',
   dataTypeId: '',
   unitId: '',
-  defaultValue: ''
+  // Pre-fill "0" so existing rows get a sensible default in the new column
+  // without the user having to type it. Cleared/changed values are honored.
+  defaultValue: '0'
 }
 
 interface AddColumnDialogProps {
