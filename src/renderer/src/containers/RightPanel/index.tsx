@@ -16,11 +16,11 @@ export function RightPanel(): React.JSX.Element {
   const [collapsed, setCollapsed] = React.useState(false)
   const toggle = (): void => setCollapsed((prev) => !prev)
 
-  const widthClass = collapsed ? 'w-8' : 'w-[280px]'
+  const widthClass = collapsed ? 'w-8' : 'w-[340px]'
 
   return (
     <aside
-      className={`${widthClass} shrink-0 overflow-hidden rounded-lg border border-app-border bg-panel/20 transition-[width] duration-150`}
+      className={`${widthClass} shrink-0 overflow-hidden rounded-lg bg-[#202020] transition-[width] duration-150`}
     >
       <div className="flex items-center justify-start p-1">
         <CollapseButton collapsed={collapsed} side="right" onToggle={toggle} />

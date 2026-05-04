@@ -12,6 +12,9 @@ interface TooltipProps {
    * default `?`-circle styling. Pass this to position the trigger
    * (e.g. absolute placement inside a cell) or restyle it. */
   className?: string
+  /** Color of the tooltip text. Defaults to `#e5e5e5` (off-white). Set to
+   * an error color (e.g. `#F04438`) for validation tooltips. */
+  textColor?: string
 }
 
 const DEFAULT_TRIGGER_CLS =
@@ -22,7 +25,8 @@ function Tooltip({
   ariaLabel,
   place = 'top',
   children,
-  className
+  className,
+  textColor = '#e5e5e5'
 }: TooltipProps): React.JSX.Element {
   const id = React.useId()
 
@@ -44,7 +48,7 @@ function Tooltip({
         border="1px solid #2a2d35"
         style={{
           backgroundColor: '#2b2d33',
-          color: '#e5e5e5',
+          color: textColor,
           fontSize: '11px',
           lineHeight: '16px',
           maxWidth: '224px',

@@ -251,7 +251,7 @@ function WeatherTable(): React.JSX.Element {
                 const widthCls = isDateTime
                   ? 'w-[269px] min-w-[269px] max-w-[269px]'
                   : managed
-                    ? 'w-40 min-w-40 max-w-40'
+                    ? 'w-[162px] min-w-[162px] max-w-[162px]'
                     : 'w-32 min-w-32 max-w-32'
                 const alignCls = managed ? 'align-top' : 'align-middle'
                 return (
@@ -325,23 +325,11 @@ function WeatherTable(): React.JSX.Element {
                       ? 'w-[269px] min-w-[269px] max-w-[269px]'
                       : readOnly
                         ? 'w-32 min-w-32 max-w-32'
-                        : 'w-40 min-w-40 max-w-40'
-                    // Error string lives in `validationErrors` and is set by both
-                    // the local validator (UPDATE_CELL_LOCAL) and the backend
-                    // failure path (UPDATE_CELL_FAILED). Read-only cells can't
-                    // hold an error.
-                    const cellError = readOnly
-                      ? null
-                      : (table?.validationErrors?.[rowId]?.[colId] ?? null)
-                    // Spec: 1px solid border on all sides, color #F04438
-                    // (Figma "Border error" token).
-                    const borderCls = cellError
-                      ? 'border border-[#F04438]'
-                      : 'border-r border-app-border'
+                        : 'w-[162px] min-w-[162px] max-w-[162px]'
                     return (
                       <td
                         key={colId}
-                        className={`${widthCls} h-9 ${borderCls}`}
+                        className={`${widthCls} h-9 border-r border-app-border`}
                       >
                         {readOnly ? (
                           <span className="block truncate px-3">{display}</span>

@@ -20,12 +20,13 @@ function CellInput({ rowId, colId, value, onCommit }: CellInputProps): React.JSX
   const selectError = React.useMemo(() => makeSelectCellError(rowId, colId), [rowId, colId])
   const error = useSelector(selectError)
 
-  // On error: persistent red ring around the cell + reserved right-side
-  // room (pr-8) for the info icon. Text color stays normal so the value
-  // remains readable.
+  // The error indicator reuses the same ring treatment as the focus state
+  // — only the color and the always-on flag change. Focus state (no error):
+  // 2px inset blue ring on focus. Error state: 2px inset red ring (#F04438
+  // from the Figma "Border error" token), shown unconditionally.
   const inputCls = error
-    ? 'h-full w-full bg-transparent px-3 pr-8 outline-none ring-2 ring-inset ring-red-500'
-    : 'h-full w-full bg-transparent px-3 outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500/60'
+    ? 'h-full w-full bg-transparent px-4 pr-8 outline-none ring-2 ring-inset ring-[#F04438]'
+    : 'h-full w-full bg-transparent px-4 outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500/60'
 
   return (
     <div className="relative flex h-full w-full items-center">
@@ -43,6 +44,7 @@ function CellInput({ rowId, colId, value, onCommit }: CellInputProps): React.JSX
           text={error}
           ariaLabel={`Validation error: ${error}`}
           className="absolute right-2 top-1/2 -translate-y-1/2"
+          textColor="#e5e5e5"
         >
           <img src={infoIcon} alt="" className="h-4 w-4" />
         </Tooltip>
