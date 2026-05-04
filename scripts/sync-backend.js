@@ -133,6 +133,31 @@ function runCommand(command, description) {
 }
 
 /**
+ * Smoke test: confirm the synced --onedir bundle ships the SQL migration
+ * files. Without them, `run_migrations()` silently no-ops and the runtime
+ * DB ends up with only the bookkeeping table — every API call then crashes
+ * with `no such table: projects`. Failing here surfaces the regression at
+ * sync time instead of at first launch.
+ */
+function verifyBundledMigrations(destPath) {
+  const migrationsDir = path.join(destPath, '_internal', 'app', 'db', 'migrations')
+  if (!fs.existsSync(migrationsDir) || !fs.statSync(migrationsDir).isDirectory()) {
+    throw new Error(
+      `Bundled backend is missing migrations folder at:\n  ${migrationsDir}\n` +
+      `Build script likely lacks "--add-data app/db/migrations:app/db/migrations".`
+    )
+  }
+  const sqlFiles = fs.readdirSync(migrationsDir).filter((f) => f.endsWith('.sql'))
+  if (sqlFiles.length === 0) {
+    throw new Error(
+      `Bundled backend has an empty migrations folder at:\n  ${migrationsDir}\n` +
+      `Rebuild the backend — the SQL files were not packaged.`
+    )
+  }
+  console.log(`[*] Verified ${sqlFiles.length} migration file(s) in bundle`)
+}
+
+/**
  * Build the backend executable from backend-api/
  */
 function buildBackend() {
@@ -220,6 +245,8 @@ function syncBackendToResources() {
       fs.chmodSync(path.join(destPath, binaryName), 0o755)
       console.log(`[*] Set executable permissions on ${binaryName}`)
     }
+
+    verifyBundledMigrations(destPath)
   } else {
     // Handle legacy --onefile: Single executable file
     const builtBinaryPath = path.join(BACKEND_DIST_DIR, binaryName)
