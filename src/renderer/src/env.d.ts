@@ -10,8 +10,10 @@ declare global {
       readFile: (filePath: string) => Promise<string>
       writeFile: (filePath: string, content: string) => Promise<void>
       getBackendStatus: () => Promise<BackendStatus>
+      getBackendUrl: () => Promise<string | null>
       startBackend: () => Promise<{ ok: boolean }>
       stopBackend: () => Promise<{ ok: boolean }>
     }
+    __APP_BASE_URL__?: string
   }
 }

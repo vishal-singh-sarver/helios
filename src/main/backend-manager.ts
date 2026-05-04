@@ -1,8 +1,25 @@
 import { ChildProcess, spawn } from 'child_process'
 import { app } from 'electron'
 import * as fs from 'fs'
+import * as net from 'net'
 import * as path from 'path'
 import { setTimeout as delay } from 'timers/promises'
+
+// Probe ports starting at `start` and return the first one that bind succeeds on.
+// We try-bind on 127.0.0.1 instead of just checking /etc/services because another
+// process can be holding the port without it being a "well-known" binding.
+async function findFreePort(start: number, max = 50): Promise<number> {
+  for (let port = start; port < start + max; port++) {
+    const free = await new Promise<boolean>((resolve) => {
+      const server = net.createServer()
+      server.once('error', () => resolve(false))
+      server.once('listening', () => server.close(() => resolve(true)))
+      server.listen(port, '127.0.0.1')
+    })
+    if (free) return port
+  }
+  throw new Error(`No free port found in range ${start}..${start + max - 1}`)
+}
 
 export interface BackendStatus {
   running: boolean
@@ -194,6 +211,19 @@ export class BackendManager {
       this.validateBackendPath(backendPath)
       this.ensureRuntimeDirectories(runtimePaths.dataDir, runtimePaths.logDir)
       this.openLogStream(runtimePaths.logFile)
+
+      // Pick a free port starting at 8008. If 8008 is held by another process
+      // (or a leftover backend from a crashed previous run), increment until
+      // we find one that bind() succeeds on. Without this the spawn appears to
+      // succeed but the backend exits with "address already in use".
+      const desiredPort = this.port
+      this.port = await findFreePort(this.port)
+      if (this.port !== desiredPort) {
+        this.recordMessage(
+          'manager',
+          `Port ${desiredPort} busy — using ${this.port} instead`
+        )
+      }
 
       const env = {
         ...process.env,

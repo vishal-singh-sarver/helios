@@ -29,6 +29,10 @@ const api = {
   // Backend session
   getBackendStatus: (): Promise<BackendStatus> => ipcRenderer.invoke('backend:getStatus'),
 
+  // Resolves to e.g. "http://127.0.0.1:8009" — the actual port the backend
+  // bound to this run. Renderer must call this before any HTTP/SSE setup.
+  getBackendUrl: (): Promise<string | null> => ipcRenderer.invoke('backend:getUrl'),
+
   startBackend: (): Promise<{ ok: boolean }> => ipcRenderer.invoke('backend:start'),
 
   stopBackend: (): Promise<{ ok: boolean }> => ipcRenderer.invoke('backend:stop')

@@ -16,6 +16,17 @@ export default [
   // Base JS recommended rules
   js.configs.recommended,
 
+  // Build/dev scripts (plain Node.js CommonJS)
+  {
+    files: ['scripts/**/*.{js,cjs,mjs}'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'commonjs',
+      globals: { ...globals.node }
+    },
+    rules: { 'no-console': 'off' }
+  },
+
   // Main process (Node.js)
   {
     files: ['src/main/**/*.ts'],

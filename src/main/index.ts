@@ -307,6 +307,11 @@ ipcMain.handle('backend:getStatus', async () => {
   return backendManager.getBackendStatus()
 })
 
+ipcMain.handle('backend:getUrl', async () => {
+  const status = backendManager.getBackendStatus()
+  return status.port ? `http://127.0.0.1:${status.port}` : null
+})
+
 ipcMain.handle('backend:start', async () => {
   return backendManager.startBackend()
 })
