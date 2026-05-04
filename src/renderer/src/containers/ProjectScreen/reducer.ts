@@ -471,10 +471,15 @@ const projectScreenReducer = (
       }
 
       case UPDATE_CELL_FAILED: {
-        const { scenarioId, rowId, colId } = action.payload
+        const { scenarioId, rowId, colId, error } = action.payload
         const table = draft.byScenario[scenarioId]
         if (!table) break
         table.cellSync[cellKey(rowId, colId)] = 'error'
+        // Surface the backend's rejection message through the same
+        // validationErrors map the local validator uses, so CellInput's red
+        // ring + info-icon tooltip render identically for both error sources.
+        if (!table.validationErrors[rowId]) table.validationErrors[rowId] = {}
+        table.validationErrors[rowId][colId] = error
         break
       }
 

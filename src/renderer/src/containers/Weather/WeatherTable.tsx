@@ -209,130 +209,169 @@ function WeatherTable(): React.JSX.Element {
   const headerDivider =
     "relative after:absolute after:right-0 after:top-[20%] after:bottom-[20%] after:w-0.5 after:bg-white/40 after:content-['']"
 
+  // Header lives outside the scroll container so the body's vertical
+  // scrollbar starts beneath the header strip rather than extending up to
+  // the very top. The strip uses `overflow-x: clip` (not `hidden`) so that
+  // header dropdowns (DataTypeUnitPicker, DateTimeHeader) can extend
+  // vertically below the strip without being clipped — a side effect of
+  // the spec rule that `overflow-x: hidden` forces `overflow-y` to also
+  // clip. Because `clip` disallows programmatic `scrollLeft`, we sync the
+  // horizontal pan via CSS `translateX()` on the header table instead.
+  const headerTableRef = React.useRef<HTMLTableElement>(null)
+  const onBodyScroll = (e: React.UIEvent<HTMLDivElement>): void => {
+    if (headerTableRef.current) {
+      headerTableRef.current.style.transform = `translateX(-${e.currentTarget.scrollLeft}px)`
+    }
+  }
+
   return (
-    <div className="scrollbar-custom flex-1 overflow-auto bg-dark">
-      <table className="w-full border-collapse text-sm text-neutral-200">
-        <thead className="bg-neutral-900">
-          <tr className="border-b border-app-border">
-            <th className={`w-12 ${headerDivider} px-3 py-2 text-left align-middle`}>
-              <input
-                type="checkbox"
-                aria-label="Select all rows"
-                checked={checkColId != null ? allChecked : allSelected}
-                onChange={checkColId != null ? toggleAllCheck : toggleAll}
-                className="h-4 w-4 accent-blue-600"
-              />
-            </th>
-            {visibleColumnOrder.map((colId) => {
-              const col = columns[colId]
-              if (!col) return null
-              const managed = isBackendManagedCol(col)
-              const isDateTime = colId === dateTimeColId
-              const widthCls = isDateTime
-                ? 'w-[269px] min-w-[269px] max-w-[269px]'
-                : managed
-                  ? 'w-40 min-w-40 max-w-40'
-                  : 'w-32 min-w-32 max-w-32'
-              const alignCls = managed ? 'align-top' : 'align-middle'
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-dark">
+      {/* Header strip — overflow-x: clip so its own scrollbar never shows
+          AND so dropdowns inside the header (Data Type / Date-Time) can
+          extend vertically below the strip without being clipped. The
+          horizontal pan is applied as a transform on the inner table. */}
+      <div className="relative z-10 overflow-x-clip bg-neutral-900 pr-[22px]">
+        <table ref={headerTableRef} className="w-full border-collapse text-sm text-neutral-200">
+          <thead>
+            <tr className="border-b border-app-border">
+              <th className={`w-12 ${headerDivider} px-3 py-2 text-left align-middle`}>
+                <input
+                  type="checkbox"
+                  aria-label="Select all rows"
+                  checked={checkColId != null ? allChecked : allSelected}
+                  onChange={checkColId != null ? toggleAllCheck : toggleAll}
+                  className="h-4 w-4 accent-blue-600"
+                />
+              </th>
+              {visibleColumnOrder.map((colId) => {
+                const col = columns[colId]
+                if (!col) return null
+                const managed = isBackendManagedCol(col)
+                const isDateTime = colId === dateTimeColId
+                const widthCls = isDateTime
+                  ? 'w-[269px] min-w-[269px] max-w-[269px]'
+                  : managed
+                    ? 'w-40 min-w-40 max-w-40'
+                    : 'w-32 min-w-32 max-w-32'
+                const alignCls = managed ? 'align-top' : 'align-middle'
+                return (
+                  <th
+                    key={colId}
+                    className={`${widthCls} ${alignCls} ${headerDivider} px-3 py-2 text-left font-normal text-neutral-300`}
+                  >
+                    {managed ? (
+                      <HeaderEditor
+                        col={col}
+                        dataTypes={dataTypes}
+                        onPatch={(patch) => dispatchHeaderPatch(col, patch)}
+                      />
+                    ) : isDateTime ? (
+                      <DateTimeHeader value={dateFormat} onChange={setDateFormat} />
+                    ) : (
+                      <span className="block truncate">{col.name}</span>
+                    )}
+                  </th>
+                )
+              })}
+              <th className={`w-20 min-w-20 max-w-20 ${headerDivider} px-3 py-2 text-left align-middle font-normal text-neutral-300`}>
+                Action
+              </th>
+              <th aria-hidden className="w-auto" />
+            </tr>
+          </thead>
+        </table>
+      </div>
+
+      {/* Body — owns both scrollbars. */}
+      <div className="scrollbar-custom flex-1 overflow-auto" onScroll={onBodyScroll}>
+        <table className="w-full border-collapse text-sm text-neutral-200">
+          <tbody>
+            {rowOrder.map((rowId) => {
+              const row = table?.rows[rowId] ?? {}
+              const checkValue: CellValue =
+                checkColId != null ? (row[checkColId] ?? null) : null
               return (
-                <th
-                  key={colId}
-                  className={`${widthCls} ${alignCls} ${headerDivider} px-3 py-2 text-left font-normal text-neutral-300`}
-                >
-                  {managed ? (
-                    <HeaderEditor
-                      col={col}
-                      dataTypes={dataTypes}
-                      onPatch={(patch) => dispatchHeaderPatch(col, patch)}
+                <tr key={rowId} className="h-9 border-b border-app-border">
+                  <td className="w-12 border-r border-app-border px-3 py-2">
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${rowId}`}
+                      checked={
+                        checkColId != null
+                          ? checkValue === '1'
+                          : rowSelection[rowId] === true
+                      }
+                      onChange={
+                        checkColId != null
+                          ? () => toggleCheck(rowId, checkValue)
+                          : () => toggleRow(rowId)
+                      }
+                      className="h-4 w-4 accent-blue-600"
                     />
-                  ) : isDateTime ? (
-                    <DateTimeHeader value={dateFormat} onChange={setDateFormat} />
-                  ) : (
-                    <span className="block truncate">{col.name}</span>
-                  )}
-                </th>
+                  </td>
+                  {visibleColumnOrder.map((colId) => {
+                    const value: CellValue = row[colId] ?? null
+                    const isDateTime = colId === dateTimeColId
+                    const display = isDateTime
+                      ? formatDateTime(
+                          row[DATE_COL_ID] ?? null,
+                          row[TIME_COL_ID] ?? null,
+                          dateFormat,
+                          activeProject?.utc_offset ?? ''
+                        )
+                      : (value ?? '')
+                    const readOnly = isReservedColId(colId) || isDateTime
+                    const widthCls = isDateTime
+                      ? 'w-[269px] min-w-[269px] max-w-[269px]'
+                      : readOnly
+                        ? 'w-32 min-w-32 max-w-32'
+                        : 'w-40 min-w-40 max-w-40'
+                    // Error string lives in `validationErrors` and is set by both
+                    // the local validator (UPDATE_CELL_LOCAL) and the backend
+                    // failure path (UPDATE_CELL_FAILED). Read-only cells can't
+                    // hold an error.
+                    const cellError = readOnly
+                      ? null
+                      : (table?.validationErrors?.[rowId]?.[colId] ?? null)
+                    // Spec: 1px solid border on all sides, color #F04438
+                    // (Figma "Border error" token).
+                    const borderCls = cellError
+                      ? 'border border-[#F04438]'
+                      : 'border-r border-app-border'
+                    return (
+                      <td
+                        key={colId}
+                        className={`${widthCls} h-9 ${borderCls}`}
+                      >
+                        {readOnly ? (
+                          <span className="block truncate px-3">{display}</span>
+                        ) : (
+                          <CellInput
+                            rowId={rowId}
+                            colId={colId}
+                            value={display}
+                            onCommit={(next) => handleCellBlur(rowId, colId, next, display)}
+                          />
+                        )}
+                      </td>
+                    )
+                  })}
+                  <td className="w-20 min-w-20 max-w-20 border-r border-app-border px-3 py-2">
+                    <button
+                      type="button"
+                      aria-label={`Delete row ${rowId}`}
+                      className="rounded p-1 hover:bg-neutral-800"
+                    >
+                      <img src={deleteIcon} alt="" className="h-4 w-4" />
+                    </button>
+                  </td>
+                  <td aria-hidden className="w-auto" />
+                </tr>
               )
             })}
-            <th className={`w-20 min-w-20 max-w-20 ${headerDivider} px-3 py-2 text-left align-middle font-normal text-neutral-300`}>
-              Action
-            </th>
-            <th aria-hidden className="w-auto" />
-          </tr>
-        </thead>
-        <tbody>
-          {rowOrder.map((rowId) => {
-            const row = table?.rows[rowId] ?? {}
-            const checkValue: CellValue =
-              checkColId != null ? (row[checkColId] ?? null) : null
-            return (
-              <tr key={rowId} className="h-9 border-b border-app-border">
-                <td className="w-12 border-r border-app-border px-3 py-2">
-                  <input
-                    type="checkbox"
-                    aria-label={`Select ${rowId}`}
-                    checked={
-                      checkColId != null
-                        ? checkValue === '1'
-                        : rowSelection[rowId] === true
-                    }
-                    onChange={
-                      checkColId != null
-                        ? () => toggleCheck(rowId, checkValue)
-                        : () => toggleRow(rowId)
-                    }
-                    className="h-4 w-4 accent-blue-600"
-                  />
-                </td>
-                {visibleColumnOrder.map((colId) => {
-                  const value: CellValue = row[colId] ?? null
-                  const isDateTime = colId === dateTimeColId
-                  const display = isDateTime
-                    ? formatDateTime(
-                        row[DATE_COL_ID] ?? null,
-                        row[TIME_COL_ID] ?? null,
-                        dateFormat,
-                        activeProject?.utc_offset ?? ''
-                      )
-                    : (value ?? '')
-                  const readOnly = isReservedColId(colId) || isDateTime
-                  const widthCls = isDateTime
-                    ? 'w-[269px] min-w-[269px] max-w-[269px]'
-                    : readOnly
-                      ? 'w-32 min-w-32 max-w-32'
-                      : 'w-40 min-w-40 max-w-40'
-                  return (
-                    <td
-                      key={colId}
-                      className={`${widthCls} h-9 border-r border-app-border px-3 py-2`}
-                    >
-                      {readOnly ? (
-                        <span className="block truncate">{display}</span>
-                      ) : (
-                        <CellInput
-                          rowId={rowId}
-                          colId={colId}
-                          value={display}
-                          onCommit={(next) => handleCellBlur(rowId, colId, next, display)}
-                        />
-                      )}
-                    </td>
-                  )
-                })}
-                <td className="w-20 min-w-20 max-w-20 border-r border-app-border px-3 py-2">
-                  <button
-                    type="button"
-                    aria-label={`Delete row ${rowId}`}
-                    className="rounded p-1 hover:bg-neutral-800"
-                  >
-                    <img src={deleteIcon} alt="" className="h-4 w-4" />
-                  </button>
-                </td>
-                <td aria-hidden className="w-auto" />
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

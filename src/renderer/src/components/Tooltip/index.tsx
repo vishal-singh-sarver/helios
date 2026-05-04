@@ -6,9 +6,24 @@ interface TooltipProps {
   text: string
   ariaLabel: string
   place?: PlacesType
+  /** Custom trigger content. When omitted, renders the default `?` circle. */
+  children?: React.ReactNode
+  /** className applied to the trigger wrapper. When omitted, uses the
+   * default `?`-circle styling. Pass this to position the trigger
+   * (e.g. absolute placement inside a cell) or restyle it. */
+  className?: string
 }
 
-function Tooltip({ text, ariaLabel, place = 'top' }: TooltipProps): React.JSX.Element {
+const DEFAULT_TRIGGER_CLS =
+  'flex h-5 w-5 cursor-default items-center justify-center rounded-full border border-neutral-300 text-xs font-semibold text-white'
+
+function Tooltip({
+  text,
+  ariaLabel,
+  place = 'top',
+  children,
+  className
+}: TooltipProps): React.JSX.Element {
   const id = React.useId()
 
   return (
@@ -18,10 +33,9 @@ function Tooltip({ text, ariaLabel, place = 'top' }: TooltipProps): React.JSX.El
         data-tooltip-content={text}
         tabIndex={0}
         aria-label={ariaLabel}
-        className="flex h-5 w-5 cursor-default items-center justify-center
-        rounded-full border border-neutral-300 text-xs font-semibold text-white"
+        className={className ?? DEFAULT_TRIGGER_CLS}
       >
-        ?
+        {children ?? '?'}
       </span>
 
       <ReactTooltip

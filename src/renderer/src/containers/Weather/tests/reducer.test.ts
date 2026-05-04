@@ -102,10 +102,11 @@ describe('weatherReducer', () => {
       expect(result.importError).toBeNull()
     })
 
-    it('IMPORT_FINALIZE_SUCCEEDED stores the dataset and clears pickedFile', () => {
+    it('IMPORT_FINALIZE_SUCCEEDED stores the dataset, clears pickedFile, and auto-closes the wizard', () => {
       const state = {
         ...initialState,
         importing: true,
+        wizardOpen: true,
         pickedFile: { filename: 'foo.csv', rawText: 'x' },
         fileError: 'cleared too'
       }
@@ -114,6 +115,10 @@ describe('weatherReducer', () => {
       expect(result.dataset).toEqual(dataset)
       expect(result.pickedFile).toBeNull()
       expect(result.fileError).toBeNull()
+      // Auto-close — saga waits for LOAD_SCENARIO_SUCCEEDED before dispatching
+      // this action, so by the time it lands the table is already populated
+      // and the wizard can close without a flash of empty state.
+      expect(result.wizardOpen).toBe(false)
     })
 
     it('IMPORT_FINALIZE_FAILED stores the error and clears importing', () => {
@@ -126,6 +131,59 @@ describe('weatherReducer', () => {
     it('IMPORT_FINALIZE_FAILED preserves dataset from a previous successful import', () => {
       const state = { ...initialState, importing: true, dataset }
       const result = weatherReducer(state, actions.importFinalizeFailed('boom'))
+      expect(result.dataset).toEqual(dataset)
+    })
+  })
+
+  describe('Wizard open / close', () => {
+    const picked: PickedFile = { filename: 'foo.csv', rawText: 'a,b\n1,2' }
+
+    it('IMPORT_WIZARD_OPENED flips wizardOpen and resets every transient flow field', () => {
+      const state = {
+        ...initialState,
+        wizardOpen: false,
+        fileLoading: true,
+        fileError: 'prev',
+        pickedFile: picked,
+        importing: true,
+        importError: 'prev'
+      }
+      const result = weatherReducer(state, actions.importWizardOpened())
+      expect(result.wizardOpen).toBe(true)
+      expect(result.fileLoading).toBe(false)
+      expect(result.fileError).toBeNull()
+      expect(result.pickedFile).toBeNull()
+      expect(result.importing).toBe(false)
+      expect(result.importError).toBeNull()
+    })
+
+    it('IMPORT_WIZARD_CLOSED flips wizardOpen and resets every transient flow field', () => {
+      const state = {
+        ...initialState,
+        wizardOpen: true,
+        fileLoading: true,
+        fileError: 'prev',
+        pickedFile: picked,
+        importing: true,
+        importError: 'prev'
+      }
+      const result = weatherReducer(state, actions.importWizardClosed())
+      expect(result.wizardOpen).toBe(false)
+      expect(result.fileLoading).toBe(false)
+      expect(result.fileError).toBeNull()
+      expect(result.pickedFile).toBeNull()
+      expect(result.importing).toBe(false)
+      expect(result.importError).toBeNull()
+    })
+
+    it('IMPORT_WIZARD_OPENED preserves a previously-imported dataset', () => {
+      const dataset: ImportedDataset = {
+        filename: 'prev.csv',
+        columns: [],
+        records: []
+      }
+      const state = { ...initialState, dataset }
+      const result = weatherReducer(state, actions.importWizardOpened())
       expect(result.dataset).toEqual(dataset)
     })
   })

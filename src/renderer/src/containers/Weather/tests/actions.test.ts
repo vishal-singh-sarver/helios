@@ -12,7 +12,9 @@ import {
   IMPORT_FINALIZE_REQUESTED,
   IMPORT_FINALIZE_SUCCEEDED,
   IMPORT_FINALIZE_FAILED,
-  IMPORT_RESET
+  IMPORT_RESET,
+  IMPORT_WIZARD_CLOSED,
+  IMPORT_WIZARD_OPENED
 } from '../constants'
 import type {
   ImportedDataset,
@@ -101,5 +103,13 @@ describe('Import actions', () => {
 
   it('importReset has correct type', () => {
     expect(actions.importReset()).toEqual({ type: IMPORT_RESET })
+  })
+
+  it('importWizardOpened has correct type', () => {
+    expect(actions.importWizardOpened()).toEqual({ type: IMPORT_WIZARD_OPENED })
+  })
+
+  it('importWizardClosed has correct type', () => {
+    expect(actions.importWizardClosed()).toEqual({ type: IMPORT_WIZARD_CLOSED })
   })
 })
