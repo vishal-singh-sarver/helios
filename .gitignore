@@ -28,6 +28,7 @@ backend-api/.eggs/
 resources/backend/mac/heliosgui_backend
 resources/backend/linux/heliosgui_backend
 resources/backend/win/heliosgui_backend.exe
+resources/*
 
 # Application Data
 data/
