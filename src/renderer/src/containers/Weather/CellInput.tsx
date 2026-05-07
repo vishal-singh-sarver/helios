@@ -1,3 +1,5 @@
+import infoIcon from '@renderer/assets/info.svg'
+import Tooltip from '@renderer/components/Tooltip'
 import React from 'react'
 import { useSelector } from 'react-redux'
 import { makeSelectCellError } from './selectors'
@@ -18,12 +20,13 @@ function CellInput({ rowId, colId, value, onCommit }: CellInputProps): React.JSX
   const selectError = React.useMemo(() => makeSelectCellError(rowId, colId), [rowId, colId])
   const error = useSelector(selectError)
 
-  const inputCls = error
-    ? 'w-full rounded border border-dashed border-red-500 bg-transparent px-1 outline-none'
-    : 'w-full bg-transparent outline-none focus:ring-1 focus:ring-blue-500/40'
+  // Error visual is the cell <td>'s red border (rendered by WeatherTable);
+  // here we only reserve right-side room for the info icon when in error
+  // and keep the blue focus ring for the editing state.
+  const inputCls = `h-full w-full bg-transparent px-4 ${error ? 'pr-8' : ''} outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500/60`
 
   return (
-    <div className="flex w-full flex-col gap-0.5">
+    <div className="relative flex h-full w-full items-center">
       <input
         type="text"
         aria-label={`${rowId} ${colId}`}
@@ -34,12 +37,14 @@ function CellInput({ rowId, colId, value, onCommit }: CellInputProps): React.JSX
         className={inputCls}
       />
       {error && (
-        <span
-          role="alert"
-          className="block whitespace-normal break-words text-[11px] leading-tight text-red-500"
+        <Tooltip
+          text={error}
+          ariaLabel={`Validation error: ${error}`}
+          className="absolute right-2 top-1/2 -translate-y-1/2"
+          textColor="#e5e5e5"
         >
-          {error}
-        </span>
+          <img src={infoIcon} alt="" className="h-4 w-4" />
+        </Tooltip>
       )}
     </div>
   )

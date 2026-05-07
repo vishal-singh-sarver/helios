@@ -10,7 +10,8 @@ import makeSelectWeather, {
   selectPickedFile,
   selectImporting,
   selectImportError,
-  selectDataset
+  selectDataset,
+  selectWizardOpen
 } from '../selectors'
 import { initialState } from '../reducer'
 import type { ImportedDataset, PickedFile } from '../types'
@@ -95,5 +96,16 @@ describe('individual selectors — Import', () => {
 
   it('selectDataset returns null when no import has finished', () => {
     expect(selectDataset(withWeather({}))).toBeNull()
+  })
+})
+
+describe('selectWizardOpen', () => {
+  it('reflects the wizardOpen flag', () => {
+    expect(selectWizardOpen(withWeather({ wizardOpen: true }))).toBe(true)
+    expect(selectWizardOpen(withWeather({ wizardOpen: false }))).toBe(false)
+  })
+
+  it('defaults to false from initialState', () => {
+    expect(selectWizardOpen(withWeather({}))).toBe(false)
   })
 })

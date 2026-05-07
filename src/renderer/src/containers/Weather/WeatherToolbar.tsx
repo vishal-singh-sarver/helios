@@ -55,14 +55,27 @@ function WeatherToolbar({ onFilter, onUploadFile }: WeatherToolbarProps): React.
       <ToolbarButton
         label="Add Columns"
         icon={newProjectIcon}
+        bgColor="#ffffff"
+        textColor="#000000"
+        iconColor="dark"
         onClick={() => setIsAddColumnOpen(true)}
       />
       <ToolbarButton
         label="Add Rows"
         icon={newProjectIcon}
+        bgColor="#ffffff"
+        textColor="#000000"
+        iconColor="dark"
         onClick={() => setIsAddRowsOpen(true)}
       />
-      <ToolbarButton label="Upload File" icon={uploadIcon} onClick={onUploadFile} />
+      <ToolbarButton
+        label="Upload File"
+        icon={uploadIcon}
+        bgColor="#ffffff"
+        textColor="#000000"
+        iconColor="dark"
+        onClick={onUploadFile}
+      />
 
       <AddColumnDialog
         isOpen={isAddColumnOpen}

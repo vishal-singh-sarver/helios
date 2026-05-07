@@ -26,7 +26,9 @@ function Header({ children, onLogoClick }: HeaderProps): React.JSX.Element {
         )}
       </div>
 
-      <div className="flex h-11 items-center justify-between px-3">{children}</div>
+      <div className="flex h-[50px] items-center justify-between bg-[#202020] px-5 py-[10px]">
+        {children}
+      </div>
     </header>
   )
 }

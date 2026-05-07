@@ -14,7 +14,7 @@ exports[`<Header /> > should match the snapshot 1`] = `
     />
   </div>
   <div
-    class="flex h-11 items-center justify-between px-3"
+    class="flex h-[50px] items-center justify-between bg-[#202020] px-5 py-[10px]"
   >
     <span>
       child content

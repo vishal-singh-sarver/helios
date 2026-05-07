@@ -74,9 +74,19 @@ function FormField({ labelProps, inputProps }: FormFieldProps): React.JSX.Elemen
           aria-invalid={!!error}
           className={`${baseClassName} px-3`}
         >
-          <option value="">{placeholder}</option>
+          {/* Inline style on each <option> because Chromium's native
+              dropdown popup ignores most CSS but DOES honor an option's
+              own background-color / color — without this the popup
+              renders with the OS (GTK) light theme on Linux. */}
+          <option value="" style={{ backgroundColor: '#181a1f', color: '#ffffff' }}>
+            {placeholder}
+          </option>
           {options.map((opt) => (
-            <option key={opt.value} value={opt.value}>
+            <option
+              key={opt.value}
+              value={opt.value}
+              style={{ backgroundColor: '#181a1f', color: '#ffffff' }}
+            >
               {opt.label}
             </option>
           ))}

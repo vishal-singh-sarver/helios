@@ -1,4 +1,4 @@
-import { call, put, takeLatest, takeLeading } from 'redux-saga/effects'
+import { call, put, select, take, takeLatest, takeLeading } from 'redux-saga/effects'
 import weatherSaga, {
   fetchStatusWorker,
   finalizeImportWorker,
@@ -6,6 +6,14 @@ import weatherSaga, {
 } from '../saga'
 import { api } from 'utils/api'
 import { loadScenarioRequested } from 'containers/ProjectScreen/actions'
+import {
+  selectCheckDataTypeId,
+  selectDataTypesLoadStatus
+} from 'containers/ProjectScreen/selectors'
+import {
+  LOAD_DATA_TYPES_FAILED,
+  LOAD_DATA_TYPES_SUCCEEDED
+} from 'containers/ProjectScreen/constants'
 import * as actions from '../actions'
 import {
   FETCH_STATUS,
@@ -115,7 +123,7 @@ describe('finalizeImportWorker', () => {
     expect(gen.next().done).toBe(true)
   })
 
-  it('DELETEs /clear_data, then POSTs /addCol, then puts succeeded', () => {
+  it('DELETEs /clear_data, resolves catalog, POSTs /addCol with seeded check + date-time + filtered CSV columns, then puts succeeded after refresh race', () => {
     const gen = finalizeImportWorker(actions.importFinalizeRequested(dataset))
 
     // Step 0 — clear any prior weather data for this scenario.
@@ -124,47 +132,49 @@ describe('finalizeImportWorker', () => {
       '/api/weather/project/proj-1/scenario/sce-1/clear_data'
     )
 
-    // Step 1 — addCol with all rows inline.
-    const addColCall = gen.next().value as ReturnType<typeof call>
+    // Step 1 — saga reads catalog load status. When already 'loaded', no
+    // take() is yielded; saga proceeds straight to selecting the check id.
+    expect(gen.next().value).toEqual(select(selectDataTypesLoadStatus))
+    expect(gen.next('loaded').value).toEqual(select(selectCheckDataTypeId))
+
+    // Step 2 — addCol with seeded check (carrying checkDataTypeId from
+    // the catalog), seeded date-time, then every CSV column whose label
+    // doesn't collide with a reserved name. The CSV's "check" column is
+    // dropped — the seeded version owns that name.
+    const addColCall = gen.next(99).value as ReturnType<typeof call>
     expect(addColCall.payload.args[0]).toBe(
       '/api/weather/project/proj-1/scenario/sce-1/addCol'
     )
-    // Only one row in `values` per column — the invalid_date record is skipped.
+    const dateMatcher = expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)
+    const timeMatcher = expect.stringMatching(/^\d{2}:\d{2}:\d{2}$/)
     expect(addColCall.payload.args[1]).toEqual({
       column: [
         {
           name: 'check',
+          datatype: 99, // seeded with the resolved checkDataTypeId
+          data_unit: null,
+          values: [{ date: dateMatcher, time: timeMatcher, value: '1' }]
+        },
+        {
+          name: 'date-time',
           datatype: null,
           data_unit: null,
-          values: [
-            {
-              date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
-              time: expect.stringMatching(/^\d{2}:\d{2}:\d{2}$/),
-              value: '1'
-            }
-          ]
+          values: [{ date: dateMatcher, time: timeMatcher, value: '0' }]
         },
         {
           name: 'temp',
           datatype: null,
           data_unit: null,
-          values: [
-            {
-              date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
-              time: expect.stringMatching(/^\d{2}:\d{2}:\d{2}$/),
-              value: '22.5'
-            }
-          ]
+          values: [{ date: dateMatcher, time: timeMatcher, value: '22.5' }]
         }
       ]
     })
 
-    // Step 2 — saga dispatches loadScenarioRequested to refresh the table.
+    // Step 3 — dispatch loadScenarioRequested to refresh the table.
     expect(gen.next().value).toEqual(put(loadScenarioRequested('proj-1', 'sce-1')))
 
-    // Step 3 — saga races on LOAD_SCENARIO_SUCCEEDED / LOAD_SCENARIO_FAILED.
-    // Yield value is the race effect itself; resume the generator with a
-    // "succeeded" branch so the worker proceeds to finalize.
+    // Step 4 — race against LOAD_SCENARIO_SUCCEEDED/FAILED. Resume with a
+    // "succeeded" branch so the worker dispatches importFinalizeSucceeded.
     gen.next() // race(...)
     expect(
       gen.next({ succeeded: { payload: { scenarioId: 'sce-1' } } }).value
@@ -172,10 +182,26 @@ describe('finalizeImportWorker', () => {
     expect(gen.next().done).toBe(true)
   })
 
+  it('blocks on the catalog when load status is loading', () => {
+    const gen = finalizeImportWorker(actions.importFinalizeRequested(dataset))
+    gen.next() // clear_data
+    expect(gen.next().value).toEqual(select(selectDataTypesLoadStatus))
+
+    // Status === 'loading' → saga must take() the catalog terminal action
+    // before reading checkDataTypeId.
+    expect(gen.next('loading').value).toEqual(
+      take([LOAD_DATA_TYPES_SUCCEEDED, LOAD_DATA_TYPES_FAILED])
+    )
+    // After the take resolves, saga reads the (now-loaded) checkDataTypeId.
+    expect(gen.next().value).toEqual(select(selectCheckDataTypeId))
+  })
+
   it('puts importFinalizeFailed when scenario refresh fails', () => {
     const gen = finalizeImportWorker(actions.importFinalizeRequested(dataset))
     gen.next() // clear_data
-    gen.next() // addCol
+    gen.next() // select selectDataTypesLoadStatus
+    gen.next('loaded') // select selectCheckDataTypeId
+    gen.next(99) // addCol
     gen.next() // put loadScenarioRequested
     gen.next() // race(...)
     const failure = gen.next({
@@ -197,7 +223,9 @@ describe('finalizeImportWorker', () => {
   it('puts importFinalizeFailed when /addCol throws', () => {
     const gen = finalizeImportWorker(actions.importFinalizeRequested(dataset))
     gen.next() // clear_data
-    gen.next() // addCol
+    gen.next() // select selectDataTypesLoadStatus
+    gen.next('loaded') // select selectCheckDataTypeId
+    gen.next(99) // addCol
     const err = new Error('column conflict')
     expect(gen.throw(err).value).toEqual(put(actions.importFinalizeFailed('column conflict')))
   })
