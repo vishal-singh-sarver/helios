@@ -2,6 +2,7 @@ import deleteIcon from '@renderer/assets/delete.svg'
 import {
   setAllRowsSelection,
   setRowSelection,
+  updateAllCheckboxesRequested,
   updateCellLocal,
   updateColumnRequested
 } from 'containers/ProjectScreen/actions'
@@ -20,7 +21,6 @@ import { useDispatch, useSelector } from 'react-redux'
 import CellInput from './CellInput'
 import DateTimeHeader, { type DateFormat } from './DateTimeHeader'
 import HeaderEditor from './HeaderEditor'
-import { validateCellValue } from './validation'
 import {
   selectActiveProject,
   selectActiveProjectId,
@@ -35,6 +35,7 @@ import {
   selectRowSelection,
   selectSelectableDataTypes
 } from './selectors'
+import { validateCellValue } from './validation'
 
 // A column is backend-managed (PATCH-able) when its id is a positive integer —
 // the stringified WeatherDataHeader.id. Reserved date/time, upload-slug, and
@@ -116,9 +117,7 @@ function WeatherTable(): React.JSX.Element {
   ): void => {
     if (!projectId || !scenarioId || newValue === originalValue) return
     const col = columns[colId]
-    const validationError = col
-      ? validateCellValue(newValue, { col, dataTypes })
-      : null
+    const validationError = col ? validateCellValue(newValue, { col, dataTypes }) : null
     dispatch(
       updateCellLocal({
         projectId,
@@ -131,10 +130,7 @@ function WeatherTable(): React.JSX.Element {
     )
   }
 
-  const dispatchHeaderPatch = (
-    col: ColumnDef,
-    patch: UpdateColumnPatch
-  ): void => {
+  const dispatchHeaderPatch = (col: ColumnDef, patch: UpdateColumnPatch): void => {
     if (!projectId || !scenarioId) return
     const previous: UpdateColumnPatch = {}
     if (patch.name !== undefined) previous.name = col.name
@@ -189,18 +185,9 @@ function WeatherTable(): React.JSX.Element {
   const toggleAllCheck = (): void => {
     if (!projectId || !scenarioId || !checkColId) return
     const next = allChecked ? '0' : '1'
-    for (const rowId of rowOrder) {
-      dispatch(
-        updateCellLocal({
-          projectId,
-          scenarioId,
-          rowId,
-          colId: checkColId,
-          value: next,
-          validationError: null
-        })
-      )
-    }
+    // console.log(projectId, scenarioId, checkColId, next)
+
+    dispatch(updateAllCheckboxesRequested(projectId, scenarioId, checkColId, next))
   }
 
   // Vertical divider rendered as an absolutely-positioned pseudo-element so
@@ -273,7 +260,9 @@ function WeatherTable(): React.JSX.Element {
                   </th>
                 )
               })}
-              <th className={`w-20 min-w-20 max-w-20 ${headerDivider} px-3 py-2 text-left align-middle font-normal text-neutral-300`}>
+              <th
+                className={`w-20 min-w-20 max-w-20 ${headerDivider} px-3 py-2 text-left align-middle font-normal text-neutral-300`}
+              >
                 Action
               </th>
               <th aria-hidden className="w-auto" />
@@ -288,8 +277,7 @@ function WeatherTable(): React.JSX.Element {
           <tbody>
             {rowOrder.map((rowId) => {
               const row = table?.rows[rowId] ?? {}
-              const checkValue: CellValue =
-                checkColId != null ? (row[checkColId] ?? null) : null
+              const checkValue: CellValue = checkColId != null ? (row[checkColId] ?? null) : null
               return (
                 <tr key={rowId} className="h-9 border-b border-app-border">
                   <td className="w-12 border-r border-app-border px-3 py-2">
@@ -297,9 +285,7 @@ function WeatherTable(): React.JSX.Element {
                       type="checkbox"
                       aria-label={`Select ${rowId}`}
                       checked={
-                        checkColId != null
-                          ? checkValue === '1'
-                          : rowSelection[rowId] === true
+                        checkColId != null ? checkValue === '1' : rowSelection[rowId] === true
                       }
                       onChange={
                         checkColId != null
@@ -341,10 +327,7 @@ function WeatherTable(): React.JSX.Element {
                       ? 'border-r border-app-border outline outline-1 -outline-offset-1 outline-[#F04438]'
                       : 'border-r border-app-border'
                     return (
-                      <td
-                        key={colId}
-                        className={`${widthCls} h-9 ${borderCls}`}
-                      >
+                      <td key={colId} className={`${widthCls} h-9 ${borderCls}`}>
                         {readOnly ? (
                           <span className="block truncate px-3">{display}</span>
                         ) : (

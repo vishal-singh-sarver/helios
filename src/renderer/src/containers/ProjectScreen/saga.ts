@@ -1,4 +1,3 @@
-import { all, call, put, race, select, take, takeEvery, takeLatest } from 'redux-saga/effects'
 import {
   addColumnRequest,
   addColumnsRequest,
@@ -9,6 +8,8 @@ import {
   loadHeadersRequest,
   patchHeaderRequest,
   toCellValue,
+  updateCellRequest,
+  updateColumnsRequest,
   type AddColumnResponse,
   type AddRowsResponse,
   type DataPage,
@@ -16,9 +17,23 @@ import {
   type GetProjectResponse,
   type HeadersResponse,
   type PatchHeaderRequestBody,
-  type UpdateCellResponse,
-  updateCellRequest
+  type UpdateCellResponse
 } from 'containers/Weather/service'
+import { validateCellValue } from 'containers/Weather/validation'
+import { all, call, put, race, select, take, takeEvery, takeLatest } from 'redux-saga/effects'
+import { navigate } from 'store/navigationReducer'
+import { ApiError } from 'utils/api'
+import { STORAGE_KEYS } from 'utils/storageKeys'
+import type {
+  AddColumnRequestedAction,
+  AddRowRequestedAction,
+  ListScenariosRequestedAction,
+  LoadScenarioRequestedAction,
+  SeedDefaultColumnsRequestedAction,
+  UpdateAllCheckboxesRequestedAction,
+  UpdateCellLocalAction,
+  UpdateColumnRequestedAction
+} from './actions'
 import * as actions from './actions'
 import {
   ADD_COLUMN_REQUESTED,
@@ -31,12 +46,10 @@ import {
   LOAD_SCENARIO_REQUESTED,
   LOAD_SCENARIO_SUCCEEDED,
   SEED_DEFAULT_COLUMNS_REQUESTED,
+  UPDATE_ALL_CHECKBOXES_REQUESTED,
   UPDATE_CELL_LOCAL,
   UPDATE_COLUMN_REQUESTED
 } from './constants'
-import { STORAGE_KEYS } from 'utils/storageKeys'
-import { ApiError } from 'utils/api'
-import { navigate } from 'store/navigationReducer'
 import {
   selectActiveWeatherTable,
   selectAllDataTypes,
@@ -44,16 +57,6 @@ import {
   selectCheckDataTypeId,
   selectDataTypesLoadStatus
 } from './selectors'
-import { validateCellValue } from 'containers/Weather/validation'
-import type {
-  AddColumnRequestedAction,
-  AddRowRequestedAction,
-  ListScenariosRequestedAction,
-  LoadScenarioRequestedAction,
-  SeedDefaultColumnsRequestedAction,
-  UpdateCellLocalAction,
-  UpdateColumnRequestedAction
-} from './actions'
 import {
   CHECK_COL_NAME,
   DATE_COL_ID,
@@ -144,10 +147,7 @@ function* bounceToHome(): Generator {
 // status/display_order/helios_data_type_id read from there instead of the
 // joined ColumnDefs.
 
-function* fetchHeaders(
-  projectId: string,
-  scenarioId: string
-): Generator<unknown, WeatherHeader[]> {
+function* fetchHeaders(projectId: string, scenarioId: string): Generator<unknown, WeatherHeader[]> {
   yield put(actions.loadHeadersRequested(projectId, scenarioId))
   try {
     const res = (yield call(loadHeadersRequest, projectId, scenarioId)) as HeadersResponse
@@ -182,9 +182,7 @@ function* loadScenarioWorker(action: LoadScenarioRequestedAction): Generator {
     // rely on dataRes.labels alone — when rows[] is empty the backend may
     // return labels=["date","time"] only, which would drop the real columns
     // and break /addRow (it requires every column id as a row key).
-    const sortedHeaders = [...headers].sort(
-      (a, b) => a.display_order - b.display_order
-    )
+    const sortedHeaders = [...headers].sort((a, b) => a.display_order - b.display_order)
     const seen = new Set<ColId>()
     const columns: ColumnDef[] = []
 
@@ -232,9 +230,7 @@ function* loadScenarioWorker(action: LoadScenarioRequestedAction): Generator {
     // unitId and re-run validation against the catalog.
     yield call(revalidateScenarioColumns, scenarioId)
   } catch (err) {
-    yield put(
-      actions.loadScenarioFailed(projectId, scenarioId, (err as Error).message)
-    )
+    yield put(actions.loadScenarioFailed(projectId, scenarioId, (err as Error).message))
     if (isStaleIdError(err)) yield call(bounceToHome)
   }
 }
@@ -285,9 +281,7 @@ function* waitForScenarioLoad(scenarioId: string): Generator<unknown, string | n
   return result.failed?.payload.error ?? null
 }
 
-function* seedDefaultColumnsWorker(
-  action: SeedDefaultColumnsRequestedAction
-): Generator {
+function* seedDefaultColumnsWorker(action: SeedDefaultColumnsRequestedAction): Generator {
   const { projectId, scenarioId } = action.payload
   try {
     // Resolve the helios_data_type_id for the `check` data type. The catalog
@@ -320,9 +314,7 @@ function* seedDefaultColumnsWorker(
     }
     yield put(actions.seedDefaultColumnsSucceeded(projectId, scenarioId))
   } catch (err) {
-    yield put(
-      actions.seedDefaultColumnsFailed(projectId, scenarioId, (err as Error).message)
-    )
+    yield put(actions.seedDefaultColumnsFailed(projectId, scenarioId, (err as Error).message))
   }
 }
 
@@ -402,19 +394,11 @@ function buildRowsForAdd(
 }
 
 function* addRowWorker(action: AddRowRequestedAction): Generator {
-  const { projectId, scenarioId, date, time, columnIds, numberOfRows, deltaHours } =
-    action.payload
+  const { projectId, scenarioId, date, time, columnIds, numberOfRows, deltaHours } = action.payload
   try {
     const table = (yield select(selectActiveWeatherTable)) as WeatherTable | null
     const columns = table?.columns ?? {}
-    const rows = buildRowsForAdd(
-      date,
-      time,
-      deltaHours,
-      numberOfRows,
-      columnIds,
-      columns
-    )
+    const rows = buildRowsForAdd(date, time, deltaHours, numberOfRows, columnIds, columns)
     if (rows === null) {
       yield put(
         actions.addRowFailed(
@@ -451,8 +435,7 @@ function* addRowWorker(action: AddRowRequestedAction): Generator {
 // Rows missing date or time are skipped defensively.
 
 function* addColumnWorker(action: AddColumnRequestedAction): Generator {
-  const { projectId, scenarioId, name, dataTypeId, dataUnitId, defaultValue } =
-    action.payload
+  const { projectId, scenarioId, name, dataTypeId, dataUnitId, defaultValue } = action.payload
   try {
     const table = (yield select(selectActiveWeatherTable)) as WeatherTable | null
     const values: Array<{ date: string; time: string; value: string }> = []
@@ -497,13 +480,7 @@ function* updateColumnWorker(action: UpdateColumnRequestedAction): Generator {
   const headerId = Number(colId)
   if (!Number.isFinite(headerId) || headerId <= 0) {
     yield put(
-      actions.updateColumnFailed(
-        projectId,
-        scenarioId,
-        colId,
-        previous,
-        'Column has no header id'
-      )
+      actions.updateColumnFailed(projectId, scenarioId, colId, previous, 'Column has no header id')
     )
     return
   }
@@ -518,13 +495,7 @@ function* updateColumnWorker(action: UpdateColumnRequestedAction): Generator {
     yield put(actions.updateColumnSucceeded(projectId, scenarioId, colId))
   } catch (err) {
     yield put(
-      actions.updateColumnFailed(
-        projectId,
-        scenarioId,
-        colId,
-        previous,
-        (err as Error).message
-      )
+      actions.updateColumnFailed(projectId, scenarioId, colId, previous, (err as Error).message)
     )
   }
 
@@ -592,9 +563,38 @@ function* updateCellWorker(action: UpdateCellLocalAction): Generator {
     })) as UpdateCellResponse
     yield put(actions.updateCellSucceeded(projectId, scenarioId, rowId, colId))
   } catch (err) {
-    yield put(
-      actions.updateCellFailed(projectId, scenarioId, rowId, colId, (err as Error).message)
-    )
+    yield put(actions.updateCellFailed(projectId, scenarioId, rowId, colId, (err as Error).message))
+  }
+}
+function* updateAllCheckboxesWorker(action: UpdateAllCheckboxesRequestedAction): Generator {
+  const { projectId, scenarioId, value } = action.payload
+
+  try {
+    const table = (yield select(selectActiveWeatherTable)) as WeatherTable | null
+    const values: Array<{ date: string; time: string; value: string }> = []
+
+    if (table) {
+      for (const rowId of table.rowOrder) {
+        const row = table.rows[rowId]
+        if (!row) continue
+        const date = row[DATE_COL_ID]
+        const time = row[TIME_COL_ID]
+        if (date == null || time == null) continue
+        values.push({ date, time, value })
+      }
+    }
+
+    yield call(updateColumnsRequest, projectId, scenarioId, {
+      columns: [
+        {
+          name: CHECK_COL_NAME,
+          values
+        }
+      ]
+    })
+  } catch {
+    // Local optimistic reducer state already reflects the checkbox toggle.
+    // Follow-up error handling can be added once the UI has a place to show it.
   }
 }
 
@@ -609,4 +609,5 @@ export default function* projectScreenSaga(): Generator {
   yield takeLatest(ADD_COLUMN_REQUESTED, addColumnWorker)
   yield takeEvery(UPDATE_COLUMN_REQUESTED, updateColumnWorker)
   yield takeEvery(UPDATE_CELL_LOCAL, updateCellWorker)
+  yield takeLatest(UPDATE_ALL_CHECKBOXES_REQUESTED, updateAllCheckboxesWorker)
 }

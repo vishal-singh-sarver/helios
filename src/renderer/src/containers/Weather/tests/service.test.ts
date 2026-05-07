@@ -8,6 +8,7 @@ import {
   loadHeadersRequest,
   patchHeaderRequest,
   toCellValue,
+  updateColumnsRequest,
   updateCellRequest
 } from '../service'
 import { api, ApiError } from 'utils/api'
@@ -179,6 +180,36 @@ describe('patchHeaderRequest', () => {
   })
 })
 
+describe('updateColumnsRequest', () => {
+  it('PATCHes updateCol with the bulk column wire shape', async () => {
+    mockedApi.patch.mockResolvedValueOnce('ok')
+    await updateColumnsRequest('p1', 's1', {
+      columns: [
+        {
+          name: 'check',
+          values: [
+            { date: '2026-01-01', time: '00:00:00', value: '1' },
+            { date: '2026-01-01', time: '01:00:00', value: '1' }
+          ]
+        }
+      ]
+    })
+    expect(mockedApi.patch).toHaveBeenCalledWith(API_ROUTES.weather.updateCol('p1', 's1'), {
+      column: [
+        {
+          name: 'check',
+          datatype: null,
+          data_unit: null,
+          values: [
+            { date: '2026-01-01', time: '00:00:00', value: '1' },
+            { date: '2026-01-01', time: '01:00:00', value: '1' }
+          ]
+        }
+      ]
+    })
+  })
+})
+
 describe('addRowsRequest', () => {
   it('POSTs the rows body to the addRow route', async () => {
     mockedApi.post.mockResolvedValueOnce({ success: true })
@@ -189,15 +220,15 @@ describe('addRowsRequest', () => {
 })
 
 describe('updateCellRequest', () => {
-  it('wraps a single update in { updates: [...] }', async () => {
-    mockedApi.post.mockResolvedValueOnce({ success: true, updated_count: 1 })
+  it('PATCHes a single update wrapped in { updates: [...] }', async () => {
+    mockedApi.patch.mockResolvedValueOnce({ success: true, updated_count: 1 })
     const body = {
       col: '5',
       row: { date: '2026-01-01', time: '00:00' },
       value: '42'
     }
     await updateCellRequest('p1', 's1', body)
-    expect(mockedApi.post).toHaveBeenCalledWith(
+    expect(mockedApi.patch).toHaveBeenCalledWith(
       API_ROUTES.weather.update('p1', 's1'),
       { updates: [body] }
     )

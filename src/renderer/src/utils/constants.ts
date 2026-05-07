@@ -31,6 +31,8 @@ export const API_ROUTES = {
       `/api/weather/project/${projectId}/scenario/${scenarioId}/getAllTimeSeriesData`,
     update: (projectId: string, scenarioId: string) =>
       `/api/weather/project/${projectId}/scenario/${scenarioId}/update`,
+    updateCol: (projectId: string, scenarioId: string) =>
+      `/api/weather/project/${projectId}/scenario/${scenarioId}/updateCol`,
     add: (projectId: string, scenarioId: string) =>
       `/api/weather/project/${projectId}/scenario/${scenarioId}/add`,
     addCol: (projectId: string, scenarioId: string) =>

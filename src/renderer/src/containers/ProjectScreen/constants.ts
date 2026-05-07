@@ -53,8 +53,7 @@ export const SEED_DEFAULT_COLUMNS_REQUESTED =
   'app/ProjectScreen/SEED_DEFAULT_COLUMNS_REQUESTED' as const
 export const SEED_DEFAULT_COLUMNS_SUCCEEDED =
   'app/ProjectScreen/SEED_DEFAULT_COLUMNS_SUCCEEDED' as const
-export const SEED_DEFAULT_COLUMNS_FAILED =
-  'app/ProjectScreen/SEED_DEFAULT_COLUMNS_FAILED' as const
+export const SEED_DEFAULT_COLUMNS_FAILED = 'app/ProjectScreen/SEED_DEFAULT_COLUMNS_FAILED' as const
 
 // Patch column header (name / data type / unit). Optimistic write on
 // _REQUESTED, rollback to the prior values on _FAILED.
@@ -69,7 +68,8 @@ export const UPDATE_CELL_LOCAL = 'app/ProjectScreen/UPDATE_CELL_LOCAL' as const
 export const UPDATE_CELL_REQUESTED = 'app/ProjectScreen/UPDATE_CELL_REQUESTED' as const
 export const UPDATE_CELL_SUCCEEDED = 'app/ProjectScreen/UPDATE_CELL_SUCCEEDED' as const
 export const UPDATE_CELL_FAILED = 'app/ProjectScreen/UPDATE_CELL_FAILED' as const
-
+export const UPDATE_ALL_CHECKBOXES_REQUESTED =
+  'app/ProjectScreen/UPDATE_ALL_CHECKBOXES_REQUESTED' as const
 // Bulk per-column validation. Dispatched after a column's data type or
 // unit changes so every cell in that column is re-checked against the new
 // range (covers manually-built columns and upload-imported columns alike).

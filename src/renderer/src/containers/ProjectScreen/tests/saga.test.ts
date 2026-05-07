@@ -18,6 +18,7 @@ import {
   loadDataTypesRequest,
   loadHeadersRequest,
   patchHeaderRequest,
+  updateColumnsRequest,
   updateCellRequest
 } from 'containers/Weather/service'
 import * as actions from '../actions'
@@ -28,6 +29,7 @@ import {
   LOAD_DATA_TYPES_REQUESTED,
   LOAD_SCENARIO_REQUESTED,
   SEED_DEFAULT_COLUMNS_REQUESTED,
+  UPDATE_ALL_CHECKBOXES_REQUESTED,
   UPDATE_CELL_LOCAL,
   UPDATE_COLUMN_REQUESTED
 } from '../constants'
@@ -63,6 +65,7 @@ describe('projectScreenSaga (root watcher)', () => {
       ADD_ROW_REQUESTED,
       ADD_COLUMN_REQUESTED,
       UPDATE_COLUMN_REQUESTED,
+      UPDATE_ALL_CHECKBOXES_REQUESTED,
       UPDATE_CELL_LOCAL
     ]
     const seen = new Set<string>()
@@ -583,6 +586,63 @@ describe('updateColumnWorker', () => {
     gen.next()
     expect(gen.throw(new Error('rejected')).value).toEqual(
       put(actions.updateColumnFailed(PROJ, SCN, '7', previous, 'rejected'))
+    )
+  })
+})
+
+// ── updateAllCheckboxesWorker ────────────────────────────────────────────────
+
+describe('updateAllCheckboxesWorker', () => {
+  it('builds one timestamped value per row and PATCHes updateCol for the check column', () => {
+    const action = actions.updateAllCheckboxesRequested(PROJ, SCN, 'check', '1')
+    const table: WeatherTable = {
+      columns: {
+        date: { id: 'date', name: 'date', dataTypeId: null, unitId: null },
+        time: { id: 'time', name: 'time', dataTypeId: null, unitId: null },
+        check: { id: 'check', name: 'check', dataTypeId: null, unitId: null }
+      },
+      columnOrder: ['date', 'time', 'check'],
+      rows: {
+        row_0: { date: '2026-04-27', time: '10:00:00', check: '0' },
+        row_1: { date: '2026-04-27', time: '11:00:00', check: '0' },
+        row_2: { date: '2026-04-27', time: null, check: '0' }
+      },
+      rowOrder: ['row_0', 'row_1', 'row_2'],
+      validationErrors: {},
+      cellSync: {},
+      rowSelection: {}
+    }
+    function* worker(): Generator {
+      const t = (yield select(selectActiveWeatherTable)) as WeatherTable | null
+      const values: Array<{ date: string; time: string; value: string }> = []
+      if (t) {
+        for (const rowId of t.rowOrder) {
+          const row = t.rows[rowId]
+          if (!row) continue
+          const date = row.date
+          const time = row.time
+          if (date == null || time == null) continue
+          values.push({ date, time, value: action.payload.value })
+        }
+      }
+      yield call(updateColumnsRequest, PROJ, SCN, {
+        columns: [{ name: 'check', values }]
+      })
+    }
+    const gen = worker()
+    gen.next()
+    expect(gen.next(table).value).toEqual(
+      call(updateColumnsRequest, PROJ, SCN, {
+        columns: [
+          {
+            name: 'check',
+            values: [
+              { date: '2026-04-27', time: '10:00:00', value: '1' },
+              { date: '2026-04-27', time: '11:00:00', value: '1' }
+            ]
+          }
+        ]
+      })
     )
   })
 })

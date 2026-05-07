@@ -10,13 +10,13 @@ import {
   LIST_SCENARIOS_FAILED,
   LIST_SCENARIOS_REQUESTED,
   LIST_SCENARIOS_SUCCEEDED,
-  LOAD_PROJECT_SUCCEEDED,
   LOAD_DATA_TYPES_FAILED,
   LOAD_DATA_TYPES_REQUESTED,
   LOAD_DATA_TYPES_SUCCEEDED,
   LOAD_HEADERS_FAILED,
   LOAD_HEADERS_REQUESTED,
   LOAD_HEADERS_SUCCEEDED,
+  LOAD_PROJECT_SUCCEEDED,
   LOAD_SCENARIO_FAILED,
   LOAD_SCENARIO_REQUESTED,
   LOAD_SCENARIO_SUCCEEDED,
@@ -25,6 +25,7 @@ import {
   SET_ALL_ROWS_SELECTION,
   SET_COLUMN_VALIDATION_ERRORS,
   SET_ROW_SELECTION,
+  UPDATE_ALL_CHECKBOXES_REQUESTED,
   UPDATE_CELL_FAILED,
   UPDATE_CELL_LOCAL,
   UPDATE_CELL_REQUESTED,
@@ -480,6 +481,17 @@ const projectScreenReducer = (
         // ring + info-icon tooltip render identically for both error sources.
         if (!table.validationErrors[rowId]) table.validationErrors[rowId] = {}
         table.validationErrors[rowId][colId] = error
+        break
+      }
+
+      case UPDATE_ALL_CHECKBOXES_REQUESTED: {
+        const { scenarioId, checkColId, value } = action.payload
+        const table = draft.byScenario[scenarioId]
+        if (!table) break
+        for (const rowId of table.rowOrder) {
+          if (!table.rows[rowId]) table.rows[rowId] = {}
+          table.rows[rowId][checkColId] = value
+        }
         break
       }
 

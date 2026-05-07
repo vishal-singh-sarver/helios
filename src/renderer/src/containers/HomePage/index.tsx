@@ -34,7 +34,8 @@ export function HomePage(): React.JSX.Element {
   const {
     loading: createLoading,
     error: createError,
-    success: createSuccess
+    success: createSuccess,
+    data: createProjectData
   } = useSelector(selectCreateProject)
   const { data: recentProjects } = useSelector(selectRecentProjects)
   const { inFlightIds: deletingIds } = useSelector(selectDeleteProject)
@@ -127,12 +128,18 @@ export function HomePage(): React.JSX.Element {
 
   // Close the dialog and clear the slice once the backend confirms success.
   React.useEffect(() => {
-    if (createSuccess) {
-      resetFormRef.current()
-      setShowNewProjectDialog(false)
-      dispatch(resetCreateProject())
+    if (!createSuccess || !createProjectData?.project_id) return
+    try {
+      localStorage.setItem(STORAGE_KEYS.activeProjectId, createProjectData.project_id)
+    } catch {
+      /* storage disabled — navigation still proceeds */
     }
-  }, [createSuccess, dispatch])
+
+    resetFormRef.current()
+    setShowNewProjectDialog(false)
+    dispatch(navigate('project'))
+    dispatch(resetCreateProject())
+  }, [createSuccess, createProjectData, dispatch])
 
   const openNewProjectDialog = (): void => {
     formik.resetForm()

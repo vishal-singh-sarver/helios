@@ -1,8 +1,8 @@
 import { call, put, race, take, takeEvery, takeLatest, takeLeading } from 'redux-saga/effects'
 import { api, ApiError } from 'utils/api'
 import { API_ROUTES } from 'utils/constants'
-import { createSseChannel } from 'utils/sse'
 import type { SseMessage } from 'utils/sse'
+import { createSseChannel } from 'utils/sse'
 import * as actions from './actions'
 import {
   CREATE_PROJECT,
@@ -13,10 +13,10 @@ import {
   SSE_DISCONNECT
 } from './constants'
 import type {
+  ApiErrorPayload,
   AppStatus,
   CreateProjectResponse,
-  RecentProjectsResponse,
-  ApiErrorPayload
+  RecentProjectsResponse
 } from './types'
 
 function toErrorPayload(err: unknown): ApiErrorPayload {

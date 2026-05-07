@@ -80,10 +80,7 @@ export interface DataPage {
   rows: Array<Record<string, string | number | null>>
 }
 
-export function loadDataRequest(
-  projectId: string,
-  scenarioId: string
-): Promise<DataPage> {
+export function loadDataRequest(projectId: string, scenarioId: string): Promise<DataPage> {
   // Pagination is intentionally not used yet — server returns the full
   // table when limit is omitted.
   return api.get<DataPage>(API_ROUTES.weather.data(projectId, scenarioId))
@@ -116,6 +113,7 @@ interface AddColumnWireBody {
     datatype: number | null
     data_unit: number | null
     values: AddColumnCellValue[]
+    default_value?: number | string | null
   }>
 }
 
@@ -200,6 +198,42 @@ export async function addColumnsRequest(
   }
 }
 
+// ── Update columns ───────────────────────────────────────────────────────────
+//
+// PATCH /api/weather/.../updateCol updates one or more existing columns by
+// name. For the bulk checkbox toggle we send a single `check` column with a
+// values[] entry for every existing row timestamp.
+
+export interface UpdateColumnsRequestBody {
+  columns: Array<{
+    name: string
+    dataTypeId?: number | null
+    dataUnitId?: number | null
+    values: AddColumnCellValue[]
+    defaultValue?: number | string | null
+  }>
+}
+
+export type UpdateColumnsResponse = string
+
+export function updateColumnsRequest(
+  projectId: string,
+  scenarioId: string,
+  body: UpdateColumnsRequestBody
+): Promise<UpdateColumnsResponse> {
+  const wire: AddColumnWireBody = {
+    column: body.columns.map((col) => ({
+      name: col.name,
+      datatype: col.dataTypeId ?? null,
+      data_unit: col.dataUnitId ?? null,
+      values: col.values,
+      ...(col.defaultValue !== undefined ? { default_value: col.defaultValue } : {})
+    }))
+  }
+
+  return api.patch<UpdateColumnsResponse>(API_ROUTES.weather.updateCol(projectId, scenarioId), wire)
+}
+
 // ── Patch header ─────────────────────────────────────────────────────────────
 //
 // PATCH /api/weather/.../weather_data_header/{header_id} — partial update of
@@ -253,13 +287,13 @@ export function addRowsRequest(
 // ── Update cell ──────────────────────────────────────────────────────────────
 //
 // Backend expects a batched payload: { updates: [{ col, row, value }, ...] }
-// (fail-fast). Saga still calls per-edit with one update; the wrapper is here
-// so callers don't need to know about the wire shape.
+// over PATCH /update (fail-fast). Saga still calls per-edit with one update;
+// the wrapper is here so callers don't need to know about the wire shape.
 
 export interface UpdateCellRequestBody {
   col: string
   row: { date: string; time: string }
-  value: string                     // "" clears (NaN)
+  value: string // "" clears (NaN)
 }
 
 interface UpdateCellWireBody {
@@ -277,10 +311,7 @@ export function updateCellRequest(
   body: UpdateCellRequestBody
 ): Promise<UpdateCellResponse> {
   const wire: UpdateCellWireBody = { updates: [body] }
-  return api.post<UpdateCellResponse>(
-    API_ROUTES.weather.update(projectId, scenarioId),
-    wire
-  )
+  return api.patch<UpdateCellResponse>(API_ROUTES.weather.update(projectId, scenarioId), wire)
 }
 
 // ── Helpers used by the load saga to coerce wire shapes ──────────────────────

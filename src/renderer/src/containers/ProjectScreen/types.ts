@@ -46,13 +46,13 @@ export interface ProjectMetadata {
   name: string
   latitude: number
   longitude: number
-  utc_offset: string                              // wire shape: "+05:00"
+  utc_offset: string // wire shape: "+05:00"
 }
 
 // ── Scenarios (per project) ─────────────────────────────────────────────────
 
 export interface Scenario {
-  id: string                                      // UUID
+  id: string // UUID
   name: string
   has_weather: boolean
   created_at: string
@@ -172,8 +172,8 @@ export const emptyWeatherTable = (): WeatherTable => ({
 export interface LoadedScenarioPayload {
   projectId: string
   scenarioId: string
-  columns: ColumnDef[]                            // ordered as displayed
-  rows: Array<Record<ColId, CellValue>>           // null === NaN
+  columns: ColumnDef[] // ordered as displayed
+  rows: Array<Record<ColId, CellValue>> // null === NaN
 }
 
 // ADD_ROW_REQUESTED — what the dialog dispatches and the saga POSTs.
@@ -182,11 +182,11 @@ export interface LoadedScenarioPayload {
 export interface AddRowRequestedPayload {
   projectId: string
   scenarioId: string
-  date: string                                    // start date (YYYY-MM-DD)
-  time: string                                    // start time (HH:mm)
-  columnIds: ColId[]                              // all columns, in display order
+  date: string // start date (YYYY-MM-DD)
+  time: string // start time (HH:mm)
+  columnIds: ColId[] // all columns, in display order
   numberOfRows: number
-  deltaHours: number                              // integer hour gap between rows
+  deltaHours: number // integer hour gap between rows
 }
 
 // ADD_ROW_SUCCEEDED — row-add returns counters only (no inline rows). The
@@ -205,7 +205,7 @@ export interface AddColumnRequestedPayload {
   name: string
   dataTypeId: number | null
   dataUnitId: number | null
-  defaultValue: string                            // back-fill into every existing row
+  defaultValue: string // back-fill into every existing row
 }
 
 // ADD_COLUMN_SUCCEEDED — backend returns the new column metadata.
@@ -253,6 +253,6 @@ export interface UpdateCellLocalPayload {
   scenarioId: string
   rowId: RowId
   colId: ColId
-  value: string                                   // raw editor value; "" clears (NaN)
-  validationError: string | null                  // non-null short-circuits the saga
+  value: string // raw editor value; "" clears (NaN)
+  validationError: string | null // non-null short-circuits the saga
 }

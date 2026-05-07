@@ -1,41 +1,42 @@
 import {
-  LOAD_DATA_TYPES_REQUESTED,
-  LOAD_DATA_TYPES_SUCCEEDED,
-  LOAD_DATA_TYPES_FAILED,
-  SET_ACTIVE_PROJECT,
-  SET_ACTIVE_SCENARIO,
-  LIST_SCENARIOS_REQUESTED,
-  LIST_SCENARIOS_SUCCEEDED,
-  LIST_SCENARIOS_FAILED,
-  LOAD_PROJECT_SUCCEEDED,
-  LOAD_HEADERS_REQUESTED,
-  LOAD_HEADERS_SUCCEEDED,
-  LOAD_HEADERS_FAILED,
-  LOAD_SCENARIO_REQUESTED,
-  LOAD_SCENARIO_SUCCEEDED,
-  LOAD_SCENARIO_FAILED,
-  UPLOAD_FILE_REQUESTED,
-  UPLOAD_FILE_SUCCEEDED,
-  UPLOAD_FILE_FAILED,
-  ADD_ROW_REQUESTED,
-  ADD_ROW_SUCCEEDED,
-  ADD_ROW_FAILED,
+  ADD_COLUMN_FAILED,
   ADD_COLUMN_REQUESTED,
   ADD_COLUMN_SUCCEEDED,
-  ADD_COLUMN_FAILED,
+  ADD_ROW_FAILED,
+  ADD_ROW_REQUESTED,
+  ADD_ROW_SUCCEEDED,
+  LIST_SCENARIOS_FAILED,
+  LIST_SCENARIOS_REQUESTED,
+  LIST_SCENARIOS_SUCCEEDED,
+  LOAD_DATA_TYPES_FAILED,
+  LOAD_DATA_TYPES_REQUESTED,
+  LOAD_DATA_TYPES_SUCCEEDED,
+  LOAD_HEADERS_FAILED,
+  LOAD_HEADERS_REQUESTED,
+  LOAD_HEADERS_SUCCEEDED,
+  LOAD_PROJECT_SUCCEEDED,
+  LOAD_SCENARIO_FAILED,
+  LOAD_SCENARIO_REQUESTED,
+  LOAD_SCENARIO_SUCCEEDED,
+  SEED_DEFAULT_COLUMNS_FAILED,
   SEED_DEFAULT_COLUMNS_REQUESTED,
   SEED_DEFAULT_COLUMNS_SUCCEEDED,
-  SEED_DEFAULT_COLUMNS_FAILED,
-  UPDATE_COLUMN_REQUESTED,
-  UPDATE_COLUMN_SUCCEEDED,
-  UPDATE_COLUMN_FAILED,
+  SET_ACTIVE_PROJECT,
+  SET_ACTIVE_SCENARIO,
+  SET_ALL_ROWS_SELECTION,
+  SET_COLUMN_VALIDATION_ERRORS,
+  SET_ROW_SELECTION,
+  UPDATE_ALL_CHECKBOXES_REQUESTED,
+  UPDATE_CELL_FAILED,
   UPDATE_CELL_LOCAL,
   UPDATE_CELL_REQUESTED,
   UPDATE_CELL_SUCCEEDED,
-  UPDATE_CELL_FAILED,
-  SET_COLUMN_VALIDATION_ERRORS,
-  SET_ROW_SELECTION,
-  SET_ALL_ROWS_SELECTION
+  UPDATE_COLUMN_FAILED,
+  UPDATE_COLUMN_REQUESTED,
+  UPDATE_COLUMN_SUCCEEDED,
+  UPLOAD_FILE_FAILED,
+  UPLOAD_FILE_REQUESTED,
+  UPLOAD_FILE_SUCCEEDED
 } from './constants'
 import type {
   AddColumnRequestedPayload,
@@ -241,7 +242,10 @@ export interface SetColumnValidationErrorsAction extends Idx {
     errors: Record<RowId, string | null>
   }
 }
-
+export interface UpdateAllCheckboxesRequestedAction extends Idx {
+  type: typeof UPDATE_ALL_CHECKBOXES_REQUESTED
+  payload: { projectId: string; scenarioId: string; checkColId: ColId; value: string }
+}
 // Selection
 export interface SetRowSelectionAction extends Idx {
   type: typeof SET_ROW_SELECTION
@@ -287,6 +291,7 @@ export type ProjectScreenAction =
   | UpdateCellRequestedAction
   | UpdateCellSucceededAction
   | UpdateCellFailedAction
+  | UpdateAllCheckboxesRequestedAction
   | SetColumnValidationErrorsAction
   | SetRowSelectionAction
   | SetAllRowsSelectionAction
@@ -296,9 +301,10 @@ export type ProjectScreenAction =
 export const loadDataTypesRequested = (): LoadDataTypesRequestedAction => ({
   type: LOAD_DATA_TYPES_REQUESTED
 })
-export const loadDataTypesSucceeded = (
-  payload: DataTypeDef[]
-): LoadDataTypesSucceededAction => ({ type: LOAD_DATA_TYPES_SUCCEEDED, payload })
+export const loadDataTypesSucceeded = (payload: DataTypeDef[]): LoadDataTypesSucceededAction => ({
+  type: LOAD_DATA_TYPES_SUCCEEDED,
+  payload
+})
 export const loadDataTypesFailed = (payload: string): LoadDataTypesFailedAction => ({
   type: LOAD_DATA_TYPES_FAILED,
   payload
@@ -308,9 +314,7 @@ export const setActiveProject = (projectId: string): SetActiveProjectAction => (
   type: SET_ACTIVE_PROJECT,
   payload: { projectId }
 })
-export const loadProjectSucceeded = (
-  payload: ProjectMetadata
-): LoadProjectSucceededAction => ({
+export const loadProjectSucceeded = (payload: ProjectMetadata): LoadProjectSucceededAction => ({
   type: LOAD_PROJECT_SUCCEEDED,
   payload
 })
@@ -319,9 +323,7 @@ export const setActiveScenario = (scenarioId: string): SetActiveScenarioAction =
   payload: { scenarioId }
 })
 
-export const listScenariosRequested = (
-  projectId: string
-): ListScenariosRequestedAction => ({
+export const listScenariosRequested = (projectId: string): ListScenariosRequestedAction => ({
   type: LIST_SCENARIOS_REQUESTED,
   payload: { projectId }
 })
@@ -354,10 +356,7 @@ export const loadHeadersSucceeded = (
   type: LOAD_HEADERS_SUCCEEDED,
   payload: { scenarioId, headers }
 })
-export const loadHeadersFailed = (
-  scenarioId: string,
-  error: string
-): LoadHeadersFailedAction => ({
+export const loadHeadersFailed = (scenarioId: string, error: string): LoadHeadersFailedAction => ({
   type: LOAD_HEADERS_FAILED,
   payload: { scenarioId, error }
 })
@@ -417,10 +416,7 @@ export const addRowRequested = (
   type: ADD_ROW_REQUESTED,
   payload: { projectId, scenarioId, date, time, columnIds, numberOfRows, deltaHours }
 })
-export const addRowSucceeded = (
-  projectId: string,
-  scenarioId: string
-): AddRowSucceededAction => ({
+export const addRowSucceeded = (projectId: string, scenarioId: string): AddRowSucceededAction => ({
   type: ADD_ROW_SUCCEEDED,
   payload: { projectId, scenarioId }
 })
@@ -518,6 +514,7 @@ export const updateCellLocal = (payload: UpdateCellLocalPayload): UpdateCellLoca
   type: UPDATE_CELL_LOCAL,
   payload
 })
+
 export const updateCellRequested = (
   projectId: string,
   scenarioId: string,
@@ -545,6 +542,16 @@ export const updateCellFailed = (
 ): UpdateCellFailedAction => ({
   type: UPDATE_CELL_FAILED,
   payload: { projectId, scenarioId, rowId, colId, error }
+})
+
+export const updateAllCheckboxesRequested = (
+  projectId: string,
+  scenarioId: string,
+  checkColId: ColId,
+  value: string
+): UpdateAllCheckboxesRequestedAction => ({
+  type: UPDATE_ALL_CHECKBOXES_REQUESTED,
+  payload: { projectId, scenarioId, checkColId, value }
 })
 
 export const setColumnValidationErrors = (
