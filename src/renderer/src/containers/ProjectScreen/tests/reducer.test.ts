@@ -134,6 +134,38 @@ describe('projectScreenReducer', () => {
       expect(result.activeProject).toEqual(sampleProject)
     })
 
+    it('UPDATE_PROJECT_REQUESTED sets loading and clears error', () => {
+      const seed = {
+        ...initialState,
+        updateProject: { loading: false, error: 'previous' }
+      }
+      const result = projectScreenReducer(
+        seed,
+        actions.updateProjectRequested(PROJ, { latitude: 1 })
+      )
+      expect(result.updateProject.loading).toBe(true)
+      expect(result.updateProject.error).toBeNull()
+    })
+
+    it('UPDATE_PROJECT_SUCCEEDED stores refreshed metadata and clears loading', () => {
+      const result = projectScreenReducer(
+        { ...initialState, updateProject: { loading: true, error: null } },
+        actions.updateProjectSucceeded(sampleProject)
+      )
+      expect(result.updateProject.loading).toBe(false)
+      expect(result.updateProject.error).toBeNull()
+      expect(result.activeProject).toEqual(sampleProject)
+    })
+
+    it('UPDATE_PROJECT_FAILED stores the error and clears loading', () => {
+      const result = projectScreenReducer(
+        { ...initialState, updateProject: { loading: true, error: null } },
+        actions.updateProjectFailed(PROJ, 'denied')
+      )
+      expect(result.updateProject.loading).toBe(false)
+      expect(result.updateProject.error).toBe('denied')
+    })
+
     it('SET_ACTIVE_SCENARIO sets id and ensures an empty table', () => {
       const result = projectScreenReducer(initialState, actions.setActiveScenario(SCN))
       expect(result.activeScenarioId).toBe(SCN)
@@ -174,10 +206,7 @@ describe('projectScreenReducer', () => {
     })
 
     it('LIST_SCENARIOS_FAILED stores the error', () => {
-      const result = projectScreenReducer(
-        initialState,
-        actions.listScenariosFailed(PROJ, 'denied')
-      )
+      const result = projectScreenReducer(initialState, actions.listScenariosFailed(PROJ, 'denied'))
       const entry = result.scenarios.byProject[PROJ]
       expect(entry.loadStatus).toBe('error')
       expect(entry.loadError).toBe('denied')
@@ -199,18 +228,12 @@ describe('projectScreenReducer', () => {
     const h1: WeatherHeader = { ...h0, id: 8, name: 'humidity', display_order: 0 }
 
     it('LOAD_HEADERS_REQUESTED ensures the entry and sets loading', () => {
-      const result = projectScreenReducer(
-        initialState,
-        actions.loadHeadersRequested(PROJ, SCN)
-      )
+      const result = projectScreenReducer(initialState, actions.loadHeadersRequested(PROJ, SCN))
       expect(result.headers.byScenario[SCN].loadStatus).toBe('loading')
     })
 
     it('LOAD_HEADERS_SUCCEEDED sorts ids by display_order', () => {
-      const result = projectScreenReducer(
-        initialState,
-        actions.loadHeadersSucceeded(SCN, [h0, h1])
-      )
+      const result = projectScreenReducer(initialState, actions.loadHeadersSucceeded(SCN, [h0, h1]))
       const entry = result.headers.byScenario[SCN]
       // h1 has display_order=0, h0 has display_order=1 → h1 first
       expect(entry.ids).toEqual([8, 7])
@@ -218,10 +241,7 @@ describe('projectScreenReducer', () => {
     })
 
     it('LOAD_HEADERS_FAILED stores the error', () => {
-      const result = projectScreenReducer(
-        initialState,
-        actions.loadHeadersFailed(SCN, 'oops')
-      )
+      const result = projectScreenReducer(initialState, actions.loadHeadersFailed(SCN, 'oops'))
       const entry = result.headers.byScenario[SCN]
       expect(entry.loadStatus).toBe('error')
       expect(entry.loadError).toBe('oops')
@@ -230,10 +250,7 @@ describe('projectScreenReducer', () => {
 
   describe('scenario load', () => {
     it('LOAD_SCENARIO_REQUESTED ensures an empty table for the scenario', () => {
-      const result = projectScreenReducer(
-        initialState,
-        actions.loadScenarioRequested(PROJ, SCN)
-      )
+      const result = projectScreenReducer(initialState, actions.loadScenarioRequested(PROJ, SCN))
       expect(result.byScenario[SCN]).toBeDefined()
       expect(result.byScenario[SCN].rowOrder).toEqual([])
     })
@@ -254,10 +271,7 @@ describe('projectScreenReducer', () => {
     })
 
     it('LOAD_SCENARIO_FAILED is a no-op (UI surfaces error via toast)', () => {
-      const result = projectScreenReducer(
-        loaded(),
-        actions.loadScenarioFailed(PROJ, SCN, 'boom')
-      )
+      const result = projectScreenReducer(loaded(), actions.loadScenarioFailed(PROJ, SCN, 'boom'))
       expect(result.byScenario[SCN].rowOrder).toEqual(['row_0', 'row_1'])
     })
   })
@@ -526,10 +540,7 @@ describe('projectScreenReducer', () => {
           validationError: null
         })
       )
-      state = projectScreenReducer(
-        state,
-        actions.updateCellSucceeded(PROJ, SCN, 'row_0', '7')
-      )
+      state = projectScreenReducer(state, actions.updateCellSucceeded(PROJ, SCN, 'row_0', '7'))
       expect(state.byScenario[SCN].cellSync[cellKey('row_0', '7')]).toBeUndefined()
     })
 

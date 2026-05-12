@@ -1,13 +1,4 @@
-import {
-  all,
-  call,
-  put,
-  race,
-  select,
-  take,
-  takeEvery,
-  takeLatest
-} from 'redux-saga/effects'
+import { all, call, put, race, select, take, takeEvery, takeLatest } from 'redux-saga/effects'
 import projectScreenSaga, * as sagaModule from '../saga'
 import {
   addColumnRequest,
@@ -19,7 +10,8 @@ import {
   loadHeadersRequest,
   patchHeaderRequest,
   updateColumnsRequest,
-  updateCellRequest
+  updateCellRequest,
+  updateProjectRequest
 } from 'containers/Weather/service'
 import * as actions from '../actions'
 import {
@@ -31,7 +23,8 @@ import {
   SEED_DEFAULT_COLUMNS_REQUESTED,
   UPDATE_ALL_CHECKBOXES_REQUESTED,
   UPDATE_CELL_LOCAL,
-  UPDATE_COLUMN_REQUESTED
+  UPDATE_COLUMN_REQUESTED,
+  UPDATE_PROJECT_REQUESTED
 } from '../constants'
 import {
   selectActiveWeatherTable,
@@ -59,6 +52,7 @@ describe('projectScreenSaga (root watcher)', () => {
     const gen = projectScreenSaga()
     const expected = [
       LOAD_DATA_TYPES_REQUESTED,
+      UPDATE_PROJECT_REQUESTED,
       LIST_SCENARIOS_REQUESTED,
       LOAD_SCENARIO_REQUESTED,
       SEED_DEFAULT_COLUMNS_REQUESTED,
@@ -209,9 +203,7 @@ describe('listScenariosWorker', () => {
       try {
         yield call(getProjectRequest, action.payload.projectId)
       } catch (err) {
-        yield put(
-          actions.listScenariosFailed(action.payload.projectId, (err as Error).message)
-        )
+        yield put(actions.listScenariosFailed(action.payload.projectId, (err as Error).message))
         if (err instanceof ApiError && err.status >= 400 && err.status < 500) {
           yield call([localStorage, 'removeItem'], STORAGE_KEYS.activeProjectId)
           yield call([localStorage, 'removeItem'], STORAGE_KEYS.activeScenarioId)
@@ -222,9 +214,7 @@ describe('listScenariosWorker', () => {
     const gen = worker()
     gen.next() // call getProjectRequest
     const err = new ApiError(404, 'Not found')
-    expect(gen.throw(err).value).toEqual(
-      put(actions.listScenariosFailed(PROJ, 'Not found'))
-    )
+    expect(gen.throw(err).value).toEqual(put(actions.listScenariosFailed(PROJ, 'Not found')))
     expect(gen.next().value).toEqual(
       call([localStorage, 'removeItem'], STORAGE_KEYS.activeProjectId)
     )
@@ -254,6 +244,56 @@ describe('listScenariosWorker', () => {
   })
 })
 
+// ── updateProjectWorker ─────────────────────────────────────────────────────
+
+describe('updateProjectWorker', () => {
+  it('PATCHes project metadata, refetches project, then dispatches updateProjectSucceeded', () => {
+    const action = actions.updateProjectRequested(PROJ, { latitude: 23.5 })
+    const projectMeta = {
+      id: PROJ,
+      name: 'Project One',
+      latitude: 23.5,
+      longitude: 77.5,
+      utc_offset: '+05:00',
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+      scenarios: []
+    }
+
+    function* worker(): Generator {
+      yield call(updateProjectRequest, action.payload.projectId, action.payload.patch)
+      const res = (yield call(getProjectRequest, action.payload.projectId)) as {
+        project: typeof projectMeta
+      }
+      yield put(
+        actions.updateProjectSucceeded({
+          id: res.project.id,
+          name: res.project.name,
+          latitude: res.project.latitude,
+          longitude: res.project.longitude,
+          utc_offset: res.project.utc_offset
+        })
+      )
+    }
+
+    const gen = worker()
+    expect(gen.next().value).toEqual(call(updateProjectRequest, PROJ, { latitude: 23.5 }))
+    expect(gen.next().value).toEqual(call(getProjectRequest, PROJ))
+    expect(gen.next({ project: projectMeta }).value).toEqual(
+      put(
+        actions.updateProjectSucceeded({
+          id: PROJ,
+          name: 'Project One',
+          latitude: 23.5,
+          longitude: 77.5,
+          utc_offset: '+05:00'
+        })
+      )
+    )
+    expect(gen.next().done).toBe(true)
+  })
+})
+
 // ── loadScenarioWorker ───────────────────────────────────────────────────────
 
 describe('loadScenarioWorker', () => {
@@ -270,9 +310,9 @@ describe('loadScenarioWorker', () => {
     }
     const gen = worker()
     gen.next() // all(...)
-    expect(
-      gen.next([[], { labels: [], rows: [] }]).value
-    ).toEqual(put(actions.seedDefaultColumnsRequested(PROJ, SCN)))
+    expect(gen.next([[], { labels: [], rows: [] }]).value).toEqual(
+      put(actions.seedDefaultColumnsRequested(PROJ, SCN))
+    )
     expect(gen.next().done).toBe(true)
   })
 })
@@ -284,7 +324,10 @@ describe('seedDefaultColumnsWorker', () => {
     function* worker(): Generator {
       const status = (yield select(selectDataTypesLoadStatus)) as string
       if (status === 'idle' || status === 'loading') {
-        yield take(['app/ProjectScreen/LOAD_DATA_TYPES_SUCCEEDED', 'app/ProjectScreen/LOAD_DATA_TYPES_FAILED'])
+        yield take([
+          'app/ProjectScreen/LOAD_DATA_TYPES_SUCCEEDED',
+          'app/ProjectScreen/LOAD_DATA_TYPES_FAILED'
+        ])
       }
       const checkDataTypeId = (yield select(selectCheckDataTypeId)) as number | null
       yield call(addColumnsRequest, PROJ, SCN, [
@@ -298,9 +341,7 @@ describe('seedDefaultColumnsWorker', () => {
         failed: take('app/ProjectScreen/LOAD_SCENARIO_FAILED')
       })) as { succeeded?: unknown; failed?: { payload: { error: string } } }
       if (raceResult.failed) {
-        yield put(
-          actions.seedDefaultColumnsFailed(PROJ, SCN, raceResult.failed.payload.error)
-        )
+        yield put(actions.seedDefaultColumnsFailed(PROJ, SCN, raceResult.failed.payload.error))
         return
       }
       yield put(actions.seedDefaultColumnsSucceeded(PROJ, SCN))
@@ -338,9 +379,7 @@ describe('seedDefaultColumnsWorker', () => {
       yield put(actions.loadScenarioRequested(PROJ, SCN))
       const raceResult = (yield race({})) as { failed?: { payload: { error: string } } }
       if (raceResult.failed) {
-        yield put(
-          actions.seedDefaultColumnsFailed(PROJ, SCN, raceResult.failed.payload.error)
-        )
+        yield put(actions.seedDefaultColumnsFailed(PROJ, SCN, raceResult.failed.payload.error))
       }
     }
     const gen = worker()
@@ -376,22 +415,14 @@ describe('addRowWorker', () => {
       yield select(selectActiveWeatherTable)
       // Saga's buildRowsForAdd returns null for "not-a-date".
       yield put(
-        actions.addRowFailed(
-          PROJ,
-          SCN,
-          'Invalid start date / time / delta — could not build rows.'
-        )
+        actions.addRowFailed(PROJ, SCN, 'Invalid start date / time / delta — could not build rows.')
       )
     }
     const gen = worker()
     expect(gen.next().value).toEqual(select(selectActiveWeatherTable))
     expect(gen.next(tableWithDateTime).value).toEqual(
       put(
-        actions.addRowFailed(
-          PROJ,
-          SCN,
-          'Invalid start date / time / delta — could not build rows.'
-        )
+        actions.addRowFailed(PROJ, SCN, 'Invalid start date / time / delta — could not build rows.')
       )
     )
   })
@@ -553,21 +584,13 @@ describe('updateColumnWorker', () => {
       const headerId = Number('date')
       if (!Number.isFinite(headerId) || headerId <= 0) {
         yield put(
-          actions.updateColumnFailed(
-            PROJ,
-            SCN,
-            'date',
-            previous,
-            'Column has no header id'
-          )
+          actions.updateColumnFailed(PROJ, SCN, 'date', previous, 'Column has no header id')
         )
       }
     }
     const gen = worker()
     expect(gen.next().value).toEqual(
-      put(
-        actions.updateColumnFailed(PROJ, SCN, 'date', previous, 'Column has no header id')
-      )
+      put(actions.updateColumnFailed(PROJ, SCN, 'date', previous, 'Column has no header id'))
     )
   })
 
@@ -577,9 +600,7 @@ describe('updateColumnWorker', () => {
       try {
         yield call(patchHeaderRequest, PROJ, SCN, 7, { name: 'temperature' })
       } catch (err) {
-        yield put(
-          actions.updateColumnFailed(PROJ, SCN, '7', previous, (err as Error).message)
-        )
+        yield put(actions.updateColumnFailed(PROJ, SCN, '7', previous, (err as Error).message))
       }
     }
     const gen = worker()
@@ -763,9 +784,7 @@ describe('updateCellWorker (short-circuits)', () => {
       cellSync: {},
       rowSelection: {}
     }
-    expect(gen.next(table).value).toEqual(
-      put(actions.updateCellRequested(PROJ, SCN, 'row_0', '7'))
-    )
+    expect(gen.next(table).value).toEqual(put(actions.updateCellRequested(PROJ, SCN, 'row_0', '7')))
     expect(gen.next().value).toEqual(
       call(updateCellRequest, PROJ, SCN, {
         col: '7',

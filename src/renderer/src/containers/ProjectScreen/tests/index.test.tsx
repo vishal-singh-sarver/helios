@@ -14,9 +14,13 @@ import { STORAGE_KEYS } from 'utils/storageKeys'
 const mockDispatch = vi.fn()
 const sel = {
   activeProjectId: null as string | null,
-  activeProject: null as
-    | { id: string; name: string; latitude: number; longitude: number; utc_offset: string }
-    | null
+  activeProject: null as {
+    id: string
+    name: string
+    latitude: number
+    longitude: number
+    utc_offset: string
+  } | null
 }
 
 vi.mock('react-redux', () => ({
@@ -45,13 +49,7 @@ vi.mock('@renderer/containers/RightPanel', () => ({
 }))
 
 vi.mock('@renderer/components/Header', () => ({
-  default: ({
-    children,
-    onLogoClick
-  }: {
-    children: React.ReactNode
-    onLogoClick: () => void
-  }) => (
+  default: ({ children, onLogoClick }: { children: React.ReactNode; onLogoClick: () => void }) => (
     <header>
       <button data-testid="logo" onClick={onLogoClick}>
         logo
@@ -74,12 +72,14 @@ vi.mock('@renderer/components/LabeledField', () => ({
     label,
     value,
     onChange,
+    onBlur,
     invalid,
     disabled
   }: {
     label: string
     value: string
     onChange?: (v: string) => void
+    onBlur?: () => void
     invalid?: boolean
     disabled?: boolean
   }) => (
@@ -90,6 +90,7 @@ vi.mock('@renderer/components/LabeledField', () => ({
         value={value}
         disabled={disabled}
         onChange={(e) => onChange?.(e.target.value)}
+        onBlur={onBlur}
       />
     </label>
   )
@@ -232,6 +233,84 @@ describe('<ProjectScreen />', () => {
     render(<ProjectScreen />)
     fireEvent.change(screen.getByTestId('input-Latitude'), { target: { value: 'abc' } })
     expect(screen.getByTestId('field-Latitude')).toHaveAttribute('data-invalid', 'true')
+  })
+
+  it('dispatches project update on latitude blur when value is valid and changed', () => {
+    sel.activeProjectId = 'p-1'
+    sel.activeProject = {
+      id: 'p-1',
+      name: 'demo',
+      latitude: 10,
+      longitude: 20,
+      utc_offset: '+00:00'
+    }
+    render(<ProjectScreen />)
+    const input = screen.getByTestId('input-Latitude')
+    fireEvent.change(input, { target: { value: '11.5' } })
+    fireEvent.blur(input)
+    expect(mockDispatch).toHaveBeenCalledWith(
+      projectActions.updateProjectRequested('p-1', {
+        name: 'demo',
+        latitude: 11.5,
+        longitude: 20
+      })
+    )
+  })
+
+  it('dispatches project update on longitude blur when value is valid and changed', () => {
+    sel.activeProjectId = 'p-1'
+    sel.activeProject = {
+      id: 'p-1',
+      name: 'demo',
+      latitude: 10,
+      longitude: 20,
+      utc_offset: '+00:00'
+    }
+    render(<ProjectScreen />)
+    const input = screen.getByTestId('input-Longitude')
+    fireEvent.change(input, { target: { value: '21.5' } })
+    fireEvent.blur(input)
+    expect(mockDispatch).toHaveBeenCalledWith(
+      projectActions.updateProjectRequested('p-1', {
+        name: 'demo',
+        latitude: 10,
+        longitude: 21.5
+      })
+    )
+  })
+
+  it('does not dispatch project update on blur when coordinate is invalid', () => {
+    sel.activeProjectId = 'p-1'
+    sel.activeProject = {
+      id: 'p-1',
+      name: 'demo',
+      latitude: 10,
+      longitude: 20,
+      utc_offset: '+00:00'
+    }
+    render(<ProjectScreen />)
+    const input = screen.getByTestId('input-Latitude')
+    fireEvent.change(input, { target: { value: '95' } })
+    fireEvent.blur(input)
+    expect(mockDispatch).not.toHaveBeenCalledWith(
+      projectActions.updateProjectRequested(expect.any(String), expect.any(Object))
+    )
+  })
+
+  it('does not dispatch project update on blur when coordinate did not change', () => {
+    sel.activeProjectId = 'p-1'
+    sel.activeProject = {
+      id: 'p-1',
+      name: 'demo',
+      latitude: 10,
+      longitude: 20,
+      utc_offset: '+00:00'
+    }
+    render(<ProjectScreen />)
+    fireEvent.blur(screen.getByTestId('input-Latitude'))
+    expect(mockDispatch).not.toHaveBeenCalledWith(
+      projectActions.updateProjectRequested(expect.any(String), expect.any(Object))
+    )
   })
 
   it('keeps the UTC Offset input disabled', () => {

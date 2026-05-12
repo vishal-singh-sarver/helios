@@ -7,6 +7,7 @@ import type {
 } from 'containers/ProjectScreen/types'
 import { api, ApiError } from 'utils/api'
 import { API_ROUTES } from 'utils/constants'
+import type { UpdateProjectPatch } from 'containers/ProjectScreen/types'
 
 // ── Catalog ──────────────────────────────────────────────────────────────────
 //
@@ -48,6 +49,15 @@ export interface GetProjectResponse {
 
 export function getProjectRequest(projectId: string): Promise<GetProjectResponse> {
   return api.get<GetProjectResponse>(API_ROUTES.project.get(projectId))
+}
+
+export type UpdateProjectResponse = string
+
+export function updateProjectRequest(
+  projectId: string,
+  patch: UpdateProjectPatch
+): Promise<UpdateProjectResponse> {
+  return api.patch<UpdateProjectResponse>(API_ROUTES.project.update(projectId), patch)
 }
 
 // ── Headers ──────────────────────────────────────────────────────────────────

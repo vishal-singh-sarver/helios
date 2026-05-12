@@ -17,6 +17,12 @@ export const LIST_SCENARIOS_FAILED = 'app/ProjectScreen/LIST_SCENARIOS_FAILED' a
 // dispatched separately so reducers handling each slice stay focused.
 export const LOAD_PROJECT_SUCCEEDED = 'app/ProjectScreen/LOAD_PROJECT_SUCCEEDED' as const
 
+// Partial project metadata update. Editable fields are name, latitude and
+// longitude; backend recomputes utc_offset when coordinates change.
+export const UPDATE_PROJECT_REQUESTED = 'app/ProjectScreen/UPDATE_PROJECT_REQUESTED' as const
+export const UPDATE_PROJECT_SUCCEEDED = 'app/ProjectScreen/UPDATE_PROJECT_SUCCEEDED' as const
+export const UPDATE_PROJECT_FAILED = 'app/ProjectScreen/UPDATE_PROJECT_FAILED' as const
+
 // Weather headers (per scenario) — raw WeatherHeader[] from
 // /weather_data_header. Stored separately from the joined ColumnDefs so
 // other features can read header metadata (status, display_order, etc.)

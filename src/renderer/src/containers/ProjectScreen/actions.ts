@@ -26,6 +26,9 @@ import {
   SET_ALL_ROWS_SELECTION,
   SET_COLUMN_VALIDATION_ERRORS,
   SET_ROW_SELECTION,
+  UPDATE_PROJECT_FAILED,
+  UPDATE_PROJECT_REQUESTED,
+  UPDATE_PROJECT_SUCCEEDED,
   UPDATE_ALL_CHECKBOXES_REQUESTED,
   UPDATE_CELL_FAILED,
   UPDATE_CELL_LOCAL,
@@ -50,6 +53,7 @@ import type {
   ProjectMetadata,
   RowId,
   Scenario,
+  UpdateProjectPatch,
   UpdateCellLocalPayload,
   UpdateColumnFailedPayload,
   UpdateColumnPatch,
@@ -92,6 +96,18 @@ export interface SetActiveScenarioAction extends Idx {
 export interface LoadProjectSucceededAction extends Idx {
   type: typeof LOAD_PROJECT_SUCCEEDED
   payload: ProjectMetadata
+}
+export interface UpdateProjectRequestedAction extends Idx {
+  type: typeof UPDATE_PROJECT_REQUESTED
+  payload: { projectId: string; patch: UpdateProjectPatch }
+}
+export interface UpdateProjectSucceededAction extends Idx {
+  type: typeof UPDATE_PROJECT_SUCCEEDED
+  payload: ProjectMetadata
+}
+export interface UpdateProjectFailedAction extends Idx {
+  type: typeof UPDATE_PROJECT_FAILED
+  payload: { projectId: string; error: string }
 }
 
 // List scenarios (per project)
@@ -263,6 +279,9 @@ export type ProjectScreenAction =
   | SetActiveProjectAction
   | SetActiveScenarioAction
   | LoadProjectSucceededAction
+  | UpdateProjectRequestedAction
+  | UpdateProjectSucceededAction
+  | UpdateProjectFailedAction
   | ListScenariosRequestedAction
   | ListScenariosSucceededAction
   | ListScenariosFailedAction
@@ -317,6 +336,24 @@ export const setActiveProject = (projectId: string): SetActiveProjectAction => (
 export const loadProjectSucceeded = (payload: ProjectMetadata): LoadProjectSucceededAction => ({
   type: LOAD_PROJECT_SUCCEEDED,
   payload
+})
+export const updateProjectRequested = (
+  projectId: string,
+  patch: UpdateProjectPatch
+): UpdateProjectRequestedAction => ({
+  type: UPDATE_PROJECT_REQUESTED,
+  payload: { projectId, patch }
+})
+export const updateProjectSucceeded = (payload: ProjectMetadata): UpdateProjectSucceededAction => ({
+  type: UPDATE_PROJECT_SUCCEEDED,
+  payload
+})
+export const updateProjectFailed = (
+  projectId: string,
+  error: string
+): UpdateProjectFailedAction => ({
+  type: UPDATE_PROJECT_FAILED,
+  payload: { projectId, error }
 })
 export const setActiveScenario = (scenarioId: string): SetActiveScenarioAction => ({
   type: SET_ACTIVE_SCENARIO,

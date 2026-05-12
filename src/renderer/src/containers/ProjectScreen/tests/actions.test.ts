@@ -27,6 +27,9 @@ import {
   SET_ALL_ROWS_SELECTION,
   SET_COLUMN_VALIDATION_ERRORS,
   SET_ROW_SELECTION,
+  UPDATE_PROJECT_FAILED,
+  UPDATE_PROJECT_REQUESTED,
+  UPDATE_PROJECT_SUCCEEDED,
   UPDATE_CELL_FAILED,
   UPDATE_CELL_LOCAL,
   UPDATE_CELL_REQUESTED,
@@ -134,6 +137,27 @@ describe('ProjectScreen action creators', () => {
       expect(actions.loadProjectSucceeded(sampleProject)).toEqual({
         type: LOAD_PROJECT_SUCCEEDED,
         payload: sampleProject
+      })
+    })
+
+    it('updateProjectRequested carries projectId + patch', () => {
+      expect(actions.updateProjectRequested(PROJ, { latitude: 23.5 })).toEqual({
+        type: UPDATE_PROJECT_REQUESTED,
+        payload: { projectId: PROJ, patch: { latitude: 23.5 } }
+      })
+    })
+
+    it('updateProjectSucceeded carries refreshed metadata', () => {
+      expect(actions.updateProjectSucceeded(sampleProject)).toEqual({
+        type: UPDATE_PROJECT_SUCCEEDED,
+        payload: sampleProject
+      })
+    })
+
+    it('updateProjectFailed carries projectId + error', () => {
+      expect(actions.updateProjectFailed(PROJ, 'bad coords')).toEqual({
+        type: UPDATE_PROJECT_FAILED,
+        payload: { projectId: PROJ, error: 'bad coords' }
       })
     })
   })
@@ -272,9 +296,7 @@ describe('ProjectScreen action creators', () => {
 
   describe('add column', () => {
     it('addColumnRequested carries the API payload', () => {
-      expect(
-        actions.addColumnRequested(PROJ, SCN, 'humidity', 3, 4, '65')
-      ).toEqual({
+      expect(actions.addColumnRequested(PROJ, SCN, 'humidity', 3, 4, '65')).toEqual({
         type: ADD_COLUMN_REQUESTED,
         payload: {
           projectId: PROJ,

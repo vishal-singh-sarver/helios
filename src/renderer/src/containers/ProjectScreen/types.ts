@@ -49,6 +49,12 @@ export interface ProjectMetadata {
   utc_offset: string // wire shape: "+05:00"
 }
 
+export interface UpdateProjectPatch {
+  name?: string
+  latitude?: number
+  longitude?: number
+}
+
 // ── Scenarios (per project) ─────────────────────────────────────────────────
 
 export interface Scenario {

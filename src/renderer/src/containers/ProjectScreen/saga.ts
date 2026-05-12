@@ -7,6 +7,7 @@ import {
   loadDataTypesRequest,
   loadHeadersRequest,
   patchHeaderRequest,
+  updateProjectRequest,
   toCellValue,
   updateCellRequest,
   updateColumnsRequest,
@@ -48,7 +49,8 @@ import {
   SEED_DEFAULT_COLUMNS_REQUESTED,
   UPDATE_ALL_CHECKBOXES_REQUESTED,
   UPDATE_CELL_LOCAL,
-  UPDATE_COLUMN_REQUESTED
+  UPDATE_COLUMN_REQUESTED,
+  UPDATE_PROJECT_REQUESTED
 } from './constants'
 import {
   selectActiveWeatherTable,
@@ -70,6 +72,16 @@ import {
   type WeatherHeader,
   type WeatherTable
 } from './types'
+
+function toProjectMetadata(project: GetProjectResponse['project']) {
+  return {
+    id: project.id,
+    name: project.name,
+    latitude: project.latitude,
+    longitude: project.longitude,
+    utc_offset: project.utc_offset
+  }
+}
 
 // ── Catalog: data types ──────────────────────────────────────────────────────
 
@@ -97,15 +109,7 @@ function* listScenariosWorker(action: ListScenariosRequestedAction): Generator {
     // Project metadata (latitude/longitude/utc_offset) drives the header
     // inputs on the project screen — dispatch it before the scenarios list
     // so the header has data to render even if scenarios is empty.
-    yield put(
-      actions.loadProjectSucceeded({
-        id: project.id,
-        name: project.name,
-        latitude: project.latitude,
-        longitude: project.longitude,
-        utc_offset: project.utc_offset
-      })
-    )
+    yield put(actions.loadProjectSucceeded(toProjectMetadata(project)))
     const scenarios = project.scenarios
     yield put(actions.listScenariosSucceeded(projectId, scenarios))
 
@@ -116,6 +120,20 @@ function* listScenariosWorker(action: ListScenariosRequestedAction): Generator {
     yield put(actions.loadScenarioRequested(projectId, first.id))
   } catch (err) {
     yield put(actions.listScenariosFailed(projectId, (err as Error).message))
+    if (isStaleIdError(err)) yield call(bounceToHome)
+  }
+}
+
+function* updateProjectWorker(
+  action: ReturnType<typeof actions.updateProjectRequested>
+): Generator {
+  const { projectId, patch } = action.payload
+  try {
+    yield call(updateProjectRequest, projectId, patch)
+    const res = (yield call(getProjectRequest, projectId)) as GetProjectResponse
+    yield put(actions.updateProjectSucceeded(toProjectMetadata(res.project)))
+  } catch (err) {
+    yield put(actions.updateProjectFailed(projectId, (err as Error).message))
     if (isStaleIdError(err)) yield call(bounceToHome)
   }
 }
@@ -602,6 +620,7 @@ function* updateAllCheckboxesWorker(action: UpdateAllCheckboxesRequestedAction):
 
 export default function* projectScreenSaga(): Generator {
   yield takeLatest(LOAD_DATA_TYPES_REQUESTED, loadDataTypesWorker)
+  yield takeLatest(UPDATE_PROJECT_REQUESTED, updateProjectWorker)
   yield takeLatest(LIST_SCENARIOS_REQUESTED, listScenariosWorker)
   yield takeLatest(LOAD_SCENARIO_REQUESTED, loadScenarioWorker)
   yield takeLatest(SEED_DEFAULT_COLUMNS_REQUESTED, seedDefaultColumnsWorker)

@@ -13,7 +13,12 @@ import { useInjectReducer } from 'utils/injectReducer'
 import { useInjectSaga } from 'utils/injectSaga'
 import { STORAGE_KEYS } from 'utils/storageKeys'
 import { TOOLBAR_ITEMS } from '../../types/project'
-import { listScenariosRequested, loadDataTypesRequested, setActiveProject } from './actions'
+import {
+  listScenariosRequested,
+  loadDataTypesRequested,
+  setActiveProject,
+  updateProjectRequested
+} from './actions'
 import reducer from './reducer'
 import saga from './saga'
 import { selectActiveProject, selectActiveProjectId } from './selectors'
@@ -99,9 +104,36 @@ export function ProjectScreen(): React.JSX.Element {
     setUtcOffset(activeProject.utc_offset)
   }, [activeProject])
 
+  // utc_offset is derived by the backend from latitude/longitude. Keep it
+  // synced even when the active project id stays the same after a PATCH.
+  React.useEffect(() => {
+    if (!activeProject) return
+    setUtcOffset(activeProject.utc_offset)
+  }, [activeProject?.utc_offset, activeProject])
+
   // Validity drives only the red-border indicator — no text errors.
   const latitudeInvalid = !isLatitudeValid(latitude)
   const longitudeInvalid = !isLongitudeValid(longitude)
+
+  const commitCoordinate = (field: 'latitude' | 'longitude'): void => {
+    if (!activeProjectId || !activeProject) return
+
+    const value = field === 'latitude' ? latitude : longitude
+    const valid = field === 'latitude' ? isLatitudeValid(value) : isLongitudeValid(value)
+    if (!valid || value === '') return
+
+    const next = Number.parseFloat(value)
+    const current = activeProject[field]
+    if (Object.is(next, current)) return
+
+    dispatch(
+      updateProjectRequested(activeProjectId, {
+        name: activeProject.name,
+        latitude: field === 'latitude' ? next : activeProject.latitude,
+        longitude: field === 'longitude' ? next : activeProject.longitude
+      })
+    )
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -112,6 +144,7 @@ export function ProjectScreen(): React.JSX.Element {
             label="Latitude"
             value={latitude}
             onChange={setLatitude}
+            onBlur={() => commitCoordinate('latitude')}
             invalid={latitudeInvalid}
             labelAdornment={<Tooltip text={LATITUDE_HELP} ariaLabel="Show latitude help" />}
           />
@@ -120,6 +153,7 @@ export function ProjectScreen(): React.JSX.Element {
             label="Longitude"
             value={longitude}
             onChange={setLongitude}
+            onBlur={() => commitCoordinate('longitude')}
             invalid={longitudeInvalid}
             labelAdornment={<Tooltip text={LONGITUDE_HELP} ariaLabel="Show longitude help" />}
           />

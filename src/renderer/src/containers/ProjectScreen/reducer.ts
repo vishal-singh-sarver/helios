@@ -33,6 +33,9 @@ import {
   UPDATE_COLUMN_FAILED,
   UPDATE_COLUMN_REQUESTED,
   UPDATE_COLUMN_SUCCEEDED,
+  UPDATE_PROJECT_FAILED,
+  UPDATE_PROJECT_REQUESTED,
+  UPDATE_PROJECT_SUCCEEDED,
   UPLOAD_FILE_FAILED,
   UPLOAD_FILE_REQUESTED,
   UPLOAD_FILE_SUCCEEDED
@@ -123,6 +126,7 @@ export interface ProjectScreenState {
   byScenario: Record<string, WeatherTable>
   addColumn: RequestStatus
   addRow: RequestStatus
+  updateProject: RequestStatus
 }
 
 const emptyDataTypesSlice = (): DataTypesSlice => ({
@@ -159,7 +163,8 @@ export const initialState: ProjectScreenState = {
   activeProject: null,
   byScenario: {},
   addColumn: idleStatus(),
-  addRow: idleStatus()
+  addRow: idleStatus(),
+  updateProject: idleStatus()
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -241,6 +246,22 @@ const projectScreenReducer = (
 
       case LOAD_PROJECT_SUCCEEDED:
         draft.activeProject = action.payload
+        break
+
+      case UPDATE_PROJECT_REQUESTED:
+        draft.updateProject.loading = true
+        draft.updateProject.error = null
+        break
+
+      case UPDATE_PROJECT_SUCCEEDED:
+        draft.updateProject.loading = false
+        draft.updateProject.error = null
+        draft.activeProject = action.payload
+        break
+
+      case UPDATE_PROJECT_FAILED:
+        draft.updateProject.loading = false
+        draft.updateProject.error = action.payload.error
         break
 
       case SET_ACTIVE_SCENARIO:

@@ -18,6 +18,7 @@ export const API_ROUTES = {
     create: '/api/project/create',
     recent: '/api/project/recent',
     delete: (projectId: string) => `/api/project/${projectId}`,
+    update: (projectId: string) => `/api/project/${projectId}`,
     // Returns the project + its scenarios (each with weather_data_headers).
     // Used to bootstrap the active scenario id on project screen mount.
     get: (projectId: string) => `/api/project/${projectId}`
