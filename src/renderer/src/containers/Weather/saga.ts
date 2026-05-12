@@ -17,9 +17,13 @@ import {
 } from 'containers/ProjectScreen/selectors'
 import {
   CHECK_COL_NAME,
+  DATE_COL_ID,
   DATE_TIME_COL_NAME,
+  TIME_COL_ID,
+  type LoadedScenarioPayload,
   type LoadStatus
 } from 'containers/ProjectScreen/types'
+import { truncateToMaxDecimals } from 'utils/decimalValidation'
 import * as actions from './actions'
 import type { ImportFinalizeRequestedAction } from './actions'
 import {
@@ -142,6 +146,65 @@ const matchScenarioAction = (
 ) => (a: { type: string; payload?: { scenarioId?: string } }): boolean =>
   a.type === type && a.payload?.scenarioId === scenarioId
 
+function areEquivalentImportedValues(left: string, right: string | null | undefined): boolean {
+  const leftTrimmed = left.trim()
+  const rightTrimmed = (right ?? '').trim()
+  const leftNum = Number(leftTrimmed)
+  const rightNum = Number(rightTrimmed)
+
+  if (
+    leftTrimmed !== '' &&
+    rightTrimmed !== '' &&
+    Number.isFinite(leftNum) &&
+    Number.isFinite(rightNum)
+  ) {
+    return leftNum === rightNum
+  }
+
+  return leftTrimmed === rightTrimmed
+}
+
+function backendAdjustedImportedValues(
+  dataset: ImportedDataset,
+  loaded: LoadedScenarioPayload | undefined
+): boolean {
+  if (!loaded) return false
+
+  const colIdByName = new Map<string, string>()
+  for (const col of loaded.columns) {
+    colIdByName.set(col.name, col.id)
+  }
+
+  const rowByDateTime = new Map<string, Record<string, string | null>>()
+  for (const row of loaded.rows) {
+    const date = row[DATE_COL_ID]
+    const time = row[TIME_COL_ID]
+    if (date != null && time != null) {
+      rowByDateTime.set(`${date} ${time}`, row)
+    }
+  }
+
+  for (const record of dataset.records) {
+    if (record.dtIso == null) continue
+    const key = `${fmtDate(record.dtIso)} ${fmtTime(record.dtIso)}`
+    const loadedRow = rowByDateTime.get(key)
+    if (!loadedRow) continue
+
+    for (const col of dataset.columns) {
+      if (col.key === '__check__') continue
+      const loadedColId = colIdByName.get(col.label)
+      if (!loadedColId) continue
+      const importedValue = record.values[col.key] ?? ''
+      const loadedValue = loadedRow[loadedColId]
+      if (!areEquivalentImportedValues(importedValue, loadedValue)) {
+        return true
+      }
+    }
+  }
+
+  return false
+}
+
 export function* finalizeImportWorker(action: ImportFinalizeRequestedAction): Generator {
   try {
     const projectId = localStorage.getItem(STORAGE_KEYS.activeProjectId)
@@ -151,7 +214,22 @@ export function* finalizeImportWorker(action: ImportFinalizeRequestedAction): Ge
       return
     }
 
-    const dataset: ImportedDataset = action.payload
+    // Safety-net normalization: the wizard already truncates imported
+    // decimals to 7 places, but we normalize again here so every frontend
+    // import path stays aligned with backend precision rules.
+    const originalDataset: ImportedDataset = action.payload
+    const dataset: ImportedDataset = {
+      ...originalDataset,
+      records: originalDataset.records.map((record) => ({
+        ...record,
+        values: Object.fromEntries(
+          Object.entries(record.values).map(([key, value]) => [
+            key,
+            truncateToMaxDecimals(String(value ?? '')).value
+          ])
+        )
+      }))
+    }
 
     // Step 0 — wipe any existing weather data for this scenario so the new
     // import doesn't collide with stale columns/rows. Idempotent on empty
@@ -232,7 +310,7 @@ export function* finalizeImportWorker(action: ImportFinalizeRequestedAction): Ge
       succeeded: take(matchScenarioAction(LOAD_SCENARIO_SUCCEEDED, scenarioId)),
       failed: take(matchScenarioAction(LOAD_SCENARIO_FAILED, scenarioId))
     })) as {
-      succeeded?: { payload: { scenarioId: string } }
+      succeeded?: { payload: LoadedScenarioPayload }
       failed?: { payload: { scenarioId: string; error: string } }
     }
 
@@ -245,7 +323,13 @@ export function* finalizeImportWorker(action: ImportFinalizeRequestedAction): Ge
       return
     }
 
-    yield put(actions.importFinalizeSucceeded(dataset))
+    const backendAdjusted = backendAdjustedImportedValues(originalDataset, raceResult.succeeded?.payload)
+    yield put(
+      actions.importFinalizeSucceeded(
+        dataset,
+        Boolean(raceResult.succeeded?.payload.precisionNormalized) || backendAdjusted
+      )
+    )
   } catch (err) {
     yield put(actions.importFinalizeFailed((err as Error).message))
   }

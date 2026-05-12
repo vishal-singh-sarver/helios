@@ -5,6 +5,7 @@ import type {
   Scenario,
   WeatherHeader
 } from 'containers/ProjectScreen/types'
+import { truncateToMaxDecimals } from 'utils/decimalValidation'
 import { api, ApiError } from 'utils/api'
 import { API_ROUTES } from 'utils/constants'
 
@@ -105,6 +106,7 @@ export interface AddColumnRequestBody {
   dataTypeId: number | null
   dataUnitId: number | null
   values: AddColumnCellValue[]
+  defaultValue?: string | null
 }
 
 interface AddColumnWireBody {
@@ -142,7 +144,8 @@ export async function addColumnRequest(
         name: body.name,
         datatype: body.dataTypeId,
         data_unit: body.dataUnitId,
-        values: body.values
+        values: body.values,
+        ...(body.defaultValue !== undefined ? { default_value: body.defaultValue } : {})
       }
     ]
   }
@@ -316,13 +319,24 @@ export function updateCellRequest(
 
 // ── Helpers used by the load saga to coerce wire shapes ──────────────────────
 
-// Coerce a wire cell value (number | string | null) into the in-memory
-// CellValue (string | null). Numbers are stringified verbatim — display
-// formatting is the renderer's concern.
-export function toCellValue(raw: string | number | null | undefined): CellValue {
-  if (raw == null) return null
+export function normalizeWireCellValue(
+  raw: string | number | null | undefined
+): { value: CellValue; truncated: boolean } {
+  if (raw == null) return { value: null, truncated: false }
   if (typeof raw === 'number') {
-    return Number.isFinite(raw) ? String(raw) : null
+    if (!Number.isFinite(raw)) return { value: null, truncated: false }
+    const normalized = truncateToMaxDecimals(String(raw))
+    return { value: normalized.value, truncated: normalized.truncated }
   }
-  return raw
+  if (raw.trim().toUpperCase() === 'NAN') return { value: null, truncated: false }
+  const normalized = truncateToMaxDecimals(raw)
+  return { value: normalized.value, truncated: normalized.truncated }
+}
+
+// Coerce a wire cell value (number | string | null) into the in-memory
+// CellValue (string | null). Numeric values are normalized to the same
+// 7-decimal precision the import/manual paths enforce.
+export function toCellValue(raw: string | number | null | undefined): CellValue {
+  const normalized = normalizeWireCellValue(raw)
+  return normalized.value
 }

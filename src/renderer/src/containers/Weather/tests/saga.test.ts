@@ -177,8 +177,28 @@ describe('finalizeImportWorker', () => {
     // "succeeded" branch so the worker dispatches importFinalizeSucceeded.
     gen.next() // race(...)
     expect(
-      gen.next({ succeeded: { payload: { scenarioId: 'sce-1' } } }).value
-    ).toEqual(put(actions.importFinalizeSucceeded(dataset)))
+      gen.next({
+        succeeded: {
+          payload: {
+            projectId: 'proj-1',
+            scenarioId: 'sce-1',
+            columns: [
+              { id: 'date', name: 'date', dataTypeId: null, unitId: null },
+              { id: 'time', name: 'time', dataTypeId: null, unitId: null },
+              { id: '7', name: 'temp', dataTypeId: null, unitId: null }
+            ],
+            rows: [
+              {
+                date: '2026-01-01',
+                time: '10:00:00',
+                '7': '22.5'
+              }
+            ],
+            precisionNormalized: true
+          }
+        }
+      }).value
+    ).toEqual(put(actions.importFinalizeSucceeded(dataset, true)))
     expect(gen.next().done).toBe(true)
   })
 
@@ -228,6 +248,112 @@ describe('finalizeImportWorker', () => {
     gen.next(99) // addCol
     const err = new Error('column conflict')
     expect(gen.throw(err).value).toEqual(put(actions.importFinalizeFailed('column conflict')))
+  })
+
+  it('truncates imported decimal values to 7 places before posting to addCol', () => {
+    const highPrecisionDataset: ImportedDataset = {
+      filename: 'precision.csv',
+      columns: [
+        { key: '__check__', label: 'check', index: -1 },
+        { key: '3__temp', label: 'temp', index: 3 }
+      ],
+      records: [
+        {
+          dtIso: '2026-01-01T10:00:00.000Z',
+          values: { __check__: '1', '3__temp': '12.123456789' }
+        }
+      ]
+    }
+
+    const gen = finalizeImportWorker(actions.importFinalizeRequested(highPrecisionDataset))
+    gen.next() // clear_data
+    gen.next() // select selectDataTypesLoadStatus
+    gen.next('loaded') // select selectCheckDataTypeId
+    const addColCall = gen.next(99).value as ReturnType<typeof call>
+    expect(addColCall.payload.args[1]).toEqual({
+      column: [
+        {
+          name: 'check',
+          datatype: 99,
+          data_unit: null,
+          values: [{ date: expect.any(String), time: expect.any(String), value: '1' }]
+        },
+        {
+          name: 'date-time',
+          datatype: null,
+          data_unit: null,
+          values: [{ date: expect.any(String), time: expect.any(String), value: '0' }]
+        },
+        {
+          name: 'temp',
+          datatype: null,
+          data_unit: null,
+          values: [{ date: expect.any(String), time: expect.any(String), value: '12.1234567' }]
+        }
+      ]
+    })
+  })
+
+  it('surfaces the precision warning when backend-adjusted refreshed values differ from the submitted import', () => {
+    const backendAdjustedDataset: ImportedDataset = {
+      filename: 'precision.csv',
+      columns: [
+        { key: '__check__', label: 'check', index: -1 },
+        { key: '3__temp', label: 'temp', index: 3 }
+      ],
+      records: [
+        {
+          dtIso: '2026-01-01T10:00:00.000Z',
+          values: { __check__: '1', '3__temp': '12.12345678' }
+        }
+      ]
+    }
+
+    const gen = finalizeImportWorker(actions.importFinalizeRequested(backendAdjustedDataset, false))
+    gen.next() // clear_data
+    gen.next() // select selectDataTypesLoadStatus
+    gen.next('loaded') // select selectCheckDataTypeId
+    gen.next(99) // addCol
+    gen.next() // put loadScenarioRequested
+    gen.next() // race(...)
+    expect(
+      gen.next({
+        succeeded: {
+          payload: {
+            projectId: 'proj-1',
+            scenarioId: 'sce-1',
+            columns: [
+              { id: 'date', name: 'date', dataTypeId: null, unitId: null },
+              { id: 'time', name: 'time', dataTypeId: null, unitId: null },
+              { id: '7', name: 'temp', dataTypeId: null, unitId: null }
+            ],
+            rows: [
+              {
+                date: '2026-01-01',
+                time: '15:30:00',
+                '7': '12.1234567'
+              }
+            ],
+            precisionNormalized: false
+          }
+        }
+      }).value
+    ).toEqual(
+      put(
+        actions.importFinalizeSucceeded(
+          {
+            ...backendAdjustedDataset,
+            records: [
+              {
+                dtIso: '2026-01-01T10:00:00.000Z',
+                values: { __check__: '1', '3__temp': '12.1234567' }
+              }
+            ]
+          },
+          true
+        )
+      )
+    )
   })
 })
 

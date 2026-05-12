@@ -6,8 +6,8 @@ import {
   loadDataRequest,
   loadDataTypesRequest,
   loadHeadersRequest,
+  normalizeWireCellValue,
   patchHeaderRequest,
-  toCellValue,
   updateCellRequest,
   updateColumnsRequest,
   type AddColumnResponse,
@@ -206,10 +206,13 @@ function* loadScenarioWorker(action: LoadScenarioRequestedAction): Generator {
       pushCol({ id: label, name: label, dataTypeId: null, unitId: null })
     }
 
+    let precisionNormalized = false
     const rows: Array<Record<ColId, CellValue>> = dataRes.rows.map((raw) => {
       const out: Record<ColId, CellValue> = {}
       for (const col of columns) {
-        out[col.id] = toCellValue(raw[col.id])
+        const normalized = normalizeWireCellValue(raw[col.id])
+        if (normalized.truncated) precisionNormalized = true
+        out[col.id] = normalized.value
       }
       return out
     })
@@ -219,7 +222,8 @@ function* loadScenarioWorker(action: LoadScenarioRequestedAction): Generator {
         projectId,
         scenarioId,
         columns,
-        rows
+        rows,
+        precisionNormalized
       })
     )
 
@@ -386,7 +390,7 @@ function buildRowsForAdd(
       // every key. The date-time column gets "0" like the other defaults —
       // the renderer ignores the stored value and computes its display from
       // the row's date + time.
-      row[colId] = '0'
+      row[colId] = 'NAN'
     }
     out.push(row)
   }
@@ -455,7 +459,8 @@ function* addColumnWorker(action: AddColumnRequestedAction): Generator {
       name,
       dataTypeId,
       dataUnitId,
-      values
+      values,
+      defaultValue: defaultValue === '' ? 'NAN' : defaultValue
     })) as AddColumnResponse
     yield put(actions.addColumnSucceeded(projectId, scenarioId, res.column, defaultValue))
   } catch (err) {

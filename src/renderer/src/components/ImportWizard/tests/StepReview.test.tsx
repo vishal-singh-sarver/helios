@@ -24,6 +24,7 @@ describe('<StepReview />', () => {
     parsedDateTimes,
     dtColumns: ['Date', 'Time'],
     columnSelection: {} as Record<number, boolean>,
+    disabledColumnIndices: [] as number[],
     onToggleColumn: vi.fn()
   }
 
@@ -86,5 +87,16 @@ describe('<StepReview />', () => {
   it('shows "Invalid" in the Date-Time preview when a parsed date is null', () => {
     render(<StepReview {...baseProps} parsedDateTimes={[null, null]} />)
     expect(screen.getByText(/Invalid, Invalid/)).toBeInTheDocument()
+  })
+
+  it('renders unsupported columns as unchecked and disabled with a message', () => {
+    render(<StepReview {...baseProps} disabledColumnIndices={[2]} />)
+    expect(
+      screen.getByText('Character based columns have been disabled as that input is not supported.')
+    ).toBeInTheDocument()
+
+    const checkboxes = screen.getAllByRole('checkbox')
+    expect(checkboxes[1]).toBeDisabled()
+    expect(checkboxes[1]).not.toBeChecked()
   })
 })

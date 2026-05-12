@@ -17,9 +17,11 @@ export default function StepReview({
   parsedDateTimes,
   dtColumns,
   columnSelection,
+  disabledColumnIndices,
   onToggleColumn
 }: StepReviewProps): React.JSX.Element {
   const dtSet = useMemo(() => new Set(dtColumns), [dtColumns])
+  const disabledSet = useMemo(() => new Set(disabledColumnIndices), [disabledColumnIndices])
 
   const dtPreview = parsedDateTimes
     .slice(0, 3)
@@ -59,7 +61,8 @@ export default function StepReview({
 
             {parsed.headers.map((h, i) => {
               if (dtSet.has(h)) return null
-              const checked = columnSelection[i] !== false
+              const disabled = disabledSet.has(i)
+              const checked = !disabled && columnSelection[i] !== false
               const examples = parsed.rows
                 .slice(0, 3)
                 .map((r) => r[i])
@@ -70,13 +73,15 @@ export default function StepReview({
                     <input
                       type="checkbox"
                       checked={checked}
+                      disabled={disabled}
                       onChange={() => onToggleColumn(i)}
-                      className="h-4 w-4 cursor-pointer"
+                      className={`h-4 w-4 ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                     />
                   </td>
                   <td className="px-2 py-3 text-neutral-100">
                     <span className="mr-2 text-neutral-500">{i + 1}:</span>
                     {h}
+                    {disabled && <span className="ml-2 text-xs text-amber-300">(disabled)</span>}
                   </td>
                   <td className="px-4 py-3 text-neutral-400">{examples}</td>
                 </tr>
@@ -89,6 +94,12 @@ export default function StepReview({
       <div className="text-xs text-white">
         Date/Time column(s) will be merged into the “Date-Time” column automatically.
       </div>
+
+      {disabledColumnIndices.length > 0 && (
+        <div className="text-xs text-white">
+          Character based columns have been disabled as that input is not supported.
+        </div>
+      )}
     </div>
   )
 }

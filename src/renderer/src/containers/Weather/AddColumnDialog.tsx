@@ -1,6 +1,6 @@
 import Dialog from '@renderer/components/Dialog'
-import FormField from '@renderer/components/FormField'
 import type { FormFieldOption } from '@renderer/components/FormField'
+import FormField from '@renderer/components/FormField'
 import { Spinner } from '@renderer/components/LoadingScreen/Spinner'
 import { addColumnRequested } from 'containers/ProjectScreen/actions'
 import { useFormik } from 'formik'
@@ -30,7 +30,7 @@ const INITIAL_VALUES: AddColumnValues = {
   unitId: '',
   // Pre-fill "0" so existing rows get a sensible default in the new column
   // without the user having to type it. Cleared/changed values are honored.
-  defaultValue: '0'
+  defaultValue: ''
 }
 
 interface AddColumnDialogProps {
@@ -158,9 +158,7 @@ function AddColumnDialog({ isOpen, onClose }: AddColumnDialogProps): React.JSX.E
         inputProps={{
           ...formik.getFieldProps('unitId'),
           placeholder:
-            formik.values.dataTypeId === ''
-              ? m.placeholders.unitDisabled
-              : m.placeholders.unit,
+            formik.values.dataTypeId === '' ? m.placeholders.unitDisabled : m.placeholders.unit,
           disabled: formik.values.dataTypeId === '',
           options: unitOptions
         }}

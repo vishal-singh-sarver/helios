@@ -1,6 +1,6 @@
+import CollapseButton from '@renderer/components/CollapseButton'
 import React, { memo } from 'react'
 import type { Reducer } from 'redux'
-import CollapseButton from '@renderer/components/CollapseButton'
 import { useInjectReducer } from 'utils/injectReducer'
 import { useInjectSaga } from 'utils/injectSaga'
 import reducer from './reducer'
@@ -13,7 +13,7 @@ export function RightPanel(): React.JSX.Element {
   useInjectReducer({ key: 'rightPanel', reducer: reducer as Reducer })
   useInjectSaga({ key: 'rightPanel', saga })
 
-  const [collapsed, setCollapsed] = React.useState(false)
+  const [collapsed, setCollapsed] = React.useState(true)
   const toggle = (): void => setCollapsed((prev) => !prev)
 
   const widthClass = collapsed ? 'w-8' : 'w-[340px]'
@@ -25,11 +25,7 @@ export function RightPanel(): React.JSX.Element {
       <div className="flex items-center justify-start p-1">
         <CollapseButton collapsed={collapsed} side="right" onToggle={toggle} />
       </div>
-      {!collapsed && (
-        <div className="overflow-y-auto p-3">
-          {/* Properties */}
-        </div>
-      )}
+      {!collapsed && <div className="overflow-y-auto p-3">{/* Properties */}</div>}
     </aside>
   )
 }

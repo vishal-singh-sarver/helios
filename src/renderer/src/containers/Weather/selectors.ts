@@ -24,6 +24,10 @@ export const selectPickedFile = createSelector(selectWeatherDomain, (s) => s.pic
 export const selectImporting = createSelector(selectWeatherDomain, (s) => s.importing)
 export const selectImportError = createSelector(selectWeatherDomain, (s) => s.importError)
 export const selectDataset = createSelector(selectWeatherDomain, (s) => s.dataset)
+export const selectImportPrecisionWarningPending = createSelector(
+  selectWeatherDomain,
+  (s) => s.importPrecisionWarningPending
+)
 
 // Wizard open/close — held in Redux so the saga can auto-close the wizard
 // on IMPORT_FINALIZE_SUCCEEDED.

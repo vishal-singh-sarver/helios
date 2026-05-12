@@ -45,6 +45,8 @@ export interface WeatherState {
   importing: boolean
   importError: string | null
   dataset: ImportedDataset | null
+  importPrecisionWarningPending: boolean
+  importPrecisionWarningRequested: boolean
 
   // Wizard open/close — derived in render from this flag.
   wizardOpen: boolean
@@ -64,6 +66,8 @@ export const initialState: WeatherState = {
   importing: false,
   importError: null,
   dataset: null,
+  importPrecisionWarningPending: false,
+  importPrecisionWarningRequested: false,
 
   wizardOpen: false
 }
@@ -120,11 +124,16 @@ const weatherReducer = (state: WeatherState = initialState, action: WeatherActio
       case IMPORT_FINALIZE_REQUESTED:
         draft.importing = true
         draft.importError = null
+        draft.importPrecisionWarningPending = false
+        draft.importPrecisionWarningRequested = Boolean(action.truncatedDecimals)
         break
 
       case IMPORT_FINALIZE_SUCCEEDED:
         draft.importing = false
         draft.dataset = action.payload
+        draft.importPrecisionWarningPending =
+          draft.importPrecisionWarningRequested || Boolean(action.precisionNormalized)
+        draft.importPrecisionWarningRequested = false
         // Clear pick state so next open starts clean.
         draft.pickedFile = null
         draft.fileError = null
@@ -137,6 +146,8 @@ const weatherReducer = (state: WeatherState = initialState, action: WeatherActio
       case IMPORT_FINALIZE_FAILED:
         draft.importing = false
         draft.importError = action.payload
+        draft.importPrecisionWarningPending = false
+        draft.importPrecisionWarningRequested = false
         break
 
       case IMPORT_RESET:
@@ -145,6 +156,8 @@ const weatherReducer = (state: WeatherState = initialState, action: WeatherActio
         draft.pickedFile = null
         draft.importing = false
         draft.importError = null
+        draft.importPrecisionWarningPending = false
+        draft.importPrecisionWarningRequested = false
         // Note: dataset is intentionally preserved across resets so a previous
         // successful import remains available even if the wizard is reopened
         // and cancelled.
@@ -158,6 +171,8 @@ const weatherReducer = (state: WeatherState = initialState, action: WeatherActio
         draft.pickedFile = null
         draft.importing = false
         draft.importError = null
+        draft.importPrecisionWarningPending = false
+        draft.importPrecisionWarningRequested = false
         break
 
       case IMPORT_WIZARD_CLOSED:
@@ -169,6 +184,8 @@ const weatherReducer = (state: WeatherState = initialState, action: WeatherActio
         draft.pickedFile = null
         draft.importing = false
         draft.importError = null
+        draft.importPrecisionWarningPending = false
+        draft.importPrecisionWarningRequested = false
         break
     }
   })

@@ -129,15 +129,9 @@ export function HomePage(): React.JSX.Element {
   // Close the dialog and clear the slice once the backend confirms success.
   React.useEffect(() => {
     if (!createSuccess || !createProjectData?.project_id) return
-    try {
-      localStorage.setItem(STORAGE_KEYS.activeProjectId, createProjectData.project_id)
-    } catch {
-      /* storage disabled — navigation still proceeds */
-    }
 
     resetFormRef.current()
     setShowNewProjectDialog(false)
-    dispatch(navigate('project'))
     dispatch(resetCreateProject())
   }, [createSuccess, createProjectData, dispatch])
 

@@ -94,6 +94,14 @@ describe('Import actions', () => {
     })
   })
 
+  it('importFinalizeSucceeded carries the precision-normalized flag when present', () => {
+    expect(actions.importFinalizeSucceeded(dataset, true)).toEqual({
+      type: IMPORT_FINALIZE_SUCCEEDED,
+      payload: dataset,
+      precisionNormalized: true
+    })
+  })
+
   it('importFinalizeFailed carries error message', () => {
     expect(actions.importFinalizeFailed('save cancelled')).toEqual({
       type: IMPORT_FINALIZE_FAILED,

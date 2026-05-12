@@ -8,6 +8,7 @@ const baseProps: ImportWizardProps = {
   onClose: vi.fn(),
   onRequestPickFile: vi.fn(),
   onSubmit: vi.fn(),
+  onImportWarning: vi.fn(),
   pickedFile: null,
   fileLoading: false,
   fileError: null,
@@ -176,5 +177,99 @@ describe('<ImportWizard />', () => {
     const checkbox = within(dtRow).getByRole('checkbox')
     expect(checkbox).toBeDisabled()
     expect(checkbox).toBeChecked()
+  })
+
+  it('auto-disables character based columns in review and excludes them from import', () => {
+    const mixedFile = {
+      filename: 'mixed.csv',
+      rawText:
+        'year,month,day,temp,notes\n' +
+        '2026,2,26,22.5,clear\n' +
+        '2026,2,27,23.7,cloudy'
+    }
+    const onSubmit = vi.fn()
+    render(<ImportWizard {...baseProps} pickedFile={mixedFile} onSubmit={onSubmit} />)
+
+    fireEvent.click(screen.getByText('Next'))
+    fireEvent.click(screen.getByText('Next'))
+    fireEvent.click(screen.getByText('Next'))
+
+    expect(
+      screen.getByText('Character based columns have been disabled as that input is not supported.')
+    ).toBeInTheDocument()
+
+    const notesRow = screen.getByText('notes').closest('tr') as HTMLElement
+    const notesCheckbox = within(notesRow).getByRole('checkbox')
+    expect(notesCheckbox).toBeDisabled()
+    expect(notesCheckbox).not.toBeChecked()
+
+    fireEvent.click(screen.getByText('Import'))
+    const dataset = onSubmit.mock.calls[0][0] as ImportedDataset
+    expect(dataset.columns.find((c) => c.label === 'notes')).toBeUndefined()
+    expect(dataset.columns.find((c) => c.label === 'temp')).toBeDefined()
+  })
+
+  it('truncates imported decimal values to 7 places before submit', () => {
+    const highPrecisionFile = {
+      filename: 'precision.csv',
+      rawText:
+        'year,month,day,temp\n' +
+        '2026,2,26,12.123456789\n' +
+        '2026,2,27,99.00000004'
+    }
+    const onSubmit = vi.fn()
+    const onImportWarning = vi.fn()
+    render(
+      <ImportWizard
+        {...baseProps}
+        pickedFile={highPrecisionFile}
+        onSubmit={onSubmit}
+        onImportWarning={onImportWarning}
+      />
+    )
+
+    fireEvent.click(screen.getByText('Next'))
+    fireEvent.click(screen.getByText('Next'))
+    fireEvent.click(screen.getByText('Next'))
+    fireEvent.click(screen.getByText('Import'))
+
+    const dataset = onSubmit.mock.calls[0][0] as ImportedDataset
+    expect(dataset.records[0].values['3__temp']).toBe('12.1234567')
+    expect(dataset.records[1].values['3__temp']).toBe('99.0000000')
+    expect(onImportWarning).toHaveBeenLastCalledWith(
+      'Only 7 decimal places have been taken for decimal values as more are not allowed.'
+    )
+  })
+
+  it('truncates quoted decimal values and raises the import warning', () => {
+    const quotedPrecisionFile = {
+      filename: 'precision.csv',
+      rawText:
+        'year,month,day,temp\n' +
+        '2026,2,26,"12.123456789"\n' +
+        '2026,2,27,.123456789'
+    }
+    const onSubmit = vi.fn()
+    const onImportWarning = vi.fn()
+    render(
+      <ImportWizard
+        {...baseProps}
+        pickedFile={quotedPrecisionFile}
+        onSubmit={onSubmit}
+        onImportWarning={onImportWarning}
+      />
+    )
+
+    fireEvent.click(screen.getByText('Next'))
+    fireEvent.click(screen.getByText('Next'))
+    fireEvent.click(screen.getByText('Next'))
+    fireEvent.click(screen.getByText('Import'))
+
+    const dataset = onSubmit.mock.calls[0][0] as ImportedDataset
+    expect(dataset.records[0].values['3__temp']).toBe('12.1234567')
+    expect(dataset.records[1].values['3__temp']).toBe('0.1234567')
+    expect(onImportWarning).toHaveBeenLastCalledWith(
+      'Only 7 decimal places have been taken for decimal values as more are not allowed.'
+    )
   })
 })

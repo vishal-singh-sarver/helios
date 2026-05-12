@@ -1,7 +1,6 @@
-import React from 'react'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import Weather from '../index'
 import * as weatherActions from '../actions'
+import Weather from '../index'
 import type { ImportedDataset, PickedFile } from '../types'
 
 const mockDispatch = vi.fn()
@@ -11,6 +10,7 @@ const sel = {
   pickedFile: null as PickedFile | null,
   importing: false,
   importError: null as string | null,
+  importPrecisionWarningPending: false,
   wizardOpen: false
 }
 
@@ -28,6 +28,7 @@ vi.mock('../selectors', () => ({
   selectPickedFile: () => sel.pickedFile,
   selectImporting: () => sel.importing,
   selectImportError: () => sel.importError,
+  selectImportPrecisionWarningPending: () => sel.importPrecisionWarningPending,
   selectWizardOpen: () => sel.wizardOpen
 }))
 
@@ -53,7 +54,8 @@ vi.mock('utils/loadable', () => ({
       isOpen: boolean
       onClose: () => void
       onRequestPickFile: () => void
-      onSubmit: (ds: ImportedDataset) => void
+      onSubmit: (ds: ImportedDataset, truncatedDecimals: boolean) => void
+      onImportWarning: (message: string | null) => void
     }) {
       if (!props.isOpen) return null
       return (
@@ -61,13 +63,37 @@ vi.mock('utils/loadable', () => ({
           <button data-testid="wizard-close" onClick={props.onClose} />
           <button data-testid="wizard-pick" onClick={props.onRequestPickFile} />
           <button
+            data-testid="wizard-warning"
+            onClick={() =>
+              props.onImportWarning(
+                'Only 7 decimal places have been taken for decimal values as more are not supported.'
+              )
+            }
+          />
+          <button
             data-testid="wizard-submit"
             onClick={() =>
-              props.onSubmit({
-                filename: 'foo.csv',
-                columns: [],
-                records: []
-              })
+              props.onSubmit(
+                {
+                  filename: 'foo.csv',
+                  columns: [],
+                  records: []
+                },
+                false
+              )
+            }
+          />
+          <button
+            data-testid="wizard-submit-truncated"
+            onClick={() =>
+              props.onSubmit(
+                {
+                  filename: 'foo.csv',
+                  columns: [],
+                  records: []
+                },
+                true
+              )
             }
           />
         </div>
@@ -81,6 +107,7 @@ function resetSel(): void {
   sel.pickedFile = null
   sel.importing = false
   sel.importError = null
+  sel.importPrecisionWarningPending = false
   sel.wizardOpen = false
 }
 
@@ -144,11 +171,46 @@ describe('<Weather />', () => {
     render(<Weather />)
     fireEvent.click(screen.getByTestId('wizard-submit'))
     expect(mockDispatch).toHaveBeenCalledWith(
-      weatherActions.importFinalizeRequested({
-        filename: 'foo.csv',
-        columns: [],
-        records: []
-      })
+      weatherActions.importFinalizeRequested(
+        {
+          filename: 'foo.csv',
+          columns: [],
+          records: []
+        },
+        false
+      )
     )
+  })
+
+  it('renders a bottom-right import toast when the wizard reports a precision warning', () => {
+    sel.wizardOpen = true
+    render(<Weather />)
+    fireEvent.click(screen.getByTestId('wizard-warning'))
+    expect(
+      screen.getByText(
+        'Only 7 decimal places have been taken for decimal values as more are not supported.'
+      )
+    ).toBeInTheDocument()
+  })
+
+  it('renders a bottom-right import toast when submit reports truncated decimals', () => {
+    sel.wizardOpen = true
+    render(<Weather />)
+    fireEvent.click(screen.getByTestId('wizard-submit-truncated'))
+    expect(
+      screen.getByText(
+        'Only 7 decimal places have been taken for decimal values as more are not supported.'
+      )
+    ).toBeInTheDocument()
+  })
+
+  it('renders a bottom-right import toast when refreshed backend data was precision-normalized', () => {
+    sel.importPrecisionWarningPending = true
+    render(<Weather />)
+    expect(
+      screen.getByText(
+        'Only 7 decimal places have been taken for decimal values as more are not supported.'
+      )
+    ).toBeInTheDocument()
   })
 })

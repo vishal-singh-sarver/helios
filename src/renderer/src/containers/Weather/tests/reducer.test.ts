@@ -97,9 +97,11 @@ describe('weatherReducer', () => {
 
     it('IMPORT_FINALIZE_REQUESTED flips importing and clears any prior error', () => {
       const state = { ...initialState, importError: 'prev' }
-      const result = weatherReducer(state, actions.importFinalizeRequested(dataset))
+      const result = weatherReducer(state, actions.importFinalizeRequested(dataset, true))
       expect(result.importing).toBe(true)
       expect(result.importError).toBeNull()
+      expect(result.importPrecisionWarningPending).toBe(false)
+      expect(result.importPrecisionWarningRequested).toBe(true)
     })
 
     it('IMPORT_FINALIZE_SUCCEEDED stores the dataset, clears pickedFile, and auto-closes the wizard', () => {
@@ -110,9 +112,10 @@ describe('weatherReducer', () => {
         pickedFile: { filename: 'foo.csv', rawText: 'x' },
         fileError: 'cleared too'
       }
-      const result = weatherReducer(state, actions.importFinalizeSucceeded(dataset))
+      const result = weatherReducer(state, actions.importFinalizeSucceeded(dataset, true))
       expect(result.importing).toBe(false)
       expect(result.dataset).toEqual(dataset)
+      expect(result.importPrecisionWarningPending).toBe(true)
       expect(result.pickedFile).toBeNull()
       expect(result.fileError).toBeNull()
       // Auto-close — saga waits for LOAD_SCENARIO_SUCCEEDED before dispatching
@@ -121,11 +124,22 @@ describe('weatherReducer', () => {
       expect(result.wizardOpen).toBe(false)
     })
 
+    it('IMPORT_FINALIZE_SUCCEEDED keeps the warning pending when the file needed truncation even if refresh was already clean', () => {
+      const state = weatherReducer(
+        initialState,
+        actions.importFinalizeRequested(dataset, true)
+      )
+      const result = weatherReducer(state, actions.importFinalizeSucceeded(dataset, false))
+      expect(result.importPrecisionWarningPending).toBe(true)
+      expect(result.importPrecisionWarningRequested).toBe(false)
+    })
+
     it('IMPORT_FINALIZE_FAILED stores the error and clears importing', () => {
       const state = { ...initialState, importing: true }
       const result = weatherReducer(state, actions.importFinalizeFailed('save cancelled'))
       expect(result.importing).toBe(false)
       expect(result.importError).toBe('save cancelled')
+      expect(result.importPrecisionWarningPending).toBe(false)
     })
 
     it('IMPORT_FINALIZE_FAILED preserves dataset from a previous successful import', () => {

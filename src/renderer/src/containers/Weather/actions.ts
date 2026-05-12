@@ -1,19 +1,19 @@
 import {
   FETCH_STATUS,
-  FETCH_STATUS_SUCCESS,
   FETCH_STATUS_FAILURE,
-  SSE_CONNECT,
-  SSE_EVENT,
-  SSE_DISCONNECT,
-  IMPORT_PICK_FILE_REQUESTED,
-  IMPORT_PICK_FILE_SUCCEEDED,
-  IMPORT_PICK_FILE_FAILED,
+  FETCH_STATUS_SUCCESS,
+  IMPORT_FINALIZE_FAILED,
   IMPORT_FINALIZE_REQUESTED,
   IMPORT_FINALIZE_SUCCEEDED,
-  IMPORT_FINALIZE_FAILED,
+  IMPORT_PICK_FILE_FAILED,
+  IMPORT_PICK_FILE_REQUESTED,
+  IMPORT_PICK_FILE_SUCCEEDED,
   IMPORT_RESET,
+  IMPORT_WIZARD_CLOSED,
   IMPORT_WIZARD_OPENED,
-  IMPORT_WIZARD_CLOSED
+  SSE_CONNECT,
+  SSE_DISCONNECT,
+  SSE_EVENT
 } from './constants'
 import type { ImportedDataset, PickedFile, WeatherStatus, WeatherStreamEvent } from './types'
 
@@ -55,10 +55,12 @@ export type ImportPickFileFailedAction = {
 export type ImportFinalizeRequestedAction = {
   type: typeof IMPORT_FINALIZE_REQUESTED
   payload: ImportedDataset
+  truncatedDecimals?: boolean
 }
 export type ImportFinalizeSucceededAction = {
   type: typeof IMPORT_FINALIZE_SUCCEEDED
   payload: ImportedDataset
+  precisionNormalized?: boolean
 }
 export type ImportFinalizeFailedAction = {
   type: typeof IMPORT_FINALIZE_FAILED
@@ -111,20 +113,27 @@ export const sseDisconnect = (): SseDisconnectAction => ({ type: SSE_DISCONNECT 
 export const importPickFileRequested = (): ImportPickFileRequestedAction => ({
   type: IMPORT_PICK_FILE_REQUESTED
 })
-export const importPickFileSucceeded = (
-  payload: PickedFile
-): ImportPickFileSucceededAction => ({ type: IMPORT_PICK_FILE_SUCCEEDED, payload })
+export const importPickFileSucceeded = (payload: PickedFile): ImportPickFileSucceededAction => ({
+  type: IMPORT_PICK_FILE_SUCCEEDED,
+  payload
+})
 export const importPickFileFailed = (payload: string): ImportPickFileFailedAction => ({
   type: IMPORT_PICK_FILE_FAILED,
   payload
 })
 
 export const importFinalizeRequested = (
-  payload: ImportedDataset
-): ImportFinalizeRequestedAction => ({ type: IMPORT_FINALIZE_REQUESTED, payload })
+  payload: ImportedDataset,
+  truncatedDecimals?: boolean
+): ImportFinalizeRequestedAction => ({
+  type: IMPORT_FINALIZE_REQUESTED,
+  payload,
+  truncatedDecimals
+})
 export const importFinalizeSucceeded = (
-  payload: ImportedDataset
-): ImportFinalizeSucceededAction => ({ type: IMPORT_FINALIZE_SUCCEEDED, payload })
+  payload: ImportedDataset,
+  precisionNormalized?: boolean
+): ImportFinalizeSucceededAction => ({ type: IMPORT_FINALIZE_SUCCEEDED, payload, precisionNormalized })
 export const importFinalizeFailed = (payload: string): ImportFinalizeFailedAction => ({
   type: IMPORT_FINALIZE_FAILED,
   payload

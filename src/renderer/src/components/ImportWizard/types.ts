@@ -13,7 +13,8 @@ export interface ImportWizardProps {
   isOpen: boolean
   onClose: () => void
   onRequestPickFile: () => void
-  onSubmit: (dataset: ImportedDataset) => void
+  onSubmit: (dataset: ImportedDataset, truncatedDecimals: boolean) => void
+  onImportWarning: (message: string | null) => void
   pickedFile: PickedFile | null
   fileLoading: boolean
   fileError: string | null
@@ -67,6 +68,7 @@ export interface StepReviewProps {
   parsedDateTimes: Array<Date | null>
   dtColumns: string[]
   columnSelection: Record<number, boolean>
+  disabledColumnIndices: number[]
   onToggleColumn: (index: number) => void
 }
 
