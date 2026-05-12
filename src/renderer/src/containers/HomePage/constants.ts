@@ -23,3 +23,9 @@ export const FETCH_RECENT_PROJECTS_FAILURE = 'app/HomePage/FETCH_RECENT_PROJECTS
 export const DELETE_PROJECT = 'app/HomePage/DELETE_PROJECT' as const
 export const DELETE_PROJECT_SUCCESS = 'app/HomePage/DELETE_PROJECT_SUCCESS' as const
 export const DELETE_PROJECT_FAILURE = 'app/HomePage/DELETE_PROJECT_FAILURE' as const
+
+// ── Rename project ───────────────────────────────────────────────────────────
+export const RENAME_PROJECT = 'app/HomePage/RENAME_PROJECT' as const
+export const RENAME_PROJECT_SUCCESS = 'app/HomePage/RENAME_PROJECT_SUCCESS' as const
+export const RENAME_PROJECT_FAILURE = 'app/HomePage/RENAME_PROJECT_FAILURE' as const
+export const RESET_RENAME_PROJECT = 'app/HomePage/RESET_RENAME_PROJECT' as const

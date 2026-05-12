@@ -20,6 +20,16 @@ const messages = {
     body: 'Are you sure you want to delete this? This action cannot be undone.',
     confirmButton: 'Delete',
     cancelButton: 'Cancel'
+  },
+
+  renameProject: {
+    dialogTitle: 'Rename Project',
+    submitButton: 'Save',
+    submitButtonBusy: 'Renaming…',
+    cancelButton: 'Cancel',
+    fields: {
+      name: 'New Project Name'
+    }
   }
 } as const
 

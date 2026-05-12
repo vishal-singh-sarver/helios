@@ -9,6 +9,7 @@ import {
   DELETE_PROJECT,
   FETCH_RECENT_PROJECTS,
   FETCH_STATUS,
+  RENAME_PROJECT,
   SSE_CONNECT,
   SSE_DISCONNECT
 } from './constants'
@@ -18,6 +19,19 @@ import type {
   CreateProjectResponse,
   RecentProjectsResponse
 } from './types'
+
+interface ProjectDetailsResponse {
+  project: {
+    id: string
+    name: string
+    latitude: number
+    longitude: number
+    utc_offset: string
+    created_at: string
+    updated_at: string
+    scenarios: unknown[]
+  }
+}
 
 function toErrorPayload(err: unknown): ApiErrorPayload {
   if (err instanceof ApiError) {
@@ -65,6 +79,29 @@ export function* deleteProjectWorker(action: ReturnType<typeof actions.deletePro
     yield put(actions.deleteProjectSuccess(projectId))
   } catch (err) {
     yield put(actions.deleteProjectFailure(projectId, toErrorPayload(err)))
+  }
+}
+
+// ── Rename project worker ────────────────────────────────────────────────────
+
+export function* renameProjectWorker(action: ReturnType<typeof actions.renameProject>): Generator {
+  const { projectId, name } = action.payload
+  try {
+    const response = (yield call(
+      api.get<ProjectDetailsResponse>,
+      API_ROUTES.project.get(projectId)
+    )) as ProjectDetailsResponse
+
+    yield call(api.patch<string>, API_ROUTES.project.update(projectId), {
+      name,
+      latitude: response.project.latitude,
+      longitude: response.project.longitude
+    })
+
+    yield put(actions.renameProjectSuccess(projectId, name))
+    yield put(actions.fetchRecentProjects())
+  } catch (err) {
+    yield put(actions.renameProjectFailure(projectId, toErrorPayload(err)))
   }
 }
 
@@ -129,4 +166,5 @@ export default function* homePageSaga(): Generator {
   // takeEvery: each row's delete runs independently so multiple rows can be
   // deleted concurrently without queueing.
   yield takeEvery(DELETE_PROJECT, deleteProjectWorker)
+  yield takeLatest(RENAME_PROJECT, renameProjectWorker)
 }

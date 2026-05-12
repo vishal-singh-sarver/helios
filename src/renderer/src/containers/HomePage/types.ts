@@ -51,3 +51,10 @@ export interface RecentProjectsResponse {
 export interface DeleteProjectPayload {
   projectId: string
 }
+
+// ── Rename project ───────────────────────────────────────────────────────────
+
+export interface RenameProjectPayload {
+  projectId: string
+  name: string
+}

@@ -1,4 +1,6 @@
 import deleteIcon from '@renderer/assets/delete.svg'
+import editIcon from '@renderer/assets/edit.svg'
+import kebabMenuIcon from '@renderer/assets/Kebab Menu.svg'
 import sortIcon from '@renderer/assets/Sort 3.svg'
 import React, { useState } from 'react'
 import { formatBytes, formatRelativeDate } from 'utils/format'
@@ -12,6 +14,7 @@ interface ProjectsTableProps {
   onCreateNew: () => void
   onRowClick?: (projectId: string) => void
   onRequestDelete: (project: RecentProjectItem) => void
+  onRequestRename: (project: RecentProjectItem) => void
   deletingIds: string[]
 }
 
@@ -33,12 +36,34 @@ function ProjectsTable({
   emptyIcon,
   onCreateNew,
   onRequestDelete,
+  onRequestRename,
   deletingIds,
   onRowClick
 }: ProjectsTableProps): React.JSX.Element {
   const [sortKey, setSortKey] = useState<SortKey>('last_updated')
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
+  const [openMenuProjectId, setOpenMenuProjectId] = useState<string | null>(null)
   const containerRef = React.useRef<HTMLDivElement>(null)
+  const menuRootRef = React.useRef<HTMLTableSectionElement>(null)
+
+  React.useEffect(() => {
+    if (openMenuProjectId == null) return undefined
+
+    const handlePointerDown = (event: PointerEvent): void => {
+      if (menuRootRef.current?.contains(event.target as Node)) return
+      setOpenMenuProjectId(null)
+    }
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') setOpenMenuProjectId(null)
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [openMenuProjectId])
 
   const handleSort = (key: SortKey): void => {
     if (key === sortKey) {
@@ -151,7 +176,7 @@ function ProjectsTable({
               </tr>
             </thead>
 
-            <tbody>
+            <tbody ref={menuRootRef}>
               {paddingTop > 0 && (
                 <tr aria-hidden="true" style={{ height: paddingTop }}>
                   <td colSpan={4} />
@@ -183,16 +208,56 @@ function ProjectsTable({
                     <td className="border-b border-app-border/80 px-4 text-sm text-neutral-300">
                       {formatBytes(project.size)}
                     </td>
-                    <td className="border-b border-app-border/80 px-4">
+                    <td className="relative border-b border-app-border/80 px-4">
                       <button
                         type="button"
-                        aria-label={`Delete project ${project.name}`}
-                        onClick={() => onRequestDelete(project)}
+                        aria-label={`Open actions for ${project.name}`}
+                        aria-haspopup="menu"
+                        aria-expanded={openMenuProjectId === project.id}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          setOpenMenuProjectId((id) => (id === project.id ? null : project.id))
+                        }}
                         disabled={isDeleting}
                         className="flex h-8 w-8 items-center justify-center rounded text-neutral-400 focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <img src={deleteIcon} alt="" aria-hidden="true" className="h-4 w-4" />
+                        <img src={kebabMenuIcon} alt="" aria-hidden="true" className="h-5 w-5" />
                       </button>
+                      {openMenuProjectId === project.id && (
+                        <div
+                          role="menu"
+                          aria-label={`Actions for ${project.name}`}
+                          className="absolute right-4 top-10 z-30 flex h-[92px] w-[132px] flex-col justify-center rounded-lg border border-[#424242] bg-[#202020] py-2 shadow-[0px_4px_6px_-2px_rgba(0,0,0,0.18),0px_12px_16px_-4px_rgba(0,0,0,0.32)]"
+                        >
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              setOpenMenuProjectId(null)
+                              onRequestRename(project)
+                            }}
+                            className="flex h-10 items-center gap-3 px-4 text-left text-sm text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+                          >
+                            <img src={editIcon} alt="" aria-hidden="true" className="h-4 w-4" />
+                            Rename
+                          </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              setOpenMenuProjectId(null)
+                              onRequestDelete(project)
+                            }}
+                            disabled={isDeleting}
+                            className="flex h-10 items-center gap-3 px-4 text-left text-sm text-red-500 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <img src={deleteIcon} alt="" aria-hidden="true" className="h-4 w-4" />
+                            Delete
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 )

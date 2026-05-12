@@ -16,7 +16,11 @@ import {
   FETCH_RECENT_PROJECTS_FAILURE,
   DELETE_PROJECT,
   DELETE_PROJECT_SUCCESS,
-  DELETE_PROJECT_FAILURE
+  DELETE_PROJECT_FAILURE,
+  RENAME_PROJECT,
+  RENAME_PROJECT_SUCCESS,
+  RENAME_PROJECT_FAILURE,
+  RESET_RENAME_PROJECT
 } from './constants'
 import type { HomePageAction } from './actions'
 
@@ -50,6 +54,13 @@ export interface DeleteProjectState {
   error: ApiErrorPayload | null
 }
 
+export interface RenameProjectState {
+  loading: boolean
+  projectId: string | null
+  error: ApiErrorPayload | null
+  success: boolean
+}
+
 export interface HomePageState {
   // REST
   status: AppStatus | null
@@ -64,6 +75,8 @@ export interface HomePageState {
   recentProjects: RecentProjectsState
   // Delete project
   deleteProject: DeleteProjectState
+  // Rename project
+  renameProject: RenameProjectState
 }
 
 export const initialCreateProjectState: CreateProjectState = {
@@ -84,6 +97,13 @@ export const initialDeleteProjectState: DeleteProjectState = {
   error: null
 }
 
+export const initialRenameProjectState: RenameProjectState = {
+  loading: false,
+  projectId: null,
+  error: null,
+  success: false
+}
+
 export const initialState: HomePageState = {
   status: null,
   loading: false,
@@ -92,7 +112,8 @@ export const initialState: HomePageState = {
   streamLog: [],
   createProject: initialCreateProjectState,
   recentProjects: initialRecentProjectsState,
-  deleteProject: initialDeleteProjectState
+  deleteProject: initialDeleteProjectState,
+  renameProject: initialRenameProjectState
 }
 
 // ── Reducer ───────────────────────────────────────────────────────────────────
@@ -191,6 +212,37 @@ const homePageReducer: Reducer<HomePageState> = (state = initialState, rawAction
         draft.deleteProject.error = error
         break
       }
+
+      case RENAME_PROJECT: {
+        draft.renameProject.loading = true
+        draft.renameProject.projectId = action.payload.projectId
+        draft.renameProject.error = null
+        draft.renameProject.success = false
+        break
+      }
+
+      case RENAME_PROJECT_SUCCESS: {
+        const { projectId, name } = action.payload
+        draft.renameProject.loading = false
+        draft.renameProject.projectId = null
+        draft.renameProject.error = null
+        draft.renameProject.success = true
+        const project = draft.recentProjects.data.find((p) => p.id === projectId)
+        if (project) project.name = name
+        break
+      }
+
+      case RENAME_PROJECT_FAILURE: {
+        draft.renameProject.loading = false
+        draft.renameProject.projectId = action.payload.projectId
+        draft.renameProject.error = action.payload.error
+        draft.renameProject.success = false
+        break
+      }
+
+      case RESET_RENAME_PROJECT:
+        draft.renameProject = { ...initialRenameProjectState }
+        break
     }
   })
 

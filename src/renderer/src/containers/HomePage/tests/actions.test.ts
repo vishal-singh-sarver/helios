@@ -15,7 +15,11 @@ import {
   FETCH_RECENT_PROJECTS_FAILURE,
   DELETE_PROJECT,
   DELETE_PROJECT_SUCCESS,
-  DELETE_PROJECT_FAILURE
+  DELETE_PROJECT_FAILURE,
+  RENAME_PROJECT,
+  RENAME_PROJECT_SUCCESS,
+  RENAME_PROJECT_FAILURE,
+  RESET_RENAME_PROJECT
 } from '../constants'
 import type {
   AppStatus,
@@ -154,6 +158,36 @@ describe('HomePage actions', () => {
         type: DELETE_PROJECT_FAILURE,
         payload: { projectId: 'uuid-1', error: err }
       })
+    })
+  })
+
+  // ── Rename project ─────────────────────────────────────────────────────────
+
+  describe('rename project', () => {
+    it('renameProject carries projectId + name', () => {
+      expect(actions.renameProject({ projectId: 'uuid-1', name: 'New Name' })).toEqual({
+        type: RENAME_PROJECT,
+        payload: { projectId: 'uuid-1', name: 'New Name' }
+      })
+    })
+
+    it('renameProjectSuccess carries projectId + name', () => {
+      expect(actions.renameProjectSuccess('uuid-1', 'New Name')).toEqual({
+        type: RENAME_PROJECT_SUCCESS,
+        payload: { projectId: 'uuid-1', name: 'New Name' }
+      })
+    })
+
+    it('renameProjectFailure carries projectId and error', () => {
+      const err: ApiErrorPayload = { status: 409, message: 'duplicate', fieldErrors: {} }
+      expect(actions.renameProjectFailure('uuid-1', err)).toEqual({
+        type: RENAME_PROJECT_FAILURE,
+        payload: { projectId: 'uuid-1', error: err }
+      })
+    })
+
+    it('resetRenameProject has correct type', () => {
+      expect(actions.resetRenameProject()).toEqual({ type: RESET_RENAME_PROJECT })
     })
   })
 })
