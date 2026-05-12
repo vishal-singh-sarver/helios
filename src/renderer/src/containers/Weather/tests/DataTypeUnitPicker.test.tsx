@@ -117,7 +117,7 @@ describe('<DataTypeUnitPicker />', () => {
     )
   })
 
-  it('shows "unit (alias)" when both type and unit are set and alias exists', () => {
+  it('shows only the unit when both type and unit are set and alias exists', () => {
     render(
       <DataTypeUnitPicker
         col={colWithType}
@@ -127,9 +127,7 @@ describe('<DataTypeUnitPicker />', () => {
         onPatch={vi.fn()}
       />
     )
-    expect(screen.getByRole('button', { name: /data type and unit/i })).toHaveTextContent(
-      'C (°C)'
-    )
+    expect(screen.getByRole('button', { name: /data type and unit/i })).toHaveTextContent('C')
   })
 
   it('shows just the unit when alias is empty', () => {
@@ -205,11 +203,11 @@ describe('<DataTypeUnitPicker />', () => {
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /data type and unit/i }))
-    expect(screen.getByText('‹')).toBeInTheDocument()
+    expect(screen.getByText('‹ Back to Assign Type')).toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'C (°C)' })).toBeInTheDocument()
   })
 
-  it('switches back to the type view from "Back to Assign Type"', () => {
+  it('marks the base unit as Default in the unit view', () => {
     render(
       <DataTypeUnitPicker
         col={colWithType}
@@ -220,7 +218,23 @@ describe('<DataTypeUnitPicker />', () => {
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /data type and unit/i }))
+    expect(screen.getByText('Default')).toBeInTheDocument()
+  })
+
+  it('switches back to the type view from "Back to Assign Type" and clears the assignment', () => {
+    const onPatch = vi.fn()
+    render(
+      <DataTypeUnitPicker
+        col={colWithType}
+        dataTypes={dataTypes}
+        currentDataType={tempType}
+        unitsForType={tempType.units}
+        onPatch={onPatch}
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: /data type and unit/i }))
     fireEvent.click(screen.getByText(/Back to Assign Type/))
+    expect(onPatch).toHaveBeenCalledWith({ dataTypeId: null, unitId: null })
     expect(screen.getByRole('option', { name: 'Temperature' })).toBeInTheDocument()
   })
 
@@ -257,6 +271,7 @@ describe('<DataTypeUnitPicker />', () => {
     )
     fireEvent.click(screen.getByRole('button', { name: /data type and unit/i }))
     fireEvent.click(screen.getByText(/Back to Assign Type/))
+    onPatch.mockClear()
     fireEvent.click(screen.getByRole('option', { name: 'Temperature' }))
     expect(onPatch).not.toHaveBeenCalled()
   })

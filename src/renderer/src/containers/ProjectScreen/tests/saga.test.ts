@@ -578,6 +578,33 @@ describe('updateColumnWorker', () => {
     expect(gen.next().value).toEqual(put(actions.updateColumnSucceeded(PROJ, SCN, '7')))
   })
 
+  it('sends null data type and unit values when clearing a header assignment', () => {
+    const action = actions.updateColumnRequested(
+      PROJ,
+      SCN,
+      '7',
+      { dataTypeId: null, unitId: null },
+      { dataTypeId: 1, unitId: 1 }
+    )
+    function* worker(): Generator {
+      const headerId = Number(action.payload.colId)
+      const wire = {
+        helios_data_type_id: action.payload.patch.dataTypeId,
+        unit_id: action.payload.patch.unitId
+      }
+      yield call(patchHeaderRequest, PROJ, SCN, headerId, wire)
+      yield put(actions.updateColumnSucceeded(PROJ, SCN, '7'))
+    }
+    const gen = worker()
+    expect(gen.next().value).toEqual(
+      call(patchHeaderRequest, PROJ, SCN, 7, {
+        helios_data_type_id: null,
+        unit_id: null
+      })
+    )
+    expect(gen.next().value).toEqual(put(actions.updateColumnSucceeded(PROJ, SCN, '7')))
+  })
+
   it('dispatches updateColumnFailed with the previous snapshot for non-numeric colIds', () => {
     const previous = { name: 'date' }
     function* worker(): Generator {

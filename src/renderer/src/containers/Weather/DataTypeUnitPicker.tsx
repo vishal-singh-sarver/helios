@@ -52,9 +52,7 @@ function DataTypeUnitPicker({
   const currentUnit = currentDataType?.units.find((u) => u.id === col.unitId)
 
   const buttonLabel = currentUnit
-    ? currentUnit.alias
-      ? `${currentUnit.unit} (${currentUnit.alias})`
-      : currentUnit.unit
+    ? currentUnit.unit
     : currentDataType
       ? currentDataType.data_type
       : 'Data Type'
@@ -81,6 +79,12 @@ function DataTypeUnitPicker({
     setOpen(false)
   }
 
+  const handleBackToAssignType = (): void => {
+    const clearAssignment: UpdateColumnPatch = { dataTypeId: null, unitId: null }
+    onPatch(clearAssignment)
+    setView('type')
+  }
+
   return (
     <div ref={wrapRef} className="relative min-w-0 flex-1">
       <button
@@ -97,15 +101,19 @@ function DataTypeUnitPicker({
       {open && (
         <div
           role="listbox"
-          className="absolute left-0 top-full z-20 mt-1 max-h-64 w-48 overflow-auto rounded border border-app-border bg-neutral-900 shadow-lg"
+          className="scrollbar-custom-thin absolute left-0 top-full z-20 mt-1 max-h-[260px] w-[216px] overflow-y-auto overflow-x-hidden rounded border border-app-border bg-[#1f1f1f] py-1 shadow-lg"
         >
           {view === 'unit' && (
             <button
               type="button"
-              onClick={() => setView('type')}
-              className="flex w-full items-center gap-1 border-b border-app-border px-3 py-2 text-left text-xs text-blue-400 hover:bg-neutral-800"
+              onClick={handleBackToAssignType}
+              className="mb-1 flex h-8 w-full items-center gap-1 bg-neutral-200 px-3 text-left text-xs text-[#245AC5] hover:bg-neutral-100"
             >
-              <span aria-hidden>‹</span> Back to Assign Type
+              <span
+                className="h-5 w-[134px] font-['Geist'] text-[14px] font-medium leading-5 tracking-normal text-[#245AC5]"
+              >
+                ‹ Back to Assign Type
+              </span>
             </button>
           )}
           {view === 'type' &&
@@ -116,8 +124,8 @@ function DataTypeUnitPicker({
                 role="option"
                 aria-selected={dt.id === col.dataTypeId}
                 onClick={() => pickDataType(dt.id)}
-                className={`block w-full px-3 py-2 text-left text-xs hover:bg-neutral-800 ${
-                  dt.id === col.dataTypeId ? 'text-neutral-100' : 'text-neutral-300'
+                className={`block h-[42px] w-full truncate px-3 text-left text-xs leading-[42px] hover:bg-[#2b2b2b] ${
+                  dt.id === col.dataTypeId ? 'bg-[#111111] text-neutral-100' : 'text-neutral-300'
                 }`}
               >
                 {dt.data_type}
@@ -134,11 +142,19 @@ function DataTypeUnitPicker({
                   role="option"
                   aria-selected={u.id === col.unitId}
                   onClick={() => pickUnit(u.id)}
-                  className={`block w-full px-3 py-2 text-left text-xs hover:bg-neutral-800 ${
-                    u.id === col.unitId ? 'text-neutral-100' : 'text-neutral-300'
+                  className={`flex h-[42px] w-full items-center justify-between gap-3 px-3 text-left text-xs hover:bg-[#2b2b2b] ${
+                    u.id === col.unitId ? 'bg-[#111111] text-neutral-100' : 'text-neutral-300'
                   }`}
                 >
-                  {u.alias ? `${u.unit} (${u.alias})` : u.unit}
+                  <span className="truncate">{u.alias ? `${u.unit} (${u.alias})` : u.unit}</span>
+                  {u.is_base && (
+                    <span
+                      aria-hidden="true"
+                      className="h-[15px] w-[41px] shrink-0 bg-transparent text-center text-[12px] font-normal leading-[15px] tracking-normal text-[#B2C9F5]"
+                    >
+                      Default
+                    </span>
+                  )}
                 </button>
               ))
             ))}
