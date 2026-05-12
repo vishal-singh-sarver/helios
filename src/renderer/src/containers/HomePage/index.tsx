@@ -155,23 +155,33 @@ export function HomePage(): React.JSX.Element {
       const projectNameError = validateProjectName(values.projectName)
       if (projectNameError) errors.projectName = projectNameError
 
-      if (values.latitude === '') {
+      const latitudeValue = values.latitude.trim()
+
+      if (latitudeValue === '') {
         errors.latitude = 'Latitude is required.'
+      } else if (!/^[-+]?\d*\.?\d+$/.test(latitudeValue)) {
+        errors.latitude = 'Invalid latitude'
       } else {
-        const lat = Number.parseFloat(values.latitude)
-        if (Number.isNaN(lat) || lat < -90 || lat > 90) {
+        const lat = Number(latitudeValue)
+
+        if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
           errors.latitude =
-            'Invalid latitude. Enter latitude in decimal degrees. Valid range: -90 <= latitude <= 90. Negative for South, positive for North.'
+            'Invalid latitude. Enter latitude in decimal degrees. Valid range: -90 <= latitude <= 90.'
         }
       }
 
-      if (values.longitude === '') {
+      const longitudeValue = values.longitude.trim()
+
+      if (longitudeValue === '') {
         errors.longitude = 'Longitude is required.'
+      } else if (!/^[-+]?\d*\.?\d+$/.test(longitudeValue)) {
+        errors.longitude = 'Invalid longitude'
       } else {
-        const lon = Number.parseFloat(values.longitude)
-        if (Number.isNaN(lon) || lon < -180 || lon > 180) {
+        const lon = Number(longitudeValue)
+
+        if (!Number.isFinite(lon) || lon < -180 || lon > 180) {
           errors.longitude =
-            'Invalid longitude. Enter longitude in decimal degrees. Valid range: -180 <= longitude <= 180. Negative for West, positive for East.'
+            'Invalid longitude. Enter longitude in decimal degrees. Valid range: -180 <= longitude <= 180.'
         }
       }
 
@@ -329,7 +339,7 @@ export function HomePage(): React.JSX.Element {
               formik.touched.latitude || formik.values.latitude !== ''
                 ? (formik.errors.latitude as string | undefined)
                 : undefined,
-            type: 'number'
+            type: 'text'
           }}
         />
         <FormField
@@ -346,7 +356,7 @@ export function HomePage(): React.JSX.Element {
               formik.touched.longitude || formik.values.longitude !== ''
                 ? (formik.errors.longitude as string | undefined)
                 : undefined,
-            type: 'number'
+            type: 'text'
           }}
         />
 
@@ -420,7 +430,7 @@ export function HomePage(): React.JSX.Element {
         isOpen={pendingRename !== null}
         title={messages.renameProject.dialogTitle}
         onClose={handleCancelRename}
-        className="h-[224px] w-[352px] rounded-[3px] border border-[#424242] bg-[#202020] shadow-[0px_4px_6px_-2px_rgba(0,0,0,0.18),0px_12px_16px_-4px_rgba(0,0,0,0.32)]"
+        className="h-[224px] w-[352px] rounded-[3px] border-[#424242] bg-[#202020] shadow-[0px_4px_6px_-2px_rgba(0,0,0,0.18),0px_12px_16px_-4px_rgba(0,0,0,0.32)]"
         headerClassName="h-[56px] bg-neutral-100 px-4"
         bodyClassName="space-y-5 p-4"
       >
