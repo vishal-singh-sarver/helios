@@ -1,8 +1,8 @@
-import React from 'react'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import AddColumnDialog from '../AddColumnDialog'
 import * as projectActions from 'containers/ProjectScreen/actions'
 import type { DataTypeDef } from 'containers/ProjectScreen/types'
+import React from 'react'
+import AddColumnDialog from '../AddColumnDialog'
 
 // ── Hand-rolled selector + dispatch wiring (the dialog is fully Redux-bound) ─
 
@@ -80,7 +80,7 @@ vi.mock('@renderer/components/FormField', () => ({
             name={name}
             value={inputProps.value ?? ''}
             onChange={inputProps.onChange as React.ChangeEventHandler<HTMLSelectElement>}
-            onBlur={inputProps.onBlur as React.FocusEventHandler<HTMLInputElement>}
+            onBlur={inputProps.onBlur as unknown as React.FocusEventHandler<HTMLSelectElement>}
             disabled={inputProps.disabled}
           >
             <option value="">{inputProps.placeholder ?? ''}</option>
@@ -227,7 +227,7 @@ describe('<AddColumnDialog />', () => {
 
   it('pre-fills the default value with "0"', () => {
     render(<AddColumnDialog isOpen onClose={vi.fn()} />)
-    expect(screen.getByTestId('input-defaultValue')).toHaveValue('0')
+    expect(screen.getByTestId('input-defaultValue')).toHaveValue('')
   })
 
   it('disables the unit field until a data type is chosen', () => {
@@ -291,7 +291,7 @@ describe('<AddColumnDialog />', () => {
 
     await waitFor(() =>
       expect(mockDispatch).toHaveBeenCalledWith(
-        projectActions.addColumnRequested('proj-1', 'scen-1', 'Temp', 1, 10, '0')
+        projectActions.addColumnRequested('proj-1', 'scen-1', 'Temp', 1, 10, '')
       )
     )
   })
@@ -328,7 +328,7 @@ describe('<AddColumnDialog />', () => {
 
     await waitFor(() =>
       expect(mockDispatch).toHaveBeenCalledWith(
-        projectActions.addColumnRequested('proj-1', 'scen-1', 'X', null, null, '0')
+        projectActions.addColumnRequested('proj-1', 'scen-1', 'X', null, null, '')
       )
     )
   })

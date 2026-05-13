@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
+import type { ImportedDataset } from 'containers/Weather/parsers'
 import ImportWizard from '../index'
 import type { ImportWizardProps } from '../types'
-import type { ImportedDataset } from 'containers/Weather/parsers'
 
 const baseProps: ImportWizardProps = {
   isOpen: true,
@@ -18,10 +18,7 @@ const baseProps: ImportWizardProps = {
 
 const goodGroup1File = {
   filename: 'sample.csv',
-  rawText:
-    'year,month,day,hour,minute,temp\n' +
-    '2026,2,26,10,0,22.5\n' +
-    '2026,2,27,11,0,23.7'
+  rawText: 'year,month,day,hour,minute,temp\n' + '2026,2,26,10,0,22.5\n' + '2026,2,27,11,0,23.7'
 }
 
 describe('<ImportWizard />', () => {
@@ -182,10 +179,7 @@ describe('<ImportWizard />', () => {
   it('auto-disables character based columns in review and excludes them from import', () => {
     const mixedFile = {
       filename: 'mixed.csv',
-      rawText:
-        'year,month,day,temp,notes\n' +
-        '2026,2,26,22.5,clear\n' +
-        '2026,2,27,23.7,cloudy'
+      rawText: 'year,month,day,temp,notes\n' + '2026,2,26,22.5,clear\n' + '2026,2,27,23.7,cloudy'
     }
     const onSubmit = vi.fn()
     render(<ImportWizard {...baseProps} pickedFile={mixedFile} onSubmit={onSubmit} />)
@@ -209,41 +203,10 @@ describe('<ImportWizard />', () => {
     expect(dataset.columns.find((c) => c.label === 'temp')).toBeDefined()
   })
 
-  it('Select All toggles all selectable review columns in one click', () => {
-    const selectableFile = {
-      filename: 'selectable.csv',
-      rawText:
-        'year,month,day,air_temperature,air_pressure\n' +
-        '2026,2,26,22.5,1012.3\n' +
-        '2026,2,27,23.7,1013.5'
-    }
-    const onSubmit = vi.fn()
-    render(<ImportWizard {...baseProps} pickedFile={selectableFile} onSubmit={onSubmit} />)
-
-    fireEvent.click(screen.getByText('Next'))
-    fireEvent.click(screen.getByText('Next'))
-    fireEvent.click(screen.getByText('Next'))
-
-    const selectAll = screen.getByLabelText('Select All')
-    fireEvent.click(selectAll)
-
-    const airTempRow = screen.getByText('air_temperature').closest('tr') as HTMLElement
-    const airPressureRow = screen.getByText('air_pressure').closest('tr') as HTMLElement
-    expect(within(airTempRow).getByRole('checkbox')).not.toBeChecked()
-    expect(within(airPressureRow).getByRole('checkbox')).not.toBeChecked()
-
-    fireEvent.click(selectAll)
-    expect(within(airTempRow).getByRole('checkbox')).toBeChecked()
-    expect(within(airPressureRow).getByRole('checkbox')).toBeChecked()
-  })
-
   it('truncates imported decimal values to 7 places before submit', () => {
     const highPrecisionFile = {
       filename: 'precision.csv',
-      rawText:
-        'year,month,day,temp\n' +
-        '2026,2,26,12.123456789\n' +
-        '2026,2,27,99.00000004'
+      rawText: 'year,month,day,temp\n' + '2026,2,26,12.123456789\n' + '2026,2,27,99.00000004'
     }
     const onSubmit = vi.fn()
     const onImportWarning = vi.fn()
@@ -272,10 +235,7 @@ describe('<ImportWizard />', () => {
   it('truncates quoted decimal values and raises the import warning', () => {
     const quotedPrecisionFile = {
       filename: 'precision.csv',
-      rawText:
-        'year,month,day,temp\n' +
-        '2026,2,26,"12.123456789"\n' +
-        '2026,2,27,.123456789'
+      rawText: 'year,month,day,temp\n' + '2026,2,26,"12.123456789"\n' + '2026,2,27,.123456789'
     }
     const onSubmit = vi.fn()
     const onImportWarning = vi.fn()

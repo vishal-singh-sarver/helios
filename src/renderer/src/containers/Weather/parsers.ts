@@ -18,7 +18,7 @@ export interface ParseResult {
   rows: string[][]
 }
 
-export type DateTimeMode = 'group1' | 'group2'
+export type DateTimeMode = 'group1' | 'group2' | 'group3'
 
 export interface DateTimeMapping {
   year: string | null
@@ -28,6 +28,7 @@ export interface DateTimeMapping {
   minute: string | null
   date: string | null
   time: string | null
+  datetime: string | null
 }
 
 export const INITIAL_MAPPING: DateTimeMapping = {
@@ -37,16 +38,32 @@ export const INITIAL_MAPPING: DateTimeMapping = {
   hour: null,
   minute: null,
   date: null,
-  time: null
+  time: null,
+  datetime: null
 }
 
 export type DateFormatKey =
+  | 'YYYYMMDD'
   | 'YYYY-MM-DD'
+  | 'DD-MM-YYYY'
+  | 'MM-DD-YYYY'
   | 'DD/MM/YYYY'
   | 'MM/DD/YYYY'
-  | 'DD-MM-YYYY'
   | 'YYYY/MM/DD'
   | 'DD.MM.YYYY'
+  | 'YYYY DOY'
+  | 'DOY YYYY'
+
+export type DateTimeFormatKey =
+  | 'YYYY-MM-DDTHH:MM:SSZ'
+  | 'YYYY-MM-DDTHH:MM:SS-HH:MM'
+  | 'YYYYMMDDHH'
+  | 'YYYYMMDDHHMM'
+  | 'YYYY-MM-DD HH:MM'
+  | 'DD/MM/YYYY HH:MM'
+  | 'MM/DD/YYYY HH:MM'
+  | 'DD-MM-YYYY HH:MM'
+  | 'MM-DD-YYYY HH:MM'
 
 interface DateFormatSpec {
   value: DateFormatKey
@@ -55,12 +72,31 @@ interface DateFormatSpec {
 }
 
 export const DATE_FORMATS: ReadonlyArray<DateFormatSpec> = [
+  { value: 'YYYYMMDD', label: 'YYYYMMDD', parts: ['Y', 'M', 'D'] },
   { value: 'YYYY-MM-DD', label: 'YYYY-MM-DD', parts: ['Y', 'M', 'D'] },
+  { value: 'DD-MM-YYYY', label: 'DD-MM-YYYY', parts: ['D', 'M', 'Y'] },
+  { value: 'MM-DD-YYYY', label: 'MM-DD-YYYY', parts: ['M', 'D', 'Y'] },
   { value: 'DD/MM/YYYY', label: 'DD/MM/YYYY', parts: ['D', 'M', 'Y'] },
   { value: 'MM/DD/YYYY', label: 'MM/DD/YYYY', parts: ['M', 'D', 'Y'] },
-  { value: 'DD-MM-YYYY', label: 'DD-MM-YYYY', parts: ['D', 'M', 'Y'] },
   { value: 'YYYY/MM/DD', label: 'YYYY/MM/DD', parts: ['Y', 'M', 'D'] },
-  { value: 'DD.MM.YYYY', label: 'DD.MM.YYYY', parts: ['D', 'M', 'Y'] }
+  { value: 'DD.MM.YYYY', label: 'DD.MM.YYYY', parts: ['D', 'M', 'Y'] },
+  { value: 'YYYY DOY', label: 'YYYY DOY', parts: ['Y', 'D'] },
+  { value: 'DOY YYYY', label: 'DOY YYYY', parts: ['D', 'Y'] }
+]
+
+export const DATETIME_FORMATS: ReadonlyArray<{
+  value: DateTimeFormatKey
+  label: string
+}> = [
+  { value: 'YYYY-MM-DDTHH:MM:SSZ', label: 'YYYY-MM-DDTHH:MM:SSZ' },
+  { value: 'YYYY-MM-DDTHH:MM:SS-HH:MM', label: 'YYYY-MM-DDTHH:MM:SS-HH:MM' },
+  { value: 'YYYYMMDDHH', label: 'YYYYMMDDHH' },
+  { value: 'YYYYMMDDHHMM', label: 'YYYYMMDDHHMM' },
+  { value: 'YYYY-MM-DD HH:MM', label: 'YYYY-MM-DD HH:MM' },
+  { value: 'DD/MM/YYYY HH:MM', label: 'DD/MM/YYYY HH:MM' },
+  { value: 'MM/DD/YYYY HH:MM', label: 'MM/DD/YYYY HH:MM' },
+  { value: 'DD-MM-YYYY HH:MM', label: 'DD-MM-YYYY HH:MM' },
+  { value: 'MM-DD-YYYY HH:MM', label: 'MM-DD-YYYY HH:MM' }
 ]
 
 export interface DelimiterSpec {
@@ -206,36 +242,95 @@ export function parseDelimited(
 
 // ── XML parsing ───────────────────────────────────────────────────────────────
 
+function sanitizeXmlTagName(name: string): string {
+  if (/^[A-Za-z_][A-Za-z0-9_.-]*$/.test(name)) return name
+  return `tag_${Array.from(name)
+    .map((ch) => (/^[A-Za-z0-9_.-]$/.test(ch) ? ch : `_x${ch.charCodeAt(0).toString(16)}_`))
+    .join('')}`
+}
+
+function normalizeXmlForParsing(text: string): { normalized: string; tagNameMap: Map<string, string> } {
+  let normalized = text.replace(/<\?xml\s+version\s*=\s*([0-9.]+)\s*\?>/i, '<?xml version="$1"?>')
+  const tagNameMap = new Map<string, string>()
+
+  normalized = normalized.replace(/<(\/?)([^\s!?/>]+)([^>]*)>/g, (_match, slash, rawName, rest) => {
+    const safeName = sanitizeXmlTagName(rawName)
+    tagNameMap.set(safeName, rawName)
+    return `<${slash}${safeName}${rest}>`
+  })
+
+  return { normalized, tagNameMap }
+}
+
+function findXmlRecords(root: Element): Element[] {
+  const directChildren = Array.from(root.children)
+  if (directChildren.length === 0) return []
+
+  const directCounts: Record<string, number> = {}
+  for (const child of directChildren) {
+    directCounts[child.tagName] = (directCounts[child.tagName] ?? 0) + 1
+  }
+  const directRecordTag = Object.entries(directCounts).sort((a, b) => b[1] - a[1])[0]?.[0]
+  if (directRecordTag && directCounts[directRecordTag] > 1) {
+    return directChildren.filter((child) => child.tagName === directRecordTag)
+  }
+
+  let bestNestedRecords: Element[] = []
+  for (const child of directChildren) {
+    const nestedChildren = Array.from(child.children)
+    if (nestedChildren.length === 0) continue
+
+    const nestedCounts: Record<string, number> = {}
+    for (const nested of nestedChildren) {
+      nestedCounts[nested.tagName] = (nestedCounts[nested.tagName] ?? 0) + 1
+    }
+    const nestedRecordTag = Object.entries(nestedCounts).sort((a, b) => b[1] - a[1])[0]?.[0]
+    if (!nestedRecordTag || nestedCounts[nestedRecordTag] <= 1) continue
+
+    const nestedRecords = nestedChildren.filter((nested) => nested.tagName === nestedRecordTag)
+    if (nestedRecords.length > bestNestedRecords.length) {
+      bestNestedRecords = nestedRecords
+    }
+  }
+
+  return bestNestedRecords.length > 0 ? bestNestedRecords : directChildren
+}
+
 export function parseXml(text: string): { headers: string[]; rows: string[][] } {
-  const doc = new DOMParser().parseFromString(text, 'application/xml')
+  let doc = new DOMParser().parseFromString(text, 'application/xml')
+  let tagNameMap = new Map<string, string>()
+
+  if (doc.querySelector('parsererror')) {
+    const normalized = normalizeXmlForParsing(text)
+    tagNameMap = normalized.tagNameMap
+    doc = new DOMParser().parseFromString(normalized.normalized, 'application/xml')
+  }
   if (doc.querySelector('parsererror')) throw new Error('Invalid XML format.')
   const root = doc.documentElement
   if (!root || root.children.length === 0) {
     throw new Error('XML is empty or has no records.')
   }
 
-  // Repeated record tag = whichever direct child appears most often.
-  const childCounts: Record<string, number> = {}
-  for (const c of Array.from(root.children)) {
-    childCounts[c.tagName] = (childCounts[c.tagName] ?? 0) + 1
+  const records = findXmlRecords(root)
+  if (records.length === 0) {
+    throw new Error('XML is empty or has no records.')
   }
-  const recordTag = Object.entries(childCounts).sort((a, b) => b[1] - a[1])[0][0]
-  const records = Array.from(root.children).filter((c) => c.tagName === recordTag)
 
   const headers: string[] = []
   const seen = new Set<string>()
   for (const rec of records) {
     for (const f of Array.from(rec.children)) {
-      if (!seen.has(f.tagName)) {
-        seen.add(f.tagName)
-        headers.push(f.tagName)
+      const rawTagName = tagNameMap.get(f.tagName) ?? f.tagName
+      if (!seen.has(rawTagName)) {
+        seen.add(rawTagName)
+        headers.push(rawTagName)
       }
     }
   }
 
   const rows = records.map((rec) =>
     headers.map((h) => {
-      const el = Array.from(rec.children).find((c) => c.tagName === h)
+      const el = Array.from(rec.children).find((c) => (tagNameMap.get(c.tagName) ?? c.tagName) === h)
       return el ? (el.textContent ?? '').trim() : ''
     })
   )
@@ -285,13 +380,36 @@ interface DateParts {
 interface TimeParts {
   H: number
   M: number
+  S: number
+  rollover: boolean
 }
 
 export function tryParseDate(raw: unknown, formatKey: DateFormatKey): DateParts | null {
   if (raw === undefined || raw === null || raw === '') return null
   const fmt = DATE_FORMATS.find((f) => f.value === formatKey)
   if (!fmt) return null
-  const tokens = String(raw).trim().split(DATE_SEP_RE).filter(Boolean)
+  const trimmed = String(raw).trim()
+
+  if (formatKey === 'YYYYMMDD') {
+    const compact = trimmed.match(/^(\d{4})(\d{2})(\d{2})$/)
+    if (!compact) return null
+    return validateDateParts({
+      Y: parseInt(compact[1], 10),
+      M: parseInt(compact[2], 10),
+      D: parseInt(compact[3], 10)
+    })
+  }
+
+  if (formatKey === 'YYYY DOY' || formatKey === 'DOY YYYY') {
+    const tokens = trimmed.split(DATE_SEP_RE).filter(Boolean)
+    if (tokens.length !== 2) return null
+    const yearToken = formatKey === 'YYYY DOY' ? tokens[0] : tokens[1]
+    const doyToken = formatKey === 'YYYY DOY' ? tokens[1] : tokens[0]
+    if (!/^\d{4}$/.test(yearToken) || !/^\d{1,3}$/.test(doyToken)) return null
+    return dateFromDayOfYear(parseInt(yearToken, 10), parseInt(doyToken, 10))
+  }
+
+  const tokens = trimmed.split(DATE_SEP_RE).filter(Boolean)
   if (tokens.length !== 3) return null
 
   let Y = 0
@@ -308,8 +426,7 @@ export function tryParseDate(raw: unknown, formatKey: DateFormatKey): DateParts 
     else if (fmt.parts[i] === 'M') M = v
     else D = v
   }
-  if (M < 1 || M > 12 || D < 1 || D > 31) return null
-  return { Y, M, D }
+  return validateDateParts({ Y, M, D })
 }
 
 export function tryParseTime(raw: unknown): TimeParts | null {
@@ -317,24 +434,139 @@ export function tryParseTime(raw: unknown): TimeParts | null {
   const s = String(raw).trim()
   let H: number
   let M: number
+  let S = 0
 
-  // Accepted no-separator forms: "HMM" (3 digits, e.g. CIMIS "100" = 01:00)
-  // or "HHMM" (4 digits). Plus "HH:MM" / "HH MM" with a separator.
-  // Anything else — dots, plus, minus, seconds — is rejected.
-  const concat = s.match(/^(\d{1,2})(\d{2})$/)
-  if (concat) {
-    H = parseInt(concat[1], 10)
-    M = parseInt(concat[2], 10)
+  const digits = s.match(/^\d+$/)
+  if (digits) {
+    if (s.length <= 2) {
+      H = parseInt(s, 10)
+      M = 0
+    } else if (s.length === 3 || s.length === 4) {
+      const split = s.match(/^(\d{1,2})(\d{2})$/)
+      if (!split) return null
+      H = parseInt(split[1], 10)
+      M = parseInt(split[2], 10)
+    } else if (s.length === 6) {
+      H = parseInt(s.slice(0, 2), 10)
+      M = parseInt(s.slice(2, 4), 10)
+      S = parseInt(s.slice(4, 6), 10)
+    } else {
+      return null
+    }
   } else {
-    const sep = s.match(/^(\d{1,2})(?::|\s+)(\d{1,2})$/)
+    const sep = s.match(/^(\d{1,2})(?::|\s+)(\d{2})(?:(?::|\s+)(\d{2}))?$/)
     if (!sep) return null
     H = parseInt(sep[1], 10)
     M = parseInt(sep[2], 10)
+    S = sep[3] ? parseInt(sep[3], 10) : 0
   }
 
-  if (Number.isNaN(H) || Number.isNaN(M)) return null
-  if (H < 0 || H > 23 || M < 0 || M > 59) return null
-  return { H, M }
+  if (Number.isNaN(H) || Number.isNaN(M) || Number.isNaN(S)) return null
+  if (H === 24 && M === 0 && S === 0) return { H: 0, M: 0, S: 0, rollover: true }
+  if (H < 0 || H > 23 || M < 0 || M > 59 || S < 0 || S > 59) return null
+  return { H, M, S, rollover: false }
+}
+
+function isLeapYear(year: number): boolean {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0
+}
+
+function validateDateParts(parts: DateParts): DateParts | null {
+  const { Y, M, D } = parts
+  if (M < 1 || M > 12 || D < 1 || D > 31) return null
+  const date = new Date(Y, M - 1, D)
+  if (date.getFullYear() !== Y || date.getMonth() !== M - 1 || date.getDate() !== D) return null
+  return parts
+}
+
+function dateFromDayOfYear(Y: number, doy: number): DateParts | null {
+  const maxDay = isLeapYear(Y) ? 366 : 365
+  if (doy < 1 || doy > maxDay) return null
+  const date = new Date(Y, 0, doy)
+  return { Y: date.getFullYear(), M: date.getMonth() + 1, D: date.getDate() }
+}
+
+function buildDate(parts: DateParts, time: TimeParts | null): Date {
+  const base = new Date(parts.Y, parts.M - 1, parts.D, time?.H ?? 0, time?.M ?? 0, time?.S ?? 0)
+  if (time?.rollover) {
+    base.setDate(base.getDate() + 1)
+  }
+  return base
+}
+
+export function tryParseDateTime(raw: unknown, formatKey: DateTimeFormatKey): Date | null {
+  if (raw === undefined || raw === null || raw === '') return null
+  const s = String(raw).trim()
+
+  if (formatKey === 'YYYY-MM-DDTHH:MM:SSZ') {
+    const match = s.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})Z$/)
+    if (!match) return null
+    const date = validateDateParts({
+      Y: parseInt(match[1], 10),
+      M: parseInt(match[2], 10),
+      D: parseInt(match[3], 10)
+    })
+    if (!date) return null
+    const time = tryParseTime(`${match[4]}:${match[5]}:${match[6]}`)
+    if (!time) return null
+    return buildDate(date, time)
+  }
+
+  if (formatKey === 'YYYY-MM-DDTHH:MM:SS-HH:MM') {
+    const match = s.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:Z|[+-]\d{2}:\d{2})$/)
+    if (!match) return null
+    const date = validateDateParts({
+      Y: parseInt(match[1], 10),
+      M: parseInt(match[2], 10),
+      D: parseInt(match[3], 10)
+    })
+    if (!date) return null
+    const time = tryParseTime(`${match[4]}:${match[5]}:${match[6]}`)
+    if (!time) return null
+    return buildDate(date, time)
+  }
+
+  if (formatKey === 'YYYYMMDDHH' || formatKey === 'YYYYMMDDHHMM') {
+    const compact =
+      formatKey === 'YYYYMMDDHH'
+        ? s.match(/^(\d{4})(\d{2})(\d{2})(\d{2})$/)
+        : s.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})$/)
+    if (!compact) return null
+    const date = validateDateParts({
+      Y: parseInt(compact[1], 10),
+      M: parseInt(compact[2], 10),
+      D: parseInt(compact[3], 10)
+    })
+    if (!date) return null
+    const time =
+      formatKey === 'YYYYMMDDHH'
+        ? tryParseTime(compact[4])
+        : tryParseTime(`${compact[4]}${compact[5]}`)
+    if (!time) return null
+    return buildDate(date, time)
+  }
+
+  const split = s.match(/^(.+?)\s+(.+)$/)
+  if (!split) return null
+
+  const dateFormatsByDateTime: Record<DateTimeFormatKey, DateFormatKey | null> = {
+    'YYYY-MM-DDTHH:MM:SSZ': null,
+    'YYYY-MM-DDTHH:MM:SS-HH:MM': null,
+    YYYYMMDDHH: null,
+    YYYYMMDDHHMM: null,
+    'YYYY-MM-DD HH:MM': 'YYYY-MM-DD',
+    'DD/MM/YYYY HH:MM': 'DD/MM/YYYY',
+    'MM/DD/YYYY HH:MM': 'MM/DD/YYYY',
+    'DD-MM-YYYY HH:MM': 'DD-MM-YYYY',
+    'MM-DD-YYYY HH:MM': 'MM-DD-YYYY'
+  }
+
+  const dateFormat = dateFormatsByDateTime[formatKey]
+  if (!dateFormat) return null
+  const date = tryParseDate(split[1], dateFormat)
+  const time = tryParseTime(split[2])
+  if (!date || !time) return null
+  return buildDate(date, time)
 }
 
 // Tagged result so the UI can distinguish "bad date" from "bad time".
@@ -353,7 +585,8 @@ export function parseRowDateTime(
   headers: string[],
   mode: DateTimeMode,
   mapping: DateTimeMapping,
-  dateFormat: DateFormatKey
+  dateFormat: DateFormatKey,
+  datetimeFormat?: DateTimeFormatKey
 ): RowDateTimeResult {
   const get = (key: keyof DateTimeMapping): string | undefined => {
     const colName = mapping[key]
@@ -370,6 +603,8 @@ export function parseRowDateTime(
 
     let H = 0
     let Min = 0
+    let Sec = 0
+    let rollover = false
     let timeInvalid = false
     if (mapping.time) {
       const timeRaw = get('time')
@@ -380,11 +615,22 @@ export function parseRowDateTime(
         } else {
           H = t.H
           Min = t.M
+          Sec = t.S
+          rollover = t.rollover
         }
       }
     }
-    const date = new Date(d.Y, d.M - 1, d.D, H, Min, 0)
+    const date = buildDate(d, { H, M: Min, S: Sec, rollover })
     return timeInvalid ? { kind: 'invalid_time', date } : { kind: 'ok', date }
+  }
+
+  if (mode === 'group3') {
+    const datetimeRaw = get('datetime')
+    if (datetimeRaw === undefined || datetimeRaw === '' || !datetimeFormat) {
+      return { kind: 'invalid_date' }
+    }
+    const parsed = tryParseDateTime(datetimeRaw, datetimeFormat)
+    return parsed ? { kind: 'ok', date: parsed } : { kind: 'invalid_date' }
   }
 
   const yRaw = get('year')
@@ -423,15 +669,16 @@ export function parseRowDateTime(
       else Min = mv
     }
   }
-  const date = new Date(Y, Mo - 1, D, H, Min, 0)
+  const validated = validateDateParts({ Y, M: Mo, D })
+  if (!validated) return { kind: 'invalid_date' }
+  const date = buildDate(validated, { H, M: Min, S: 0, rollover: false })
   return timeInvalid ? { kind: 'invalid_time', date } : { kind: 'ok', date }
 }
 
 // ── CSV serialization (for backend upload) ────────────────────────────────────
 
 export function toCsv(d: ImportedDataset): string {
-  const escape = (v: string): string =>
-    /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v
+  const escape = (v: string): string => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v)
 
   const headerLine = ['Date-Time', ...d.columns.map((c) => c.label)].map(escape).join(',')
   const lines = [headerLine]

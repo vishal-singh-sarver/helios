@@ -4,6 +4,7 @@ import {
   parseFile,
   parseRowDateTime,
   type DateFormatKey,
+  type DateTimeFormatKey,
   type DateTimeMapping,
   type DateTimeMode,
   type ImportedDataset,
@@ -58,6 +59,7 @@ function ImportWizard({
   const [mode, setMode] = useState<DateTimeMode>('group2')
   const [mapping, setMapping] = useState<DateTimeMapping>(INITIAL_MAPPING)
   const [dateFormat, setDateFormat] = useState<DateFormatKey>('YYYY-MM-DD')
+  const [datetimeFormat, setDateTimeFormat] = useState<DateTimeFormatKey>('YYYY-MM-DDTHH:MM:SSZ')
   const [columnSelection, setColumnSelection] = useState<Record<number, boolean>>({})
   const [filename, setFilename] = useState<string | null>(null)
   // Tracks the last pickedFile we observed so the render-time parse runs
@@ -94,12 +96,15 @@ function ImportWizard({
             hour: findHeaderByKeyword(result.headers, ['hour']),
             minute: findHeaderByKeyword(result.headers, ['minute']),
             date: findHeaderByKeyword(result.headers, ['date']),
-            time: findHeaderByKeyword(result.headers, ['time'])
+            time: findHeaderByKeyword(result.headers, ['time']),
+            datetime: findHeaderByKeyword(result.headers, ['datetime', 'timestamp', 'date_time'])
           }
 
           setMapping(auto)
 
-          if (auto.year && auto.month && auto.day) {
+          if (auto.datetime) {
+            setMode('group3')
+          } else if (auto.year && auto.month && auto.day) {
             setMode('group1')
           } else if (auto.date) {
             setMode('group2')
@@ -148,7 +153,9 @@ function ImportWizard({
     const configReady =
       mode === 'group2'
         ? Boolean(mapping.date) && Boolean(dateFormat)
-        : Boolean(mapping.year) && Boolean(mapping.month) && Boolean(mapping.day)
+        : mode === 'group3'
+          ? Boolean(mapping.datetime) && Boolean(datetimeFormat)
+          : Boolean(mapping.year) && Boolean(mapping.month) && Boolean(mapping.day)
     if (!configReady) {
       return {
         configReady: false,
@@ -162,16 +169,19 @@ function ImportWizard({
     for (const row of parsed.rows) {
       // 'ok' and 'invalid_time' both produce a usable Date; only 'invalid_date'
       // rows can't be imported. Time is optional so it doesn't gate Next.
-      const r = parseRowDateTime(row, parsed.headers, mode, mapping, dateFormat)
+      const r = parseRowDateTime(row, parsed.headers, mode, mapping, dateFormat, datetimeFormat)
       if (r.kind === 'invalid_date') invalid++
       else valid++
     }
     return { configReady: true, valid, invalid, total: parsed.rows.length }
-  }, [parsed, mode, mapping, dateFormat])
+  }, [parsed, mode, mapping, dateFormat, datetimeFormat])
 
   const dtColumns: string[] = useMemo(() => {
     if (mode === 'group2') {
       return [mapping.date, mapping.time].filter((v): v is string => v !== null)
+    }
+    if (mode === 'group3') {
+      return [mapping.datetime].filter((v): v is string => v !== null)
     }
     return GROUP1_KEYS.map((k) => mapping[k]).filter((v): v is string => v !== null)
   }, [mode, mapping])
@@ -194,13 +204,20 @@ function ImportWizard({
     if (!parsed) return
     if (stepIdx === 2) {
       const dts: Array<Date | null> = parsed.rows.map((r) => {
-        const result = parseRowDateTime(r, parsed.headers, mode, mapping, dateFormat)
+        const result = parseRowDateTime(
+          r,
+          parsed.headers,
+          mode,
+          mapping,
+          dateFormat,
+          datetimeFormat
+        )
         return result.kind === 'invalid_date' ? null : result.date
       })
       setParsedDateTimes(dts)
     }
     setStepIdx((i) => Math.min(i + 1, STEPS.length - 1))
-  }, [parsed, stepIdx, mode, mapping, dateFormat])
+  }, [parsed, stepIdx, mode, mapping, dateFormat, datetimeFormat])
 
   const handleBack = useCallback((): void => {
     setStepIdx((i) => Math.max(i - 1, 0))
@@ -213,7 +230,18 @@ function ImportWizard({
     // keyword (case-insensitive), even if the user didn't map it. The
     // synthetic "Date-Time" is encoded into each value's {date,time} fields,
     // so these columns would be redundant in the payload.
-    const DT_NAME_KEYWORDS = new Set(['year', 'month', 'day', 'hour', 'minute', 'date', 'time'])
+    const DT_NAME_KEYWORDS = new Set([
+      'year',
+      'month',
+      'day',
+      'hour',
+      'minute',
+      'date',
+      'time',
+      'datetime',
+      'timestamp',
+      'date_time'
+    ])
     const isDtName = (h: string): boolean => DT_NAME_KEYWORDS.has(h.trim().toLowerCase())
     const disabledSet = new Set(disabledColumnIndices)
     const keptIndices = parsed.headers
@@ -367,6 +395,8 @@ function ImportWizard({
                 onChangeMapping={(k, v) => setMapping((current) => ({ ...current, [k]: v }))}
                 dateFormat={dateFormat}
                 onChangeDateFormat={setDateFormat}
+                datetimeFormat={datetimeFormat}
+                onChangeDateTimeFormat={setDateTimeFormat}
                 stats={dtStats}
               />
             )}
