@@ -58,7 +58,7 @@ function openPicker(input: HTMLInputElement | null): void {
 
 function keepWholeNumberInput(
   formik: ReturnType<typeof useFormik<AddRowsValues>>
-): (e: React.ChangeEvent<HTMLInputElement>) => void {
+): (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void {
   return (e) => {
     if (!WHOLE_NUMBER_INPUT_PATTERN.test(e.target.value)) return
     formik.handleChange(e)

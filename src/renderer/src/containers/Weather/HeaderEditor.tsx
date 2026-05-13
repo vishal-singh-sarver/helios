@@ -22,8 +22,12 @@ interface HeaderEditorProps {
 
 function HeaderEditor({ col, dataTypes, onPatch }: HeaderEditorProps): React.JSX.Element {
   const [nameDraft, setNameDraft] = React.useState(col.name)
+  const [nameError, setNameError] = React.useState<string | null>(null)
   // Re-sync when the canonical column name changes (rollback, external update).
-  React.useEffect(() => setNameDraft(col.name), [col.name])
+  React.useEffect(() => {
+    setNameDraft(col.name)
+    setNameError(null)
+  }, [col.name])
 
   const currentDataType = React.useMemo(
     () =>
@@ -35,9 +39,30 @@ function HeaderEditor({ col, dataTypes, onPatch }: HeaderEditorProps): React.JSX
 
   const unitsForType = currentDataType?.units ?? []
 
+  const validateColumnName = (name: string): string | null => {
+    const trimmed = name.trim()
+    if (!trimmed) {
+      return 'Column name is required.'
+    }
+    if (trimmed.length > 30) {
+      return 'Column name must be 30 characters or fewer.'
+    }
+    return null
+  }
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    const value = e.target.value
+    setNameDraft(value)
+    const error = validateColumnName(value)
+    setNameError(error)
+  }
+
   const handleNameBlur = (): void => {
     const trimmed = nameDraft.trim()
-    if (trimmed === '' || trimmed === col.name) {
+    const error = validateColumnName(trimmed)
+    setNameError(error)
+    
+    if (error || trimmed === col.name) {
       setNameDraft(col.name)
       return
     }
@@ -46,14 +71,23 @@ function HeaderEditor({ col, dataTypes, onPatch }: HeaderEditorProps): React.JSX
 
   return (
     <div className="flex w-full flex-col gap-1">
-      <input
-        type="text"
-        aria-label={`Column ${col.id} name`}
-        value={nameDraft}
-        onChange={(e) => setNameDraft(e.target.value)}
-        onBlur={handleNameBlur}
-        className="w-full rounded border border-app-border bg-dark px-2 py-1 text-sm text-neutral-200 outline-none focus:border-neutral-500"
-      />
+      <div>
+        <input
+          type="text"
+          aria-label={`Column ${col.id} name`}
+          value={nameDraft}
+          onChange={handleNameChange}
+          onBlur={handleNameBlur}
+          className={`w-full rounded border bg-dark px-2 py-1 text-sm text-neutral-200 outline-none ${
+            nameError
+              ? 'border-red-500 focus:border-red-600'
+              : 'border-app-border focus:border-neutral-500'
+          }`}
+        />
+        {nameError && (
+          <p className="pt-1 text-xs text-red-500">{nameError}</p>
+        )}
+      </div>
       <div className="flex items-center gap-1">
         <DataTypeUnitPicker
           col={col}

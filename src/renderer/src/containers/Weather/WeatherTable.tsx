@@ -18,7 +18,6 @@ import {
 } from 'containers/ProjectScreen/types'
 import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { useVirtualRows } from 'utils/useVirtualRows'
 import CellInput from './CellInput'
 import DateTimeHeader, { type DateFormat } from './DateTimeHeader'
 import HeaderEditor from './HeaderEditor'
@@ -37,9 +36,6 @@ import {
   selectSelectableDataTypes
 } from './selectors'
 import { validateCellValue } from './validation'
-
-const ROW_HEIGHT = 36
-const OVERSCAN = 8
 
 // A column is backend-managed (PATCH-able) when its id is a positive integer —
 // the stringified WeatherDataHeader.id. Reserved date/time, upload-slug, and
@@ -102,7 +98,6 @@ function WeatherTable(): React.JSX.Element {
   const dataTypes = useSelector(selectSelectableDataTypes)
   const activeProject = useSelector(selectActiveProject)
   const [dateFormat, setDateFormat] = React.useState<DateFormat>('MM/DD/YYYY HH:MM')
-  const bodyContainerRef = React.useRef<HTMLDivElement>(null)
 
   const toggleAll = (): void => {
     if (!scenarioId) return
@@ -165,21 +160,6 @@ function WeatherTable(): React.JSX.Element {
       }),
     [columnOrder, checkColId, dateTimeColId]
   )
-
-  const { startIndex, endIndex } = useVirtualRows({
-    rowCount: rowOrder.length,
-    rowHeight: ROW_HEIGHT,
-    containerRef: bodyContainerRef,
-    overscan: OVERSCAN
-  })
-
-  const visibleRowIds = React.useMemo(() => rowOrder.slice(startIndex, endIndex), [
-    rowOrder,
-    startIndex,
-    endIndex
-  ])
-  const paddingTop = startIndex * ROW_HEIGHT
-  const paddingBottom = (rowOrder.length - endIndex) * ROW_HEIGHT
 
   // Per-row check-cell handler. Toggle flips "1" ↔ "0" via the same
   // optimistic UPDATE_CELL_LOCAL path the saga already handles for normal
@@ -292,20 +272,10 @@ function WeatherTable(): React.JSX.Element {
       </div>
 
       {/* Body — owns both scrollbars. */}
-      <div
-        ref={bodyContainerRef}
-        className="scrollbar-custom flex-1 overflow-auto"
-        onScroll={onBodyScroll}
-      >
+      <div className="scrollbar-custom flex-1 overflow-auto" onScroll={onBodyScroll}>
         <table className="w-full border-collapse text-sm text-neutral-200">
           <tbody>
-            {paddingTop > 0 && (
-              <tr aria-hidden="true" style={{ height: paddingTop }}>
-                <td colSpan={visibleColumnOrder.length + 3} />
-              </tr>
-            )}
-
-            {visibleRowIds.map((rowId) => {
+            {rowOrder.map((rowId) => {
               const row = table?.rows[rowId] ?? {}
               const checkValue: CellValue = checkColId != null ? (row[checkColId] ?? null) : null
               return (
@@ -384,12 +354,6 @@ function WeatherTable(): React.JSX.Element {
                 </tr>
               )
             })}
-
-            {paddingBottom > 0 && (
-              <tr aria-hidden="true" style={{ height: paddingBottom }}>
-                <td colSpan={visibleColumnOrder.length + 3} />
-              </tr>
-            )}
           </tbody>
         </table>
       </div>

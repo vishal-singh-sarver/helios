@@ -188,7 +188,7 @@ function ProjectsTable({
                 return (
                   <tr
                     key={project.id}
-                    className="hover:bg-app-panel/40 focus-within:bg-app-panel/40"
+                    className="hover:bg-[#424242] focus-within:bg-[#424242] transition-colors"
                     style={{ height: ROW_HEIGHT }}
                   >
                     <td className="border-b border-app-border/80 px-4 overflow-hidden">

@@ -68,8 +68,8 @@ function AddColumnDialog({ isOpen, onClose }: AddColumnDialogProps): React.JSX.E
       const trimmedName = values.parameterName.trim()
       if (!trimmedName) {
         errors.parameterName = 'Column name is required.'
-      } else if (trimmedName.length > 50) {
-        errors.parameterName = 'Column name must be 50 characters or fewer.'
+      } else if (trimmedName.length > 30) {
+        errors.parameterName = 'Column name must be 30 characters or fewer.'
       }
 
       const dataTypeId = values.dataTypeId === '' ? null : Number(values.dataTypeId)
