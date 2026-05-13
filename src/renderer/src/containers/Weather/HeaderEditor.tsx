@@ -45,7 +45,7 @@ function HeaderEditor({ col, dataTypes, onPatch }: HeaderEditorProps): React.JSX
       return 'Column name is required.'
     }
     if (trimmed.length > 30) {
-      return 'Column name must be 30 characters or fewer.'
+      return 'Column name must have 30 characters or fewer.'
     }
     return null
   }

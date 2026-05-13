@@ -251,7 +251,7 @@ function ProjectsTable({
                               onRequestDelete(project)
                             }}
                             disabled={isDeleting}
-                            className="flex h-10 items-center gap-3 px-4 text-left text-sm text-red-500 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                            className="flex h-10 items-center gap-3 px-4 text-left text-sm text-[#D92D20] hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             <img src={deleteIcon} alt="" aria-hidden="true" className="h-4 w-4" />
                             Delete
