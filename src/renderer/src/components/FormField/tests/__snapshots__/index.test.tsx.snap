@@ -64,9 +64,9 @@ exports[`<FormField /> > should match the snapshot with error 1`] = `
     class="relative"
   >
     <input
-      aria-describedby="_r_n_"
+      aria-describedby="_r_o_"
       aria-invalid="true"
-      class="mt-1 h-9 w-full rounded border border-app-border bg-dark text-sm text-white outline-none focus:border-neutral-500 px-3"
+      class="mt-1 h-9 w-full rounded border border-red-400 bg-dark text-sm text-white outline-none focus:border-red-400 px-3"
       id="projectName"
       name="projectName"
       placeholder="Enter"
@@ -76,7 +76,7 @@ exports[`<FormField /> > should match the snapshot with error 1`] = `
   </div>
   <p
     class="mt-1 text-xs text-red-400"
-    id="_r_n_"
+    id="_r_o_"
     role="alert"
   >
     Required

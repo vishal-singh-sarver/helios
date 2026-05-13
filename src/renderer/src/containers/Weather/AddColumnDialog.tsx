@@ -3,6 +3,7 @@ import type { FormFieldOption } from '@renderer/components/FormField'
 import FormField from '@renderer/components/FormField'
 import { Spinner } from '@renderer/components/LoadingScreen/Spinner'
 import { addColumnRequested } from 'containers/ProjectScreen/actions'
+import type { ColumnDef, DataTypeDef } from 'containers/ProjectScreen/types'
 import { useFormik } from 'formik'
 import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
@@ -14,6 +15,7 @@ import {
   selectAddColumnLoading,
   selectSelectableDataTypes
 } from './selectors'
+import { validateCellValue } from './validation'
 
 export interface AddColumnValues {
   parameterName: string
@@ -31,6 +33,11 @@ const INITIAL_VALUES: AddColumnValues = {
   // Pre-fill "0" so existing rows get a sensible default in the new column
   // without the user having to type it. Cleared/changed values are honored.
   defaultValue: ''
+}
+
+function defaultUnitForType(dataType: DataTypeDef | undefined): DataTypeDef['units'][number] | null {
+  if (!dataType) return null
+  return dataType.units.find((u) => u.is_base) ?? dataType.units[0] ?? null
 }
 
 interface AddColumnDialogProps {
@@ -64,6 +71,20 @@ function AddColumnDialog({ isOpen, onClose }: AddColumnDialogProps): React.JSX.E
       } else if (trimmedName.length > 50) {
         errors.parameterName = 'Column name must be 50 characters or fewer.'
       }
+
+      const dataTypeId = values.dataTypeId === '' ? null : Number(values.dataTypeId)
+      const unitId = values.unitId === '' ? null : Number(values.unitId)
+      const validationCol: ColumnDef = {
+        id: 'new-column',
+        name: trimmedName || 'Value',
+        dataTypeId,
+        unitId
+      }
+      const defaultValueError = validateCellValue(values.defaultValue, {
+        col: validationCol,
+        dataTypes
+      })
+      if (defaultValueError) errors.defaultValue = defaultValueError
 
       return errors
     },
@@ -119,8 +140,16 @@ function AddColumnDialog({ isOpen, onClose }: AddColumnDialogProps): React.JSX.E
   const handleDataTypeChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ): void => {
-    formik.setFieldValue('dataTypeId', e.target.value)
-    formik.setFieldValue('unitId', '')
+    const nextDataTypeId = e.target.value
+    const nextDataType =
+      nextDataTypeId === '' ? undefined : dataTypes.find((dt) => String(dt.id) === nextDataTypeId)
+    const nextUnit = defaultUnitForType(nextDataType)
+
+    formik.setValues({
+      ...formik.values,
+      dataTypeId: nextDataTypeId,
+      unitId: nextUnit ? String(nextUnit.id) : ''
+    })
   }
 
   const handleClose = (): void => {
@@ -166,7 +195,13 @@ function AddColumnDialog({ isOpen, onClose }: AddColumnDialogProps): React.JSX.E
 
       <FormField
         labelProps={{ label: m.fields.value, optional: true }}
-        inputProps={formik.getFieldProps('defaultValue')}
+        inputProps={{
+          ...formik.getFieldProps('defaultValue'),
+          error:
+            formik.touched.defaultValue || formik.values.defaultValue !== ''
+              ? (formik.errors.defaultValue as string | undefined)
+              : undefined
+        }}
       />
 
       {error && (
@@ -185,7 +220,7 @@ function AddColumnDialog({ isOpen, onClose }: AddColumnDialogProps): React.JSX.E
         </button>
         <button
           onClick={() => formik.submitForm()}
-          disabled={loading}
+          disabled={loading || Boolean(formik.errors.defaultValue)}
           className="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-500 disabled:opacity-50"
         >
           {loading ? (

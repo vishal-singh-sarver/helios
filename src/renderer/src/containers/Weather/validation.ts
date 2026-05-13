@@ -33,9 +33,9 @@ function unitLabel(unit: DataUnitDef): string {
 // variants use ≥ / ≤. Cell uses break-words as a safety net.
 function formatRangeMessage(unit: DataUnitDef, min: number | null, max: number | null): string {
   const label = unitLabel(unit)
-  if (min != null && max != null) return `Values should be between (${min}–${max})`
-  if (min != null) return `Values should be ≥ ${min}`
-  return `Values should be ≤ ${max}`
+  if (min != null && max != null) return `${label} must be in ${min}–${max}`
+  if (min != null) return `${label} must be ≥ ${min}`
+  return `${label} must be ≤ ${max}`
 }
 
 export function validateCellValue(rawValue: string, ctx: CellValidationContext): string | null {

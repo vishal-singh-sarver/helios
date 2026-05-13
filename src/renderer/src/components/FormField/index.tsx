@@ -51,8 +51,9 @@ function FormField({ labelProps, inputProps }: FormFieldProps): React.JSX.Elemen
   } = inputProps
   const errorId = useId()
 
-  const baseClassName =
-    'mt-1 h-9 w-full rounded border border-app-border bg-dark text-sm text-white outline-none focus:border-neutral-500'
+  const borderClassName = error ? 'border-red-400' : 'border-app-border'
+  const focusBorderClassName = error ? 'focus:border-red-400' : 'focus:border-neutral-500'
+  const baseClassName = `mt-1 h-9 w-full rounded border ${borderClassName} bg-dark text-sm text-white outline-none ${focusBorderClassName}`
   const paddedClassName = iconLeft ? `${baseClassName} pl-9 pr-3` : `${baseClassName} px-3`
 
   return (

@@ -104,6 +104,13 @@ describe('<FormField />', () => {
     expect(screen.getByRole('textbox')).toHaveAttribute('aria-invalid', 'true')
   })
 
+  it('renders a red border when error exists', () => {
+    render(
+      <FormField {...defaultProps} inputProps={{ ...defaultProps.inputProps, error: 'Required' }} />
+    )
+    expect(screen.getByRole('textbox')).toHaveClass('border-red-400')
+  })
+
   // Verifies aria-invalid is false when no error exists
   it('sets aria-invalid to false when no error', () => {
     render(<FormField {...defaultProps} />)

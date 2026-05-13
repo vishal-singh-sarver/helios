@@ -133,6 +133,63 @@ const dataTypes: DataTypeDef[] = [
         updated_at: ''
       }
     ]
+  },
+  {
+    id: 2,
+    data_type: 'Pressure',
+    description: '',
+    created_at: '',
+    updated_at: '',
+    units: [
+      {
+        id: 20,
+        unit: 'Pa',
+        alias: 'Pa',
+        data_type_id: 2,
+        min: 10,
+        max: 20,
+        to_base_factor: 1,
+        to_base_offset: 0,
+        is_base: true,
+        created_at: '',
+        updated_at: ''
+      },
+      {
+        id: 21,
+        unit: 'kPa',
+        alias: 'kPa',
+        data_type_id: 2,
+        min: 0,
+        max: 1,
+        to_base_factor: 1000,
+        to_base_offset: 0,
+        is_base: false,
+        created_at: '',
+        updated_at: ''
+      }
+    ]
+  },
+  {
+    id: 3,
+    data_type: 'Wind',
+    description: '',
+    created_at: '',
+    updated_at: '',
+    units: [
+      {
+        id: 30,
+        unit: 'm/s',
+        alias: 'm/s',
+        data_type_id: 3,
+        min: 0,
+        max: 100,
+        to_base_factor: 1,
+        to_base_offset: 0,
+        is_base: false,
+        created_at: '',
+        updated_at: ''
+      }
+    ]
   }
 ]
 
@@ -184,13 +241,24 @@ describe('<AddColumnDialog />', () => {
     expect(screen.getByTestId('input-unitId')).not.toBeDisabled()
   })
 
-  it('resets unitId when the data type changes', () => {
+  it('selects the default unit when the data type changes', async () => {
+    render(<AddColumnDialog isOpen onClose={vi.fn()} />)
+    fireEvent.change(screen.getByTestId('input-dataTypeId'), { target: { value: '2' } })
+    await waitFor(() => expect(screen.getByTestId('input-unitId')).toHaveValue('20'))
+  })
+
+  it('selects the first unit when a data type has no base unit', async () => {
+    render(<AddColumnDialog isOpen onClose={vi.fn()} />)
+    fireEvent.change(screen.getByTestId('input-dataTypeId'), { target: { value: '3' } })
+    await waitFor(() => expect(screen.getByTestId('input-unitId')).toHaveValue('30'))
+  })
+
+  it('clears unitId when the data type is cleared', async () => {
     render(<AddColumnDialog isOpen onClose={vi.fn()} />)
     fireEvent.change(screen.getByTestId('input-dataTypeId'), { target: { value: '1' } })
-    fireEvent.change(screen.getByTestId('input-unitId'), { target: { value: '10' } })
-    expect(screen.getByTestId('input-unitId')).toHaveValue('10')
+    await waitFor(() => expect(screen.getByTestId('input-unitId')).toHaveValue('10'))
     fireEvent.change(screen.getByTestId('input-dataTypeId'), { target: { value: '' } })
-    expect(screen.getByTestId('input-unitId')).toHaveValue('')
+    await waitFor(() => expect(screen.getByTestId('input-unitId')).toHaveValue(''))
   })
 
   it('shows a required error when name is left empty after blur', async () => {
@@ -218,7 +286,7 @@ describe('<AddColumnDialog />', () => {
     render(<AddColumnDialog isOpen onClose={vi.fn()} />)
     fireEvent.change(screen.getByTestId('input-parameterName'), { target: { value: '  Temp  ' } })
     fireEvent.change(screen.getByTestId('input-dataTypeId'), { target: { value: '1' } })
-    fireEvent.change(screen.getByTestId('input-unitId'), { target: { value: '10' } })
+    await waitFor(() => expect(screen.getByTestId('input-unitId')).toHaveValue('10'))
     fireEvent.click(within(screen.getByTestId('dialog')).getByText('Add'))
 
     await waitFor(() =>
@@ -226,6 +294,31 @@ describe('<AddColumnDialog />', () => {
         projectActions.addColumnRequested('proj-1', 'scen-1', 'Temp', 1, 10, '0')
       )
     )
+  })
+
+  it('shows a default value validation error and disables Add when default is outside selected unit range', async () => {
+    render(<AddColumnDialog isOpen onClose={vi.fn()} />)
+    fireEvent.change(screen.getByTestId('input-parameterName'), { target: { value: 'Pressure' } })
+    fireEvent.change(screen.getByTestId('input-dataTypeId'), { target: { value: '2' } })
+
+    await waitFor(() =>
+      expect(screen.getByTestId('error-defaultValue')).toHaveTextContent('Pa must be in 10–20')
+    )
+    expect(within(screen.getByTestId('dialog')).getByText('Add')).toBeDisabled()
+  })
+
+  it('enables Add again when the default value is valid for the selected unit', async () => {
+    render(<AddColumnDialog isOpen onClose={vi.fn()} />)
+    fireEvent.change(screen.getByTestId('input-parameterName'), { target: { value: 'Pressure' } })
+    fireEvent.change(screen.getByTestId('input-dataTypeId'), { target: { value: '2' } })
+    await waitFor(() => expect(within(screen.getByTestId('dialog')).getByText('Add')).toBeDisabled())
+
+    fireEvent.change(screen.getByTestId('input-defaultValue'), { target: { value: '15' } })
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('error-defaultValue')).not.toBeInTheDocument()
+    )
+    expect(within(screen.getByTestId('dialog')).getByText('Add')).not.toBeDisabled()
   })
 
   it('dispatches with null ids when type/unit are not picked', async () => {
