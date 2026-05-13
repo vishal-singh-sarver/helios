@@ -3,6 +3,8 @@ import * as actions from '../actions'
 import type { ImportedDataset, PickedFile } from '../types'
 
 describe('weatherReducer', () => {
+  const scopeKey = 'proj-1::sce-1'
+
   it('returns the initial state', () => {
     expect(weatherReducer(undefined, {} as any)).toEqual(initialState)
   })
@@ -97,11 +99,14 @@ describe('weatherReducer', () => {
 
     it('IMPORT_FINALIZE_REQUESTED flips importing and clears any prior error', () => {
       const state = { ...initialState, importError: 'prev' }
-      const result = weatherReducer(state, actions.importFinalizeRequested(dataset, true))
+      const result = weatherReducer(
+        state,
+        actions.importFinalizeRequested('proj-1', 'sce-1', dataset, true)
+      )
       expect(result.importing).toBe(true)
       expect(result.importError).toBeNull()
-      expect(result.importPrecisionWarningPending).toBe(false)
       expect(result.importPrecisionWarningRequested).toBe(true)
+      expect(result.activeImportScopeKey).toBe(scopeKey)
     })
 
     it('IMPORT_FINALIZE_SUCCEEDED stores the dataset, clears pickedFile, and auto-closes the wizard', () => {
@@ -112,10 +117,13 @@ describe('weatherReducer', () => {
         pickedFile: { filename: 'foo.csv', rawText: 'x' },
         fileError: 'cleared too'
       }
-      const result = weatherReducer(state, actions.importFinalizeSucceeded(dataset, true))
+      const result = weatherReducer(
+        state,
+        actions.importFinalizeSucceeded('proj-1', 'sce-1', dataset, true)
+      )
       expect(result.importing).toBe(false)
-      expect(result.dataset).toEqual(dataset)
-      expect(result.importPrecisionWarningPending).toBe(true)
+      expect(result.datasetsByScope[scopeKey]).toEqual(dataset)
+      expect(result.importPrecisionWarningPendingByScope[scopeKey]).toBe(true)
       expect(result.pickedFile).toBeNull()
       expect(result.fileError).toBeNull()
       // Auto-close — saga waits for LOAD_SCENARIO_SUCCEEDED before dispatching
@@ -127,10 +135,13 @@ describe('weatherReducer', () => {
     it('IMPORT_FINALIZE_SUCCEEDED keeps the warning pending when the file needed truncation even if refresh was already clean', () => {
       const state = weatherReducer(
         initialState,
-        actions.importFinalizeRequested(dataset, true)
+        actions.importFinalizeRequested('proj-1', 'sce-1', dataset, true)
       )
-      const result = weatherReducer(state, actions.importFinalizeSucceeded(dataset, false))
-      expect(result.importPrecisionWarningPending).toBe(true)
+      const result = weatherReducer(
+        state,
+        actions.importFinalizeSucceeded('proj-1', 'sce-1', dataset, false)
+      )
+      expect(result.importPrecisionWarningPendingByScope[scopeKey]).toBe(true)
       expect(result.importPrecisionWarningRequested).toBe(false)
     })
 
@@ -139,13 +150,12 @@ describe('weatherReducer', () => {
       const result = weatherReducer(state, actions.importFinalizeFailed('save cancelled'))
       expect(result.importing).toBe(false)
       expect(result.importError).toBe('save cancelled')
-      expect(result.importPrecisionWarningPending).toBe(false)
     })
 
     it('IMPORT_FINALIZE_FAILED preserves dataset from a previous successful import', () => {
-      const state = { ...initialState, importing: true, dataset }
+      const state = { ...initialState, importing: true, datasetsByScope: { [scopeKey]: dataset } }
       const result = weatherReducer(state, actions.importFinalizeFailed('boom'))
-      expect(result.dataset).toEqual(dataset)
+      expect(result.datasetsByScope[scopeKey]).toEqual(dataset)
     })
   })
 
@@ -196,9 +206,9 @@ describe('weatherReducer', () => {
         columns: [],
         records: []
       }
-      const state = { ...initialState, dataset }
+      const state = { ...initialState, datasetsByScope: { [scopeKey]: dataset } }
       const result = weatherReducer(state, actions.importWizardOpened())
-      expect(result.dataset).toEqual(dataset)
+      expect(result.datasetsByScope[scopeKey]).toEqual(dataset)
     })
   })
 
@@ -217,7 +227,7 @@ describe('weatherReducer', () => {
         pickedFile: { filename: 'foo.csv', rawText: 'x' },
         importing: true,
         importError: 'oops',
-        dataset
+        datasetsByScope: { [scopeKey]: dataset }
       }
       const result = weatherReducer(state, actions.importReset())
       expect(result.fileLoading).toBe(false)
@@ -225,7 +235,25 @@ describe('weatherReducer', () => {
       expect(result.pickedFile).toBeNull()
       expect(result.importing).toBe(false)
       expect(result.importError).toBeNull()
-      expect(result.dataset).toEqual(dataset)
+      expect(result.datasetsByScope[scopeKey]).toEqual(dataset)
+    })
+  })
+
+  describe('Import precision warning consumption', () => {
+    it('clears the pending warning for the matching scope only', () => {
+      const state = {
+        ...initialState,
+        importPrecisionWarningPendingByScope: {
+          'proj-1::sce-1': true,
+          'proj-2::sce-2': true
+        }
+      }
+      const result = weatherReducer(
+        state,
+        actions.importPrecisionWarningConsumed('proj-1', 'sce-1')
+      )
+      expect(result.importPrecisionWarningPendingByScope['proj-1::sce-1']).toBeUndefined()
+      expect(result.importPrecisionWarningPendingByScope['proj-2::sce-2']).toBe(true)
     })
   })
 })

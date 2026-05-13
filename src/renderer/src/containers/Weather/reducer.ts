@@ -1,28 +1,27 @@
 import { produce } from 'immer'
+import type { WeatherAction } from './actions'
 import {
   FETCH_STATUS,
-  FETCH_STATUS_SUCCESS,
   FETCH_STATUS_FAILURE,
-  SSE_CONNECT,
-  SSE_EVENT,
-  SSE_DISCONNECT,
-  IMPORT_PICK_FILE_REQUESTED,
-  IMPORT_PICK_FILE_SUCCEEDED,
-  IMPORT_PICK_FILE_FAILED,
+  FETCH_STATUS_SUCCESS,
+  IMPORT_CLEAR_FAILED,
+  IMPORT_CLEAR_REQUESTED,
+  IMPORT_CLEAR_SUCCEEDED,
+  IMPORT_FINALIZE_FAILED,
   IMPORT_FINALIZE_REQUESTED,
   IMPORT_FINALIZE_SUCCEEDED,
-  IMPORT_FINALIZE_FAILED,
+  IMPORT_PRECISION_WARNING_CONSUMED,
+  IMPORT_PICK_FILE_FAILED,
+  IMPORT_PICK_FILE_REQUESTED,
+  IMPORT_PICK_FILE_SUCCEEDED,
   IMPORT_RESET,
+  IMPORT_WIZARD_CLOSED,
   IMPORT_WIZARD_OPENED,
-  IMPORT_WIZARD_CLOSED
+  SSE_CONNECT,
+  SSE_DISCONNECT,
+  SSE_EVENT
 } from './constants'
-import type { WeatherAction } from './actions'
-import type {
-  ImportedDataset,
-  PickedFile,
-  WeatherStatus,
-  WeatherStreamEvent
-} from './types'
+import type { ImportedDataset, PickedFile, WeatherStatus, WeatherStreamEvent } from './types'
 
 export type { WeatherStatus, WeatherStreamEvent }
 
@@ -44,13 +43,17 @@ export interface WeatherState {
   // Import — finalize / POST flow
   importing: boolean
   importError: string | null
-  dataset: ImportedDataset | null
-  importPrecisionWarningPending: boolean
+  datasetsByScope: Record<string, ImportedDataset>
+  importPrecisionWarningPendingByScope: Record<string, boolean>
   importPrecisionWarningRequested: boolean
+  clearingImport: boolean
+  activeImportScopeKey: string | null
 
   // Wizard open/close — derived in render from this flag.
   wizardOpen: boolean
 }
+
+const scopeKey = (projectId: string, scenarioId: string): string => `${projectId}::${scenarioId}`
 
 export const initialState: WeatherState = {
   status: null,
@@ -65,9 +68,11 @@ export const initialState: WeatherState = {
 
   importing: false,
   importError: null,
-  dataset: null,
-  importPrecisionWarningPending: false,
+  datasetsByScope: {},
+  importPrecisionWarningPendingByScope: {},
   importPrecisionWarningRequested: false,
+  clearingImport: false,
+  activeImportScopeKey: null,
 
   wizardOpen: false
 }
@@ -124,16 +129,17 @@ const weatherReducer = (state: WeatherState = initialState, action: WeatherActio
       case IMPORT_FINALIZE_REQUESTED:
         draft.importing = true
         draft.importError = null
-        draft.importPrecisionWarningPending = false
+        draft.activeImportScopeKey = scopeKey(action.projectId, action.scenarioId)
         draft.importPrecisionWarningRequested = Boolean(action.truncatedDecimals)
         break
 
       case IMPORT_FINALIZE_SUCCEEDED:
         draft.importing = false
-        draft.dataset = action.payload
-        draft.importPrecisionWarningPending =
+        draft.datasetsByScope[scopeKey(action.projectId, action.scenarioId)] = action.payload
+        draft.importPrecisionWarningPendingByScope[scopeKey(action.projectId, action.scenarioId)] =
           draft.importPrecisionWarningRequested || Boolean(action.precisionNormalized)
         draft.importPrecisionWarningRequested = false
+        draft.activeImportScopeKey = null
         // Clear pick state so next open starts clean.
         draft.pickedFile = null
         draft.fileError = null
@@ -146,8 +152,35 @@ const weatherReducer = (state: WeatherState = initialState, action: WeatherActio
       case IMPORT_FINALIZE_FAILED:
         draft.importing = false
         draft.importError = action.payload
-        draft.importPrecisionWarningPending = false
         draft.importPrecisionWarningRequested = false
+        draft.activeImportScopeKey = null
+        break
+
+      case IMPORT_CLEAR_REQUESTED:
+        draft.clearingImport = true
+        draft.importError = null
+        break
+
+      case IMPORT_CLEAR_SUCCEEDED:
+        draft.clearingImport = false
+        delete draft.datasetsByScope[scopeKey(action.projectId, action.scenarioId)]
+        delete draft.importPrecisionWarningPendingByScope[
+          scopeKey(action.projectId, action.scenarioId)
+        ]
+        draft.importPrecisionWarningRequested = false
+        draft.pickedFile = null
+        draft.fileError = null
+        break
+
+      case IMPORT_CLEAR_FAILED:
+        draft.clearingImport = false
+        draft.importError = action.payload
+        break
+
+      case IMPORT_PRECISION_WARNING_CONSUMED:
+        delete draft.importPrecisionWarningPendingByScope[
+          scopeKey(action.projectId, action.scenarioId)
+        ]
         break
 
       case IMPORT_RESET:
@@ -156,11 +189,9 @@ const weatherReducer = (state: WeatherState = initialState, action: WeatherActio
         draft.pickedFile = null
         draft.importing = false
         draft.importError = null
-        draft.importPrecisionWarningPending = false
         draft.importPrecisionWarningRequested = false
-        // Note: dataset is intentionally preserved across resets so a previous
-        // successful import remains available even if the wizard is reopened
-        // and cancelled.
+        draft.clearingImport = false
+        draft.activeImportScopeKey = null
         break
 
       case IMPORT_WIZARD_OPENED:
@@ -171,8 +202,9 @@ const weatherReducer = (state: WeatherState = initialState, action: WeatherActio
         draft.pickedFile = null
         draft.importing = false
         draft.importError = null
-        draft.importPrecisionWarningPending = false
         draft.importPrecisionWarningRequested = false
+        draft.clearingImport = false
+        draft.activeImportScopeKey = null
         break
 
       case IMPORT_WIZARD_CLOSED:
@@ -184,8 +216,9 @@ const weatherReducer = (state: WeatherState = initialState, action: WeatherActio
         draft.pickedFile = null
         draft.importing = false
         draft.importError = null
-        draft.importPrecisionWarningPending = false
         draft.importPrecisionWarningRequested = false
+        draft.clearingImport = false
+        draft.activeImportScopeKey = null
         break
     }
   })

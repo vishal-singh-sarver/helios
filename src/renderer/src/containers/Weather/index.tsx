@@ -1,4 +1,4 @@
-import { AlertTriangleIcon } from '@renderer/components/ImportWizard/Icons'
+import { CheckCircleIcon, CloseIcon } from '@renderer/components/ImportWizard/Icons'
 import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import type { Reducer } from 'redux'
@@ -7,6 +7,8 @@ import { useInjectReducer } from 'utils/injectReducer'
 import { useInjectSaga } from 'utils/injectSaga'
 import loadable from 'utils/loadable'
 import {
+  importClearRequested,
+  importPrecisionWarningConsumed,
   importFinalizeRequested,
   importPickFileRequested,
   importWizardClosed,
@@ -15,8 +17,12 @@ import {
 import reducer from './reducer'
 import saga from './saga'
 import {
+  selectClearingImport,
+  selectDataset,
   selectFileError,
   selectFileLoading,
+  selectActiveProjectId,
+  selectActiveScenarioId,
   selectImportError,
   selectImportPrecisionWarningPending,
   selectImporting,
@@ -39,7 +45,11 @@ export function Weather(): React.JSX.Element {
   const fileLoading = useSelector(selectFileLoading)
   const fileError = useSelector(selectFileError)
   const pickedFile = useSelector(selectPickedFile)
+  const dataset = useSelector(selectDataset)
+  const activeProjectId = useSelector(selectActiveProjectId)
+  const activeScenarioId = useSelector(selectActiveScenarioId)
   const importing = useSelector(selectImporting)
+  const clearingImport = useSelector(selectClearingImport)
   const importError = useSelector(selectImportError)
   const importPrecisionWarningPending = useSelector(selectImportPrecisionWarningPending)
   const wizardOpen = useSelector(selectWizardOpen)
@@ -75,7 +85,10 @@ export function Weather(): React.JSX.Element {
   React.useEffect(() => {
     if (!importPrecisionWarningPending) return
     setImportToastMessage(VALIDATION_MESSAGES.IMPORT_WARNING)
-  }, [importPrecisionWarningPending])
+    if (activeProjectId && activeScenarioId) {
+      dispatch(importPrecisionWarningConsumed(activeProjectId, activeScenarioId))
+    }
+  }, [activeProjectId, activeScenarioId, dispatch, importPrecisionWarningPending])
 
   const openWizard = (): void => {
     setImportToastMessage(null)
@@ -88,19 +101,31 @@ export function Weather(): React.JSX.Element {
   }
 
   const handleSubmit = (ds: ImportedDataset, truncatedDecimals: boolean): void => {
+    if (!activeProjectId || !activeScenarioId) return
     if (truncatedDecimals) {
       setImportToastMessage(VALIDATION_MESSAGES.IMPORT_WARNING)
     }
-    dispatch(importFinalizeRequested(ds, truncatedDecimals))
+    dispatch(importFinalizeRequested(activeProjectId, activeScenarioId, ds, truncatedDecimals))
   }
 
   const handleRequestPickFile = (): void => {
     dispatch(importPickFileRequested())
   }
 
+  const handleClearImportedFile = (): void => {
+    if (!activeProjectId || !activeScenarioId) return
+    setImportToastMessage(null)
+    dispatch(importClearRequested(activeProjectId, activeScenarioId))
+  }
+
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
-      <WeatherToolbar onUploadFile={openWizard} />
+    <div className="relative flex flex-1 flex-col overflow-hidden">
+      <WeatherToolbar
+        onUploadFile={openWizard}
+        importedFilename={dataset?.filename ?? null}
+        onClearImportedFile={handleClearImportedFile}
+        clearingImport={clearingImport}
+      />
       <WeatherTable />
 
       {wizardOpen && (
@@ -119,10 +144,18 @@ export function Weather(): React.JSX.Element {
       )}
 
       {importToastMessage && (
-        <div className="pointer-events-none fixed bottom-6 right-6 z-[60] max-w-md rounded border border-amber-900/40 bg-amber-900/95 px-4 py-3 text-sm text-amber-100 shadow-2xl">
-          <div className="flex items-start gap-2">
-            <AlertTriangleIcon className="mt-0.5 h-4 w-4 shrink-0" />
-            <div>{importToastMessage}</div>
+        <div className="absolute left-1/2 top-2 z-[60] w-full max-w-[520px] -translate-x-1/2 px-4">
+          <div className="flex items-center gap-2 rounded border border-[#8dd3a8] bg-[#effcf4] px-4 py-3 text-sm text-[#0f6e3e] shadow-lg">
+            <CheckCircleIcon className="h-4 w-4 shrink-0" />
+            <div className="min-w-0 flex-1">{importToastMessage}</div>
+            <button
+              type="button"
+              aria-label="Dismiss import notification"
+              onClick={() => setImportToastMessage(null)}
+              className="shrink-0 text-[#0f6e3e] opacity-80 transition hover:opacity-100"
+            >
+              <CloseIcon className="h-3 w-3" />
+            </button>
           </div>
         </div>
       )}

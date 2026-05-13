@@ -1,5 +1,6 @@
 import { call, put, select, take, takeLatest, takeLeading } from 'redux-saga/effects'
 import weatherSaga, {
+  clearImportedDataWorker,
   fetchStatusWorker,
   finalizeImportWorker,
   pickFileWorker
@@ -17,6 +18,7 @@ import {
 import * as actions from '../actions'
 import {
   FETCH_STATUS,
+  IMPORT_CLEAR_REQUESTED,
   IMPORT_FINALIZE_REQUESTED,
   IMPORT_PICK_FILE_REQUESTED,
   SSE_CONNECT
@@ -105,26 +107,10 @@ describe('finalizeImportWorker', () => {
     ]
   }
 
-  beforeEach(() => {
-    localStorage.setItem('helios:activeProjectId', 'proj-1')
-    localStorage.setItem('helios:activeScenarioId', 'sce-1')
-  })
-
-  afterEach(() => {
-    localStorage.clear()
-  })
-
-  it('fails fast when project or scenario id is missing from localStorage', () => {
-    localStorage.clear()
-    const gen = finalizeImportWorker(actions.importFinalizeRequested(dataset))
-    expect(gen.next().value).toEqual(
-      put(actions.importFinalizeFailed('No active project or scenario'))
-    )
-    expect(gen.next().done).toBe(true)
-  })
-
   it('DELETEs /clear_data, resolves catalog, POSTs /addCol with seeded check + date-time + filtered CSV columns, then puts succeeded after refresh race', () => {
-    const gen = finalizeImportWorker(actions.importFinalizeRequested(dataset))
+    const gen = finalizeImportWorker(
+      actions.importFinalizeRequested('proj-1', 'sce-1', dataset)
+    )
 
     // Step 0 — clear any prior weather data for this scenario.
     const clearCall = gen.next().value as ReturnType<typeof call>
@@ -198,12 +184,14 @@ describe('finalizeImportWorker', () => {
           }
         }
       }).value
-    ).toEqual(put(actions.importFinalizeSucceeded(dataset, true)))
+    ).toEqual(put(actions.importFinalizeSucceeded('proj-1', 'sce-1', dataset, true)))
     expect(gen.next().done).toBe(true)
   })
 
   it('blocks on the catalog when load status is loading', () => {
-    const gen = finalizeImportWorker(actions.importFinalizeRequested(dataset))
+    const gen = finalizeImportWorker(
+      actions.importFinalizeRequested('proj-1', 'sce-1', dataset)
+    )
     gen.next() // clear_data
     expect(gen.next().value).toEqual(select(selectDataTypesLoadStatus))
 
@@ -217,7 +205,9 @@ describe('finalizeImportWorker', () => {
   })
 
   it('puts importFinalizeFailed when scenario refresh fails', () => {
-    const gen = finalizeImportWorker(actions.importFinalizeRequested(dataset))
+    const gen = finalizeImportWorker(
+      actions.importFinalizeRequested('proj-1', 'sce-1', dataset)
+    )
     gen.next() // clear_data
     gen.next() // select selectDataTypesLoadStatus
     gen.next('loaded') // select selectCheckDataTypeId
@@ -234,14 +224,18 @@ describe('finalizeImportWorker', () => {
   })
 
   it('puts importFinalizeFailed when /clear_data throws', () => {
-    const gen = finalizeImportWorker(actions.importFinalizeRequested(dataset))
+    const gen = finalizeImportWorker(
+      actions.importFinalizeRequested('proj-1', 'sce-1', dataset)
+    )
     gen.next() // clear_data
     const err = new Error('cannot clear')
     expect(gen.throw(err).value).toEqual(put(actions.importFinalizeFailed('cannot clear')))
   })
 
   it('puts importFinalizeFailed when /addCol throws', () => {
-    const gen = finalizeImportWorker(actions.importFinalizeRequested(dataset))
+    const gen = finalizeImportWorker(
+      actions.importFinalizeRequested('proj-1', 'sce-1', dataset)
+    )
     gen.next() // clear_data
     gen.next() // select selectDataTypesLoadStatus
     gen.next('loaded') // select selectCheckDataTypeId
@@ -265,7 +259,9 @@ describe('finalizeImportWorker', () => {
       ]
     }
 
-    const gen = finalizeImportWorker(actions.importFinalizeRequested(highPrecisionDataset))
+    const gen = finalizeImportWorker(
+      actions.importFinalizeRequested('proj-1', 'sce-1', highPrecisionDataset)
+    )
     gen.next() // clear_data
     gen.next() // select selectDataTypesLoadStatus
     gen.next('loaded') // select selectCheckDataTypeId
@@ -309,7 +305,9 @@ describe('finalizeImportWorker', () => {
       ]
     }
 
-    const gen = finalizeImportWorker(actions.importFinalizeRequested(backendAdjustedDataset, false))
+    const gen = finalizeImportWorker(
+      actions.importFinalizeRequested('proj-1', 'sce-1', backendAdjustedDataset, false)
+    )
     gen.next() // clear_data
     gen.next() // select selectDataTypesLoadStatus
     gen.next('loaded') // select selectCheckDataTypeId
@@ -341,6 +339,8 @@ describe('finalizeImportWorker', () => {
     ).toEqual(
       put(
         actions.importFinalizeSucceeded(
+          'proj-1',
+          'sce-1',
           {
             ...backendAdjustedDataset,
             records: [
@@ -354,6 +354,19 @@ describe('finalizeImportWorker', () => {
         )
       )
     )
+  })
+})
+
+describe('clearImportedDataWorker', () => {
+  it('DELETEs clear_data, refreshes the scenario, then puts importClearSucceeded', () => {
+    const gen = clearImportedDataWorker(actions.importClearRequested('proj-1', 'sce-1'))
+    const clearCall = gen.next().value as ReturnType<typeof call>
+    expect(clearCall.payload.args[0]).toBe('/api/weather/project/proj-1/scenario/sce-1/clear_data')
+    expect(gen.next().value).toEqual(put(loadScenarioRequested('proj-1', 'sce-1')))
+    gen.next() // race(...)
+    expect(
+      gen.next({ succeeded: { payload: { scenarioId: 'sce-1' } } }).value
+    ).toEqual(put(actions.importClearSucceeded('proj-1', 'sce-1')))
   })
 })
 
@@ -385,5 +398,14 @@ describe('weatherSaga (root)', () => {
     gen.next() // SSE_CONNECT
     gen.next() // IMPORT_PICK_FILE_REQUESTED
     expect(gen.next().value).toEqual(takeLeading(IMPORT_FINALIZE_REQUESTED, finalizeImportWorker))
+  })
+
+  it('watches IMPORT_CLEAR_REQUESTED with takeLeading', () => {
+    const gen = weatherSaga()
+    gen.next() // FETCH_STATUS
+    gen.next() // SSE_CONNECT
+    gen.next() // IMPORT_PICK_FILE_REQUESTED
+    gen.next() // IMPORT_FINALIZE_REQUESTED
+    expect(gen.next().value).toEqual(takeLeading(IMPORT_CLEAR_REQUESTED, clearImportedDataWorker))
   })
 })

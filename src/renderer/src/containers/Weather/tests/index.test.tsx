@@ -5,10 +5,14 @@ import type { ImportedDataset, PickedFile } from '../types'
 
 const mockDispatch = vi.fn()
 const sel = {
+  activeProjectId: 'proj-1',
+  activeScenarioId: 'sce-1',
   fileLoading: false,
   fileError: null as string | null,
   pickedFile: null as PickedFile | null,
+  dataset: null as ImportedDataset | null,
   importing: false,
+  clearingImport: false,
   importError: null as string | null,
   importPrecisionWarningPending: false,
   wizardOpen: false
@@ -23,20 +27,36 @@ vi.mock('utils/injectReducer', () => ({ useInjectReducer: vi.fn() }))
 vi.mock('utils/injectSaga', () => ({ useInjectSaga: vi.fn() }))
 
 vi.mock('../selectors', () => ({
+  selectActiveProjectId: () => sel.activeProjectId,
+  selectActiveScenarioId: () => sel.activeScenarioId,
   selectFileLoading: () => sel.fileLoading,
   selectFileError: () => sel.fileError,
   selectPickedFile: () => sel.pickedFile,
+  selectDataset: () => sel.dataset,
   selectImporting: () => sel.importing,
+  selectClearingImport: () => sel.clearingImport,
   selectImportError: () => sel.importError,
   selectImportPrecisionWarningPending: () => sel.importPrecisionWarningPending,
   selectWizardOpen: () => sel.wizardOpen
 }))
 
 vi.mock('../WeatherToolbar', () => ({
-  default: ({ onUploadFile }: { onUploadFile?: () => void }) => (
+  default: ({
+    onUploadFile,
+    importedFilename,
+    onClearImportedFile
+  }: {
+    onUploadFile?: () => void
+    importedFilename?: string | null
+    onClearImportedFile?: () => void
+  }) => (
     <div data-testid="toolbar">
       <button data-testid="upload" onClick={onUploadFile}>
         upload
+      </button>
+      {importedFilename ? <span data-testid="uploaded-filename">{importedFilename}</span> : null}
+      <button data-testid="clear-upload" onClick={onClearImportedFile}>
+        clear-upload
       </button>
     </div>
   )
@@ -66,7 +86,7 @@ vi.mock('utils/loadable', () => ({
             data-testid="wizard-warning"
             onClick={() =>
               props.onImportWarning(
-                'Only 7 decimal places have been taken for decimal values as more are not supported.'
+                'Only 7 decimal places have been taken for decimal values as more are not allowed.'
               )
             }
           />
@@ -102,10 +122,14 @@ vi.mock('utils/loadable', () => ({
 }))
 
 function resetSel(): void {
+  sel.activeProjectId = 'proj-1'
+  sel.activeScenarioId = 'sce-1'
   sel.fileLoading = false
   sel.fileError = null
   sel.pickedFile = null
+  sel.dataset = null
   sel.importing = false
+  sel.clearingImport = false
   sel.importError = null
   sel.importPrecisionWarningPending = false
   sel.wizardOpen = false
@@ -172,6 +196,8 @@ describe('<Weather />', () => {
     fireEvent.click(screen.getByTestId('wizard-submit'))
     expect(mockDispatch).toHaveBeenCalledWith(
       weatherActions.importFinalizeRequested(
+        'proj-1',
+        'sce-1',
         {
           filename: 'foo.csv',
           columns: [],
@@ -182,18 +208,34 @@ describe('<Weather />', () => {
     )
   })
 
-  it('renders a bottom-right import toast when the wizard reports a precision warning', () => {
+  it('passes the imported filename through to the toolbar after a successful upload', () => {
+    sel.dataset = { filename: 'weather.xml', columns: [], records: [] }
+    render(<Weather />)
+    expect(screen.getByTestId('uploaded-filename')).toHaveTextContent('weather.xml')
+  })
+
+  it('dispatches importClearRequested when the toolbar delete action fires', () => {
+    sel.dataset = { filename: 'weather.xml', columns: [], records: [] }
+    render(<Weather />)
+    fireEvent.click(screen.getByTestId('clear-upload'))
+    expect(mockDispatch).toHaveBeenCalledWith(
+      weatherActions.importClearRequested('proj-1', 'sce-1')
+    )
+  })
+
+  it('renders the import toast when the wizard reports a precision warning', () => {
     sel.wizardOpen = true
     render(<Weather />)
     fireEvent.click(screen.getByTestId('wizard-warning'))
     expect(
       screen.getByText(
-        'Only 7 decimal places have been taken for decimal values as more are not supported.'
+        'Only 7 decimal places have been taken for decimal values as more are not allowed.'
       )
     ).toBeInTheDocument()
+    expect(screen.getByLabelText('Dismiss import notification')).toBeInTheDocument()
   })
 
-  it('renders a bottom-right import toast when submit reports truncated decimals', () => {
+  it('renders the import toast when submit reports truncated decimals', () => {
     sel.wizardOpen = true
     render(<Weather />)
     fireEvent.click(screen.getByTestId('wizard-submit-truncated'))
@@ -204,9 +246,12 @@ describe('<Weather />', () => {
     ).toBeInTheDocument()
   })
 
-  it('renders a bottom-right import toast when refreshed backend data was precision-normalized', () => {
+  it('renders the import toast when refreshed backend data was precision-normalized', () => {
     sel.importPrecisionWarningPending = true
     render(<Weather />)
+    expect(mockDispatch).toHaveBeenCalledWith(
+      weatherActions.importPrecisionWarningConsumed('proj-1', 'sce-1')
+    )
     expect(
       screen.getByText(
         'Only 7 decimal places have been taken for decimal values as more are not supported.'

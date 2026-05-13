@@ -5,6 +5,10 @@ import {
   IMPORT_FINALIZE_FAILED,
   IMPORT_FINALIZE_REQUESTED,
   IMPORT_FINALIZE_SUCCEEDED,
+  IMPORT_CLEAR_FAILED,
+  IMPORT_CLEAR_REQUESTED,
+  IMPORT_CLEAR_SUCCEEDED,
+  IMPORT_PRECISION_WARNING_CONSUMED,
   IMPORT_PICK_FILE_FAILED,
   IMPORT_PICK_FILE_REQUESTED,
   IMPORT_PICK_FILE_SUCCEEDED,
@@ -54,17 +58,40 @@ export type ImportPickFileFailedAction = {
 // Import — finalize (saga POST)
 export type ImportFinalizeRequestedAction = {
   type: typeof IMPORT_FINALIZE_REQUESTED
+  projectId: string
+  scenarioId: string
   payload: ImportedDataset
   truncatedDecimals?: boolean
 }
 export type ImportFinalizeSucceededAction = {
   type: typeof IMPORT_FINALIZE_SUCCEEDED
+  projectId: string
+  scenarioId: string
   payload: ImportedDataset
   precisionNormalized?: boolean
 }
 export type ImportFinalizeFailedAction = {
   type: typeof IMPORT_FINALIZE_FAILED
   payload: string
+}
+export type ImportClearRequestedAction = {
+  type: typeof IMPORT_CLEAR_REQUESTED
+  projectId: string
+  scenarioId: string
+}
+export type ImportClearSucceededAction = {
+  type: typeof IMPORT_CLEAR_SUCCEEDED
+  projectId: string
+  scenarioId: string
+}
+export type ImportClearFailedAction = {
+  type: typeof IMPORT_CLEAR_FAILED
+  payload: string
+}
+export type ImportPrecisionWarningConsumedAction = {
+  type: typeof IMPORT_PRECISION_WARNING_CONSUMED
+  projectId: string
+  scenarioId: string
 }
 
 // Reset both flows (e.g. wizard closed without finishing)
@@ -88,6 +115,10 @@ export type WeatherAction =
   | ImportFinalizeRequestedAction
   | ImportFinalizeSucceededAction
   | ImportFinalizeFailedAction
+  | ImportClearRequestedAction
+  | ImportClearSucceededAction
+  | ImportClearFailedAction
+  | ImportPrecisionWarningConsumedAction
   | ImportResetAction
   | ImportWizardOpenedAction
   | ImportWizardClosedAction
@@ -123,20 +154,60 @@ export const importPickFileFailed = (payload: string): ImportPickFileFailedActio
 })
 
 export const importFinalizeRequested = (
+  projectId: string,
+  scenarioId: string,
   payload: ImportedDataset,
   truncatedDecimals?: boolean
 ): ImportFinalizeRequestedAction => ({
   type: IMPORT_FINALIZE_REQUESTED,
+  projectId,
+  scenarioId,
   payload,
   truncatedDecimals
 })
 export const importFinalizeSucceeded = (
+  projectId: string,
+  scenarioId: string,
   payload: ImportedDataset,
   precisionNormalized?: boolean
-): ImportFinalizeSucceededAction => ({ type: IMPORT_FINALIZE_SUCCEEDED, payload, precisionNormalized })
+): ImportFinalizeSucceededAction => ({
+  type: IMPORT_FINALIZE_SUCCEEDED,
+  projectId,
+  scenarioId,
+  payload,
+  precisionNormalized
+})
 export const importFinalizeFailed = (payload: string): ImportFinalizeFailedAction => ({
   type: IMPORT_FINALIZE_FAILED,
   payload
+})
+export const importClearRequested = (
+  projectId: string,
+  scenarioId: string
+): ImportClearRequestedAction => ({
+  type: IMPORT_CLEAR_REQUESTED,
+  projectId,
+  scenarioId
+})
+export const importClearSucceeded = (
+  projectId: string,
+  scenarioId: string
+): ImportClearSucceededAction => ({
+  type: IMPORT_CLEAR_SUCCEEDED,
+  projectId,
+  scenarioId
+})
+export const importClearFailed = (payload: string): ImportClearFailedAction => ({
+  type: IMPORT_CLEAR_FAILED,
+  payload
+})
+export const importPrecisionWarningConsumed = (
+  projectId: string,
+  scenarioId: string
+): ImportPrecisionWarningConsumedAction => ({
+  type: IMPORT_PRECISION_WARNING_CONSUMED,
+  projectId,
+  scenarioId
 })
 
 export const importReset = (): ImportResetAction => ({ type: IMPORT_RESET })

@@ -54,9 +54,23 @@ vi.mock('@renderer/components/ToolbarButton', () => ({
   )
 }))
 
+vi.mock('@renderer/components/Dialog', () => ({
+  default: ({
+    isOpen,
+    title,
+    children
+  }: {
+    isOpen: boolean
+    title: string
+    children: React.ReactNode
+  }) => (isOpen ? <div data-testid="dialog" aria-label={title}>{children}</div> : null)
+}))
+
 vi.mock('@renderer/assets/chevron.svg', () => ({ default: 'chevron.svg' }))
 vi.mock('@renderer/assets/new_project.svg', () => ({ default: 'new_project.svg' }))
 vi.mock('@renderer/assets/Upload.svg', () => ({ default: 'upload.svg' }))
+vi.mock('@renderer/assets/delete.svg', () => ({ default: 'delete.svg' }))
+vi.mock('@renderer/assets/Icon (Stroke).svg', () => ({ default: 'doc.svg' }))
 
 function resetSel(): void {
   sel.addColumnLoading = false
@@ -172,5 +186,31 @@ describe('<WeatherToolbar />', () => {
     render(<WeatherToolbar onFilter={onFilter} />)
     fireEvent.click(screen.getByTestId('tb-Filter'))
     expect(onFilter).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders the imported filename chip when a file has been uploaded', () => {
+    render(<WeatherToolbar importedFilename="sample.csv" />)
+    expect(screen.getByText('sample.csv')).toBeInTheDocument()
+    expect(screen.getByLabelText('Delete uploaded weather file')).toBeInTheDocument()
+  })
+
+  it('opens the confirm dialog when delete is clicked', () => {
+    render(<WeatherToolbar importedFilename="sample.csv" />)
+    fireEvent.click(screen.getByLabelText('Delete uploaded weather file'))
+    expect(screen.getByTestId('dialog')).toBeInTheDocument()
+    expect(screen.getByText('Delete sample.csv')).toBeInTheDocument()
+  })
+
+  it('forwards onClearImportedFile when delete is confirmed', () => {
+    const onClearImportedFile = vi.fn()
+    render(
+      <WeatherToolbar
+        importedFilename="sample.csv"
+        onClearImportedFile={onClearImportedFile}
+      />
+    )
+    fireEvent.click(screen.getByLabelText('Delete uploaded weather file'))
+    fireEvent.click(screen.getByText('Delete'))
+    expect(onClearImportedFile).toHaveBeenCalledTimes(1)
   })
 })

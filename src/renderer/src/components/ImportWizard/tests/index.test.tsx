@@ -195,7 +195,7 @@ describe('<ImportWizard />', () => {
     fireEvent.click(screen.getByText('Next'))
 
     expect(
-      screen.getByText('Character based columns have been disabled as that input is not supported.')
+      screen.getByText('Character-based columns are disabled as this input is unsupported')
     ).toBeInTheDocument()
 
     const notesRow = screen.getByText('notes').closest('tr') as HTMLElement
@@ -207,6 +207,34 @@ describe('<ImportWizard />', () => {
     const dataset = onSubmit.mock.calls[0][0] as ImportedDataset
     expect(dataset.columns.find((c) => c.label === 'notes')).toBeUndefined()
     expect(dataset.columns.find((c) => c.label === 'temp')).toBeDefined()
+  })
+
+  it('Select All toggles all selectable review columns in one click', () => {
+    const selectableFile = {
+      filename: 'selectable.csv',
+      rawText:
+        'year,month,day,air_temperature,air_pressure\n' +
+        '2026,2,26,22.5,1012.3\n' +
+        '2026,2,27,23.7,1013.5'
+    }
+    const onSubmit = vi.fn()
+    render(<ImportWizard {...baseProps} pickedFile={selectableFile} onSubmit={onSubmit} />)
+
+    fireEvent.click(screen.getByText('Next'))
+    fireEvent.click(screen.getByText('Next'))
+    fireEvent.click(screen.getByText('Next'))
+
+    const selectAll = screen.getByLabelText('Select All')
+    fireEvent.click(selectAll)
+
+    const airTempRow = screen.getByText('air_temperature').closest('tr') as HTMLElement
+    const airPressureRow = screen.getByText('air_pressure').closest('tr') as HTMLElement
+    expect(within(airTempRow).getByRole('checkbox')).not.toBeChecked()
+    expect(within(airPressureRow).getByRole('checkbox')).not.toBeChecked()
+
+    fireEvent.click(selectAll)
+    expect(within(airTempRow).getByRole('checkbox')).toBeChecked()
+    expect(within(airPressureRow).getByRole('checkbox')).toBeChecked()
   })
 
   it('truncates imported decimal values to 7 places before submit', () => {

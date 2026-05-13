@@ -3,7 +3,6 @@ import { api } from 'utils/api'
 import { API_ROUTES } from 'utils/constants'
 import { createSseChannel } from 'utils/sse'
 import type { SseMessage } from 'utils/sse'
-import { STORAGE_KEYS } from 'utils/storageKeys'
 import { loadScenarioRequested } from 'containers/ProjectScreen/actions'
 import {
   LOAD_DATA_TYPES_FAILED,
@@ -28,6 +27,7 @@ import * as actions from './actions'
 import type { ImportFinalizeRequestedAction } from './actions'
 import {
   FETCH_STATUS,
+  IMPORT_CLEAR_REQUESTED,
   IMPORT_FINALIZE_REQUESTED,
   IMPORT_PICK_FILE_REQUESTED,
   SSE_CONNECT,
@@ -207,12 +207,7 @@ function backendAdjustedImportedValues(
 
 export function* finalizeImportWorker(action: ImportFinalizeRequestedAction): Generator {
   try {
-    const projectId = localStorage.getItem(STORAGE_KEYS.activeProjectId)
-    const scenarioId = localStorage.getItem(STORAGE_KEYS.activeScenarioId)
-    if (!projectId || !scenarioId) {
-      yield put(actions.importFinalizeFailed('No active project or scenario'))
-      return
-    }
+    const { projectId, scenarioId } = action
 
     // Safety-net normalization: the wizard already truncates imported
     // decimals to 7 places, but we normalize again here so every frontend
@@ -326,12 +321,44 @@ export function* finalizeImportWorker(action: ImportFinalizeRequestedAction): Ge
     const backendAdjusted = backendAdjustedImportedValues(originalDataset, raceResult.succeeded?.payload)
     yield put(
       actions.importFinalizeSucceeded(
+        projectId,
+        scenarioId,
         dataset,
         Boolean(raceResult.succeeded?.payload.precisionNormalized) || backendAdjusted
       )
     )
   } catch (err) {
     yield put(actions.importFinalizeFailed((err as Error).message))
+  }
+}
+
+export function* clearImportedDataWorker(action: actions.ImportClearRequestedAction): Generator {
+  try {
+    const { projectId, scenarioId } = action
+
+    yield call(api.delete, API_ROUTES.weather.clearData(projectId, scenarioId))
+    yield put(loadScenarioRequested(projectId, scenarioId))
+
+    const raceResult = (yield race({
+      succeeded: take(matchScenarioAction(LOAD_SCENARIO_SUCCEEDED, scenarioId)),
+      failed: take(matchScenarioAction(LOAD_SCENARIO_FAILED, scenarioId))
+    })) as {
+      succeeded?: { payload: { scenarioId: string } }
+      failed?: { payload: { scenarioId: string; error: string } }
+    }
+
+    if (raceResult.failed) {
+      yield put(
+        actions.importClearFailed(
+          `Cleared imported data, but failed to refresh data: ${raceResult.failed.payload.error}`
+        )
+      )
+      return
+    }
+
+    yield put(actions.importClearSucceeded(projectId, scenarioId))
+  } catch (err) {
+    yield put(actions.importClearFailed((err as Error).message))
   }
 }
 
@@ -342,4 +369,5 @@ export default function* weatherSaga(): Generator {
   yield takeLatest(SSE_CONNECT, sseWorker)
   yield takeLatest(IMPORT_PICK_FILE_REQUESTED, pickFileWorker)
   yield takeLeading(IMPORT_FINALIZE_REQUESTED, finalizeImportWorker)
+  yield takeLeading(IMPORT_CLEAR_REQUESTED, clearImportedDataWorker)
 }

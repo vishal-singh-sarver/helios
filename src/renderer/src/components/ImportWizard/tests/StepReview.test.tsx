@@ -25,13 +25,13 @@ describe('<StepReview />', () => {
     dtColumns: ['Date', 'Time'],
     columnSelection: {} as Record<number, boolean>,
     disabledColumnIndices: [] as number[],
-    onToggleColumn: vi.fn()
+    onToggleColumn: vi.fn(),
+    onToggleAll: vi.fn()
   }
 
-  it('renders the synthetic Date-Time row, marked required', () => {
+  it('renders the synthetic Date-Time row', () => {
     render(<StepReview {...baseProps} />)
     expect(screen.getByText('Date-Time')).toBeInTheDocument()
-    expect(screen.getByText('(required)')).toBeInTheDocument()
   })
 
   it('omits columns that are part of the date/time mapping', () => {
@@ -60,21 +60,21 @@ describe('<StepReview />', () => {
   it('reflects columnSelection: false → unchecked', () => {
     render(<StepReview {...baseProps} columnSelection={{ 2: false }} />)
     const checkboxes = screen.getAllByRole('checkbox')
-    // Index 2 in headers is "temp" — first user column → second checkbox overall
-    expect(checkboxes[1]).not.toBeChecked()
+    // Order: Select All, Date-Time, temp, humidity
+    expect(checkboxes[2]).not.toBeChecked()
   })
 
   it('clicking a column checkbox calls onToggleColumn with the index', () => {
     const onToggleColumn = vi.fn()
     render(<StepReview {...baseProps} onToggleColumn={onToggleColumn} />)
     const checkboxes = screen.getAllByRole('checkbox')
-    fireEvent.click(checkboxes[1]) // first user-row (temp at index 2)
+    fireEvent.click(checkboxes[2]) // first user-row (temp at index 2)
     expect(onToggleColumn).toHaveBeenCalledWith(2)
   })
 
   it('Date-Time checkbox is disabled and cannot be unchecked', () => {
     render(<StepReview {...baseProps} />)
-    const dtCheckbox = screen.getAllByRole('checkbox')[0]
+    const dtCheckbox = screen.getAllByRole('checkbox')[1]
     expect(dtCheckbox).toBeDisabled()
     expect(dtCheckbox).toBeChecked()
   })
@@ -92,11 +92,18 @@ describe('<StepReview />', () => {
   it('renders unsupported columns as unchecked and disabled with a message', () => {
     render(<StepReview {...baseProps} disabledColumnIndices={[2]} />)
     expect(
-      screen.getByText('Character based columns have been disabled as that input is not supported.')
+      screen.getByText('Character-based columns are disabled as this input is unsupported')
     ).toBeInTheDocument()
 
     const checkboxes = screen.getAllByRole('checkbox')
-    expect(checkboxes[1]).toBeDisabled()
-    expect(checkboxes[1]).not.toBeChecked()
+    expect(checkboxes[2]).toBeDisabled()
+    expect(checkboxes[2]).not.toBeChecked()
+  })
+
+  it('clicking Select All calls onToggleAll with the new checked state', () => {
+    const onToggleAll = vi.fn()
+    render(<StepReview {...baseProps} onToggleAll={onToggleAll} />)
+    fireEvent.click(screen.getByLabelText('Select All'))
+    expect(onToggleAll).toHaveBeenCalledWith(false)
   })
 })

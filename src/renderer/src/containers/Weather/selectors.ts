@@ -1,4 +1,8 @@
 import { createSelector } from 'reselect'
+import {
+  selectActiveProjectId as selectActiveProjectIdFromProjectScreen,
+  selectActiveScenarioId as selectActiveScenarioIdFromProjectScreen
+} from 'containers/ProjectScreen/selectors'
 import type { RootState } from 'store/reducers'
 import { initialState, type WeatherState } from './reducer'
 
@@ -23,10 +27,24 @@ export const selectPickedFile = createSelector(selectWeatherDomain, (s) => s.pic
 // Import — finalize
 export const selectImporting = createSelector(selectWeatherDomain, (s) => s.importing)
 export const selectImportError = createSelector(selectWeatherDomain, (s) => s.importError)
-export const selectDataset = createSelector(selectWeatherDomain, (s) => s.dataset)
+export const selectClearingImport = createSelector(selectWeatherDomain, (s) => s.clearingImport)
+export const selectDataset = createSelector(
+  selectWeatherDomain,
+  selectActiveProjectIdFromProjectScreen,
+  selectActiveScenarioIdFromProjectScreen,
+  (s, projectId, scenarioId) => {
+    if (!projectId || !scenarioId) return null
+    return s.datasetsByScope[`${projectId}::${scenarioId}`] ?? null
+  }
+)
 export const selectImportPrecisionWarningPending = createSelector(
   selectWeatherDomain,
-  (s) => s.importPrecisionWarningPending
+  selectActiveProjectIdFromProjectScreen,
+  selectActiveScenarioIdFromProjectScreen,
+  (s, projectId, scenarioId) => {
+    if (!projectId || !scenarioId) return false
+    return s.importPrecisionWarningPendingByScope[`${projectId}::${scenarioId}`] ?? false
+  }
 )
 
 // Wizard open/close — held in Redux so the saga can auto-close the wizard

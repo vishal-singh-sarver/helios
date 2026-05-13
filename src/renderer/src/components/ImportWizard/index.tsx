@@ -25,7 +25,7 @@ import type { DateTimeStats, ImportWizardProps } from './types'
 const GROUP1_KEYS: ReadonlyArray<keyof DateTimeMapping> = ['year', 'month', 'day', 'hour', 'minute']
 
 const IMPORT_DECIMAL_WARNING =
-  'Only 7 decimal places have been taken for decimal values as more are not supported.'
+  'Only 7 decimal places have been taken for decimal values as more are not allowed.'
 
 function isUnsupportedCharacterValue(value: string | undefined): boolean {
   const trimmed = value?.trim() ?? ''
@@ -72,34 +72,45 @@ function ImportWizard({
   // Parse on pickedFile change — runs during render so it doesn't trigger a
   // setState-in-effect cascade. React schedules an immediate re-render with
   // the new state without flushing the in-progress one to DOM.
-  if (pickedFile !== lastSeenPickedFile) {
-    setLastSeenPickedFile(pickedFile)
-    if (pickedFile) {
-      setFilename(pickedFile.filename)
-      try {
-        const result = parseFile(pickedFile.filename, pickedFile.rawText)
-        setParsed(result)
-        setParseError(null)
-        onImportWarning(null)
+  React.useEffect(() => {
+    if (pickedFile !== lastSeenPickedFile) {
+      setLastSeenPickedFile(pickedFile)
 
-        const auto: DateTimeMapping = {
-          year: findHeaderByKeyword(result.headers, ['year']),
-          month: findHeaderByKeyword(result.headers, ['month']),
-          day: findHeaderByKeyword(result.headers, ['day']),
-          hour: findHeaderByKeyword(result.headers, ['hour']),
-          minute: findHeaderByKeyword(result.headers, ['minute']),
-          date: findHeaderByKeyword(result.headers, ['date']),
-          time: findHeaderByKeyword(result.headers, ['time'])
+      if (pickedFile) {
+        setFilename(pickedFile.filename)
+
+        try {
+          const result = parseFile(pickedFile.filename, pickedFile.rawText)
+
+          setParsed(result)
+          setParseError(null)
+
+          onImportWarning(null)
+
+          const auto: DateTimeMapping = {
+            year: findHeaderByKeyword(result.headers, ['year']),
+            month: findHeaderByKeyword(result.headers, ['month']),
+            day: findHeaderByKeyword(result.headers, ['day']),
+            hour: findHeaderByKeyword(result.headers, ['hour']),
+            minute: findHeaderByKeyword(result.headers, ['minute']),
+            date: findHeaderByKeyword(result.headers, ['date']),
+            time: findHeaderByKeyword(result.headers, ['time'])
+          }
+
+          setMapping(auto)
+
+          if (auto.year && auto.month && auto.day) {
+            setMode('group1')
+          } else if (auto.date) {
+            setMode('group2')
+          }
+        } catch (err) {
+          setParseError((err as Error).message)
+          setParsed(null)
         }
-        setMapping(auto)
-        if (auto.year && auto.month && auto.day) setMode('group1')
-        else if (auto.date) setMode('group2')
-      } catch (err) {
-        setParseError((err as Error).message)
-        setParsed(null)
       }
     }
-  }
+  }, [pickedFile, lastSeenPickedFile, onImportWarning])
 
   // Re-parse delimited input when delimiter changes (step 2).
   const handleChangeDelimiter = useCallback(
@@ -368,6 +379,19 @@ function ImportWizard({
                 disabledColumnIndices={disabledColumnIndices}
                 onToggleColumn={(i) =>
                   setColumnSelection((s) => ({ ...s, [i]: s[i] === false ? true : false }))
+                }
+                onToggleAll={(checked) =>
+                  setColumnSelection(() => {
+                    const next: Record<number, boolean> = {}
+                    parsed.headers.forEach((header, index) => {
+                      const isDateTimeColumn = dtColumns.includes(header)
+                      const isDisabled = disabledColumnIndices.includes(index)
+                      if (!isDateTimeColumn && !isDisabled) {
+                        next[index] = checked
+                      }
+                    })
+                    return next
+                  })
                 }
               />
             )}

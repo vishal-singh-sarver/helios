@@ -32,6 +32,14 @@ const messages = {
     errors: {
       serverError: 'Failed to add rows'
     }
+  },
+
+  deleteImport: {
+    dialogTitle: 'Delete',
+    heading: (filename: string) => `Delete ${filename}`,
+    body: 'Are you sure you want to delete this? This action cannot be undone.',
+    confirmButton: 'Delete',
+    cancelButton: 'Cancel'
   }
 } as const
 

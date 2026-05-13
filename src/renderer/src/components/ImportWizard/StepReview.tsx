@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react'
+import { InfoIcon } from './Icons'
 import type { StepReviewProps } from './types'
 
 function fmtBritish(d: Date | null): string {
@@ -18,10 +19,17 @@ export default function StepReview({
   dtColumns,
   columnSelection,
   disabledColumnIndices,
-  onToggleColumn
+  onToggleColumn,
+  onToggleAll
 }: StepReviewProps): React.JSX.Element {
   const dtSet = useMemo(() => new Set(dtColumns), [dtColumns])
   const disabledSet = useMemo(() => new Set(disabledColumnIndices), [disabledColumnIndices])
+  const selectableIndices = useMemo(
+    () => parsed.headers.flatMap((h, i) => (dtSet.has(h) || disabledSet.has(i) ? [] : [i])),
+    [parsed.headers, dtSet, disabledSet]
+  )
+  const allSelectableChecked =
+    selectableIndices.length > 0 && selectableIndices.every((i) => columnSelection[i] !== false)
 
   const dtPreview = parsedDateTimes
     .slice(0, 3)
@@ -34,29 +42,47 @@ export default function StepReview({
         Review columns to import. Uncheck columns you want to exclude.
       </div>
 
+      {disabledColumnIndices.length > 0 && (
+        <div className="flex items-start gap-2 rounded-[3px] bg-[#edf3ff] px-3 py-3 text-sm text-[#245AC5]">
+          <InfoIcon className="mt-0.5 h-4 w-4 shrink-0" />
+          <div className="font-medium">
+            Character-based columns are disabled as this input is unsupported
+          </div>
+        </div>
+      )}
+
+      <label className="flex items-center gap-3 text-sm text-neutral-100">
+        <input
+          type="checkbox"
+          checked={allSelectableChecked}
+          onChange={(e) => onToggleAll(e.target.checked)}
+          className="h-4 w-4 cursor-pointer accent-[#245AC5]"
+        />
+        <span>Select All</span>
+      </label>
+
       <div
-        className="flex-1 overflow-auto rounded border border-app-border scrollbar-custom"
+        className="flex-1 overflow-auto rounded-[3px] border border-[#3f3f46] bg-[#262626] scrollbar-custom"
         style={{ maxHeight: 320 }}
       >
         <table className="w-full text-sm">
           <tbody>
             {/* Synthetic Date-Time row — always included, cannot be excluded */}
-            <tr className="border-b border-app-border bg-app-panel/40">
+            <tr className="border-b border-[#4b4b4b] bg-[#3a3a3a]">
               <td className="w-12 px-4 py-3">
                 <input
                   type="checkbox"
                   checked
                   disabled
                   readOnly
-                  className="h-4 w-4 cursor-not-allowed opacity-60"
+                  className="h-4 w-4 cursor-not-allowed accent-[#245AC5] opacity-60"
                   title="Date-Time is required and cannot be excluded"
                 />
               </td>
-              <td className="px-2 py-3 font-medium text-neutral-100">
+              <td className="px-2 py-3 font-medium text-neutral-500">
                 Date-Time
-                <span className="ml-2 text-xs font-normal text-neutral-500">(required)</span>
               </td>
-              <td className="px-4 py-3 text-neutral-400">{dtPreview}</td>
+              <td className="px-4 py-3 text-neutral-500">{dtPreview}</td>
             </tr>
 
             {parsed.headers.map((h, i) => {
@@ -68,22 +94,25 @@ export default function StepReview({
                 .map((r) => r[i])
                 .join(', ')
               return (
-                <tr key={i} className="border-b border-app-border last:border-0">
+                <tr
+                  key={i}
+                  className={`border-b border-[#4b4b4b] last:border-0 ${disabled ? 'bg-[#313131]' : 'bg-[#262626]'}`}
+                >
                   <td className="w-12 px-4 py-3">
                     <input
                       type="checkbox"
                       checked={checked}
                       disabled={disabled}
                       onChange={() => onToggleColumn(i)}
-                      className={`h-4 w-4 ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                      className={`h-4 w-4 accent-[#245AC5] ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
                     />
                   </td>
-                  <td className="px-2 py-3 text-neutral-100">
-                    <span className="mr-2 text-neutral-500">{i + 1}:</span>
+                  <td className={`${disabled ? 'text-neutral-500' : 'text-neutral-100'} px-2 py-3`}>
                     {h}
-                    {disabled && <span className="ml-2 text-xs text-amber-300">(disabled)</span>}
                   </td>
-                  <td className="px-4 py-3 text-neutral-400">{examples}</td>
+                  <td className={`${disabled ? 'text-neutral-500' : 'text-neutral-200'} px-4 py-3`}>
+                    {examples}
+                  </td>
                 </tr>
               )
             })}
@@ -94,12 +123,6 @@ export default function StepReview({
       <div className="text-xs text-white">
         Date/Time column(s) will be merged into the “Date-Time” column automatically.
       </div>
-
-      {disabledColumnIndices.length > 0 && (
-        <div className="text-xs text-white">
-          Character based columns have been disabled as that input is not supported.
-        </div>
-      )}
     </div>
   )
 }

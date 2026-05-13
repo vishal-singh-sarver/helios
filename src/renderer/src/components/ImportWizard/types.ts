@@ -70,6 +70,7 @@ export interface StepReviewProps {
   columnSelection: Record<number, boolean>
   disabledColumnIndices: number[]
   onToggleColumn: (index: number) => void
+  onToggleAll: (checked: boolean) => void
 }
 
 // ── Stepper ────────────────────────────────────────────────────────────────────
