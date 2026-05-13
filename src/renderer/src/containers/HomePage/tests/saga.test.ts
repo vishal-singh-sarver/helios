@@ -1,22 +1,23 @@
+import { getProjectRequest } from '@renderer/containers/Weather/service'
 import { call, put, takeEvery, takeLatest, takeLeading } from 'redux-saga/effects'
-import homePageSaga, {
-  fetchStatusWorker,
-  createProjectWorker,
-  fetchRecentProjectsWorker,
-  deleteProjectWorker,
-  renameProjectWorker
-} from '../saga'
 import { api, ApiError } from 'utils/api'
 import { API_ROUTES } from 'utils/constants'
 import * as actions from '../actions'
 import {
-  FETCH_STATUS,
-  SSE_CONNECT,
   CREATE_PROJECT,
-  FETCH_RECENT_PROJECTS,
   DELETE_PROJECT,
-  RENAME_PROJECT
+  FETCH_RECENT_PROJECTS,
+  FETCH_STATUS,
+  RENAME_PROJECT,
+  SSE_CONNECT
 } from '../constants'
+import homePageSaga, {
+  createProjectWorker,
+  deleteProjectWorker,
+  fetchRecentProjectsWorker,
+  fetchStatusWorker,
+  renameProjectWorker
+} from '../saga'
 import type { CreateProjectPayload, CreateProjectResponse } from '../types'
 
 // ── fetchStatusWorker ─────────────────────────────────────────────────────────
@@ -65,8 +66,16 @@ describe('createProjectWorker', () => {
     // 2) success put
     expect(gen.next(response).value).toEqual(put(actions.createProjectSuccess(response)))
 
-    // 3) and the saga pipelines a re-fetch so the table stays in sync
+    expect(gen.next().value).toEqual(call(getProjectRequest, 'uuid-1'))
+
     expect(gen.next().value).toEqual(put(actions.fetchRecentProjects()))
+    expect(
+      gen.next({
+        project: {
+          id: 'uuid-1'
+        }
+      }).value
+    ).toEqual(put(actions.fetchRecentProjects()))
 
     expect(gen.next().done).toBe(true)
   })

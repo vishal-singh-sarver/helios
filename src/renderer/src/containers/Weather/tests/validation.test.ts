@@ -1,5 +1,5 @@
-import { validateCellValue } from '../validation'
 import type { ColumnDef, DataTypeDef } from 'containers/ProjectScreen/types'
+import { validateCellValue } from '../validation'
 
 // Build a minimal DataTypeDef list shaped like the wire response. Fields not
 // touched by the validator are filled with cheap defaults so the fixture
@@ -123,9 +123,7 @@ describe('validateCellValue', () => {
 
   it('falls back to raw unit string when alias is missing', () => {
     const col = { ...baseCol, unitId: 11 }
-    expect(validateCellValue('abc', { col, dataTypes: makeDataTypes() })).toBe(
-      'K must be a number'
-    )
+    expect(validateCellValue('abc', { col, dataTypes: makeDataTypes() })).toBe('K must be a number')
   })
 
   // ── Bounded ranges ───────────────────────────────────────────────────────
@@ -144,13 +142,13 @@ describe('validateCellValue', () => {
 
   it('flags value below min with the two-sided range message', () => {
     expect(validateCellValue('-100', { col: baseCol, dataTypes: makeDataTypes() })).toBe(
-      '°C must be in -50–50'
+      'Values should be between (-50–50)'
     )
   })
 
   it('flags value above max with the two-sided range message', () => {
     expect(validateCellValue('100', { col: baseCol, dataTypes: makeDataTypes() })).toBe(
-      '°C must be in -50–50'
+      'Values should be between (-50–50)'
     )
   })
 
@@ -159,7 +157,7 @@ describe('validateCellValue', () => {
   it('uses ≥ format when only min is set', () => {
     const col = { ...baseCol, unitId: 11 }
     expect(validateCellValue('-1', { col, dataTypes: makeDataTypes() })).toBe(
-      'K must be ≥ 0'
+      'Values should be ≥ 0'
     )
   })
 
@@ -171,7 +169,7 @@ describe('validateCellValue', () => {
   it('uses ≤ format when only max is set', () => {
     const col = { ...baseCol, unitId: 12 }
     expect(validateCellValue('150', { col, dataTypes: makeDataTypes() })).toBe(
-      '% must be ≤ 100'
+      'Values should be ≤ 100'
     )
   })
 

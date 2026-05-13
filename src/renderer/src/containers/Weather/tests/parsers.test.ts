@@ -1,5 +1,6 @@
 import {
   DATE_FORMATS,
+  DATETIME_FORMATS,
   DELIMITERS,
   detectDelimiter,
   detectHeaderLinesToSkip,
@@ -10,6 +11,7 @@ import {
   parseXml,
   toCsv,
   tryParseDate,
+  tryParseDateTime,
   tryParseTime,
   type DateTimeMapping,
   type ImportedDataset
@@ -152,6 +154,58 @@ describe('parseXml', () => {
       ['3', '', '4']
     ])
   })
+
+  it('normalizes XML-ish vendor tags like HH:MM and preserves original header names', () => {
+    const xml = `<?xml version='1.0' encoding='utf-8'?>
+      <WeatherData>
+        <Record>
+          <YYYYMMDD>20230713</YYYYMMDD>
+          <HH:MM>01:00</HH:MM>
+          <ISO_UTC>2023-07-13T01:00:00Z</ISO_UTC>
+        </Record>
+      </WeatherData>`
+    const r = parseXml(xml)
+    expect(r.headers).toEqual(['YYYYMMDD', 'HH:MM', 'ISO_UTC'])
+    expect(r.rows).toEqual([['20230713', '01:00', '2023-07-13T01:00:00Z']])
+  })
+
+  it('normalizes malformed XML declarations like version=1.0', () => {
+    const xml = `<?xml version=1.0?>
+      <helios>
+        <datapoint>
+          <dateJulian>190 2014</dateJulian>
+          <time>00 00 00</time>
+          <value>25.85</value>
+        </datapoint>
+      </helios>`
+    const r = parseXml(xml)
+    expect(r.headers).toEqual(['dateJulian', 'time', 'value'])
+    expect(r.rows).toEqual([['190 2014', '00 00 00', '25.85']])
+  })
+
+  it('descends into wrapper nodes like timeseries/datapoint to find real record headers', () => {
+    const xml = `<?xml version=1.0?>
+      <helios>
+        <timeseries label="temperature">
+          <datapoint>
+            <dateJulian>190 2014</dateJulian>
+            <time>00 00 00</time>
+            <value>25.85</value>
+          </datapoint>
+          <datapoint>
+            <dateJulian>190 2014</dateJulian>
+            <time>00 15 00</time>
+            <value>26.24</value>
+          </datapoint>
+        </timeseries>
+      </helios>`
+    const r = parseXml(xml)
+    expect(r.headers).toEqual(['dateJulian', 'time', 'value'])
+    expect(r.rows).toEqual([
+      ['190 2014', '00 00 00', '25.85'],
+      ['190 2014', '00 15 00', '26.24']
+    ])
+  })
 })
 
 // ── parseFile (front-door) ────────────────────────────────────────────────────
@@ -184,8 +238,20 @@ describe('parseFile', () => {
 // ── tryParseDate ──────────────────────────────────────────────────────────────
 
 describe('tryParseDate', () => {
+  it('parses compact YYYYMMDD', () => {
+    expect(tryParseDate('20260226', 'YYYYMMDD')).toEqual({ Y: 2026, M: 2, D: 26 })
+  })
+
   it('parses YYYY-MM-DD', () => {
     expect(tryParseDate('2026-02-26', 'YYYY-MM-DD')).toEqual({ Y: 2026, M: 2, D: 26 })
+  })
+
+  it('parses DD-MM-YYYY', () => {
+    expect(tryParseDate('26-02-2026', 'DD-MM-YYYY')).toEqual({ Y: 2026, M: 2, D: 26 })
+  })
+
+  it('parses MM-DD-YYYY', () => {
+    expect(tryParseDate('02-26-2026', 'MM-DD-YYYY')).toEqual({ Y: 2026, M: 2, D: 26 })
   })
 
   it('parses DD/MM/YYYY', () => {
@@ -200,6 +266,14 @@ describe('tryParseDate', () => {
     expect(tryParseDate('26.02.2026', 'DD.MM.YYYY')).toEqual({ Y: 2026, M: 2, D: 26 })
   })
 
+  it('parses YYYY DOY', () => {
+    expect(tryParseDate('2026 57', 'YYYY DOY')).toEqual({ Y: 2026, M: 2, D: 26 })
+  })
+
+  it('parses DOY YYYY', () => {
+    expect(tryParseDate('57 2026', 'DOY YYYY')).toEqual({ Y: 2026, M: 2, D: 26 })
+  })
+
   it('rejects 2-digit years (ambiguous)', () => {
     expect(tryParseDate('26/02/26', 'DD/MM/YYYY')).toBeNull()
   })
@@ -210,6 +284,10 @@ describe('tryParseDate', () => {
 
   it('rejects out-of-range days', () => {
     expect(tryParseDate('2026-01-32', 'YYYY-MM-DD')).toBeNull()
+  })
+
+  it('rejects impossible calendar dates', () => {
+    expect(tryParseDate('2026-02-30', 'YYYY-MM-DD')).toBeNull()
   })
 
   it('rejects empty input', () => {
@@ -229,22 +307,34 @@ describe('tryParseDate', () => {
 // ── tryParseTime ──────────────────────────────────────────────────────────────
 
 describe('tryParseTime', () => {
+  it('parses HH', () => {
+    expect(tryParseTime('14')).toEqual({ H: 14, M: 0, S: 0, rollover: false })
+  })
+
   it('parses HH:MM', () => {
-    expect(tryParseTime('14:30')).toEqual({ H: 14, M: 30 })
+    expect(tryParseTime('14:30')).toEqual({ H: 14, M: 30, S: 0, rollover: false })
   })
 
   it('parses HH MM (space separated)', () => {
-    expect(tryParseTime('14 30')).toEqual({ H: 14, M: 30 })
+    expect(tryParseTime('14 30')).toEqual({ H: 14, M: 30, S: 0, rollover: false })
   })
 
   it('parses HHMM (4 digits, no separator)', () => {
-    expect(tryParseTime('1430')).toEqual({ H: 14, M: 30 })
+    expect(tryParseTime('1430')).toEqual({ H: 14, M: 30, S: 0, rollover: false })
   })
 
   it('parses HMM (3 digits — CIMIS hour format)', () => {
-    expect(tryParseTime('100')).toEqual({ H: 1, M: 0 })
-    expect(tryParseTime('945')).toEqual({ H: 9, M: 45 })
-    expect(tryParseTime('200')).toEqual({ H: 2, M: 0 })
+    expect(tryParseTime('100')).toEqual({ H: 1, M: 0, S: 0, rollover: false })
+    expect(tryParseTime('945')).toEqual({ H: 9, M: 45, S: 0, rollover: false })
+    expect(tryParseTime('200')).toEqual({ H: 2, M: 0, S: 0, rollover: false })
+  })
+
+  it('parses HH:MM:SS', () => {
+    expect(tryParseTime('14:30:45')).toEqual({ H: 14, M: 30, S: 45, rollover: false })
+  })
+
+  it('parses HHMMSS', () => {
+    expect(tryParseTime('143045')).toEqual({ H: 14, M: 30, S: 45, rollover: false })
   })
 
   it('rejects HH.MM (dot separator not allowed)', () => {
@@ -263,16 +353,44 @@ describe('tryParseTime', () => {
     expect(tryParseTime('')).toBeNull()
   })
 
-  it('rejects HH:MM:SS (seconds not supported)', () => {
-    expect(tryParseTime('14:30:45')).toBeNull()
+  it('accepts 24:00 as next-day rollover', () => {
+    expect(tryParseTime('24:00')).toEqual({ H: 0, M: 0, S: 0, rollover: true })
   })
 
   it('accepts midnight as 0:00', () => {
-    expect(tryParseTime('0:00')).toEqual({ H: 0, M: 0 })
+    expect(tryParseTime('0:00')).toEqual({ H: 0, M: 0, S: 0, rollover: false })
   })
 
   it('accepts 23:59 (last valid time)', () => {
-    expect(tryParseTime('23:59')).toEqual({ H: 23, M: 59 })
+    expect(tryParseTime('23:59')).toEqual({ H: 23, M: 59, S: 0, rollover: false })
+  })
+})
+
+describe('tryParseDateTime', () => {
+  it('parses ISO-8601 UTC', () => {
+    const d = tryParseDateTime('2026-02-03T10:00:00Z', 'YYYY-MM-DDTHH:MM:SSZ')
+    expect(d).not.toBeNull()
+    expect(d?.getFullYear()).toBe(2026)
+    expect(d?.getHours()).toBe(10)
+  })
+
+  it('parses ISO-8601 with offset while preserving wall-clock time', () => {
+    const d = tryParseDateTime('2026-02-03T02:00:00-08:00', 'YYYY-MM-DDTHH:MM:SS-HH:MM')
+    expect(d).not.toBeNull()
+    expect(d?.getHours()).toBe(2)
+  })
+
+  it('parses compact YYYYMMDDHH', () => {
+    const d = tryParseDateTime('2026020310', 'YYYYMMDDHH')
+    expect(d).not.toBeNull()
+    expect(d?.getHours()).toBe(10)
+  })
+
+  it('parses DD/MM/YYYY HH:MM', () => {
+    const d = tryParseDateTime('03/02/2026 10:15', 'DD/MM/YYYY HH:MM')
+    expect(d).not.toBeNull()
+    expect(d?.getDate()).toBe(3)
+    expect(d?.getMinutes()).toBe(15)
   })
 })
 
@@ -318,6 +436,15 @@ describe('parseRowDateTime', () => {
     it('treats empty time as missing (defaults to 00:00, kind = ok)', () => {
       const r = parseRowDateTime(['26/02/2026', '', '22.5'], headers, 'group2', mapping, 'DD/MM/YYYY')
       expect(r.kind).toBe('ok')
+    })
+
+    it('rolls 24:00 into the next day', () => {
+      const r = parseRowDateTime(['26/02/2026', '24:00', '22.5'], headers, 'group2', mapping, 'DD/MM/YYYY')
+      expect(r.kind).toBe('ok')
+      if (r.kind === 'ok') {
+        expect(r.date.getDate()).toBe(27)
+        expect(r.date.getHours()).toBe(0)
+      }
     })
 
     it('accepts no time mapping at all (defaults to 00:00)', () => {
@@ -373,6 +500,38 @@ describe('parseRowDateTime', () => {
         expect(r.date.getHours()).toBe(0)
         expect(r.date.getMinutes()).toBe(0)
       }
+    })
+  })
+
+  describe('group3 (combined datetime)', () => {
+    const headers = ['Timestamp', 'temp']
+    const mapping: DateTimeMapping = {
+      ...INITIAL_MAPPING,
+      datetime: 'Timestamp'
+    }
+
+    it('returns ok for ISO timestamps', () => {
+      const r = parseRowDateTime(
+        ['2026-02-03T10:00:00Z', '22.5'],
+        headers,
+        'group3',
+        mapping,
+        'YYYY-MM-DD',
+        'YYYY-MM-DDTHH:MM:SSZ'
+      )
+      expect(r.kind).toBe('ok')
+    })
+
+    it('returns invalid_date for malformed combined datetime values', () => {
+      const r = parseRowDateTime(
+        ['not-a-datetime', '22.5'],
+        headers,
+        'group3',
+        mapping,
+        'YYYY-MM-DD',
+        'YYYY-MM-DDTHH:MM:SSZ'
+      )
+      expect(r.kind).toBe('invalid_date')
     })
   })
 })
@@ -447,8 +606,16 @@ describe('exported constants', () => {
 
   it('DATE_FORMATS includes both YYYY-MM-DD and DD/MM/YYYY', () => {
     const values = DATE_FORMATS.map((f) => f.value)
+    expect(values).toContain('YYYYMMDD')
     expect(values).toContain('YYYY-MM-DD')
     expect(values).toContain('DD/MM/YYYY')
+    expect(values).toContain('DOY YYYY')
+  })
+
+  it('DATETIME_FORMATS includes ISO and compact combined formats', () => {
+    const values = DATETIME_FORMATS.map((f) => f.value)
+    expect(values).toContain('YYYY-MM-DDTHH:MM:SSZ')
+    expect(values).toContain('YYYYMMDDHH')
   })
 
   it('INITIAL_MAPPING has every field as null', () => {

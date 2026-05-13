@@ -1,5 +1,6 @@
 import type {
   DateFormatKey,
+  DateTimeFormatKey,
   DateTimeMapping,
   DateTimeMode,
   ImportedDataset,
@@ -58,6 +59,8 @@ export interface StepDateTimeProps {
   onChangeMapping: (key: keyof DateTimeMapping, value: string | null) => void
   dateFormat: DateFormatKey
   onChangeDateFormat: (value: DateFormatKey) => void
+  datetimeFormat: DateTimeFormatKey
+  onChangeDateTimeFormat: (value: DateTimeFormatKey) => void
   stats: DateTimeStats
 }
 

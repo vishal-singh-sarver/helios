@@ -1,9 +1,9 @@
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import React from 'react'
-import { render, screen, fireEvent, waitFor, within, cleanup } from '@testing-library/react'
-import HomePage from '../index'
 import * as actions from '../actions'
-import type { RecentProjectItem } from '../types'
+import HomePage from '../index'
 import { initialState, type HomePageState } from '../reducer'
+import type { RecentProjectItem } from '../types'
 
 // ── Redux & injection hooks — mocked so the container runs without a real store ─
 //
@@ -355,7 +355,7 @@ describe('<HomePage />', () => {
     fireEvent.click(screen.getByTestId('menu-New Project'))
     const input = screen.getByTestId('input-latitude')
     fireEvent.change(input, { target: { value: '45.5' } })
-    expect(input).toHaveValue(45.5)
+    expect(input).toHaveValue('45.5')
   })
 
   it('updates longitude on input', () => {
@@ -363,7 +363,7 @@ describe('<HomePage />', () => {
     fireEvent.click(screen.getByTestId('menu-New Project'))
     const input = screen.getByTestId('input-longitude')
     fireEvent.change(input, { target: { value: '-122.6' } })
-    expect(input).toHaveValue(-122.6)
+    expect(input).toHaveValue('-122.6')
   })
 
   // ── Form validation — required ──
