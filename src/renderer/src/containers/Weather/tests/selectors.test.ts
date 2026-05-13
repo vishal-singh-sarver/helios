@@ -16,8 +16,15 @@ import makeSelectWeather, {
 import { initialState } from '../reducer'
 import type { ImportedDataset, PickedFile } from '../types'
 
-const withWeather = (partial: Partial<typeof initialState>) =>
-  ({ weather: { ...initialState, ...partial } }) as any
+const withWeather = (
+  partial: Partial<typeof initialState>,
+  projectId = 'proj-1',
+  scenarioId = 'sce-1'
+) =>
+  ({
+    weather: { ...initialState, ...partial },
+    projectScreen: { activeProjectId: projectId, activeScenarioId: scenarioId }
+  }) as any
 
 describe('selectWeatherDomain', () => {
   it('selects the weather slice', () => {
@@ -91,11 +98,30 @@ describe('individual selectors — Import', () => {
   })
 
   it('selectDataset', () => {
-    expect(selectDataset(withWeather({ dataset }))).toEqual(dataset)
+    expect(selectDataset(withWeather({ datasetsByScope: { 'proj-1::sce-1': dataset } }))).toEqual(
+      dataset
+    )
   })
 
   it('selectDataset returns null when no import has finished', () => {
     expect(selectDataset(withWeather({}))).toBeNull()
+  })
+
+  it('selectDataset stays scoped to the active project and scenario', () => {
+    expect(
+      selectDataset(
+        withWeather(
+          {
+            datasetsByScope: {
+              'proj-1::sce-1': dataset,
+              'proj-2::sce-2': { filename: 'other.csv', columns: [], records: [] }
+            }
+          },
+          'proj-2',
+          'sce-2'
+        )
+      )
+    ).toEqual({ filename: 'other.csv', columns: [], records: [] })
   })
 })
 

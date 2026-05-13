@@ -180,6 +180,7 @@ export interface LoadedScenarioPayload {
   scenarioId: string
   columns: ColumnDef[] // ordered as displayed
   rows: Array<Record<ColId, CellValue>> // null === NaN
+  precisionNormalized?: boolean
 }
 
 // ADD_ROW_REQUESTED — what the dialog dispatches and the saga POSTs.

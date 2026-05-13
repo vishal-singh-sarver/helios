@@ -1,8 +1,13 @@
+import { setActiveProject, setActiveScenario } from 'containers/ProjectScreen/actions'
+import type { GetProjectResponse } from 'containers/Weather/service'
+import { getProjectRequest } from 'containers/Weather/service'
 import { call, put, race, take, takeEvery, takeLatest, takeLeading } from 'redux-saga/effects'
+import { navigate } from 'store/navigationReducer'
 import { api, ApiError } from 'utils/api'
 import { API_ROUTES } from 'utils/constants'
 import type { SseMessage } from 'utils/sse'
 import { createSseChannel } from 'utils/sse'
+import { STORAGE_KEYS } from 'utils/storageKeys'
 import * as actions from './actions'
 import {
   CREATE_PROJECT,
@@ -62,6 +67,22 @@ export function* createProjectWorker(action: ReturnType<typeof actions.createPro
       action.payload
     )) as CreateProjectResponse
     yield put(actions.createProjectSuccess(response))
+    const projectResponse = (yield call(
+      getProjectRequest,
+      response.project_id
+    )) as GetProjectResponse
+
+    const firstScenarioId = projectResponse.project.scenarios[0]?.id ?? null
+
+    yield call([localStorage, 'setItem'], STORAGE_KEYS.activeProjectId, response.project_id)
+    yield put(setActiveProject(response.project_id))
+
+    if (firstScenarioId) {
+      yield call([localStorage, 'setItem'], STORAGE_KEYS.activeScenarioId, firstScenarioId)
+      yield put(setActiveScenario(firstScenarioId))
+    }
+
+    yield put(navigate('project'))
     // Refresh the Recent Projects list so the table reflects the new row
     // without the component having to orchestrate a follow-up dispatch.
     yield put(actions.fetchRecentProjects())

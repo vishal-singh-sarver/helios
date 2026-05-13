@@ -15,6 +15,11 @@ export const IMPORT_PICK_FILE_FAILED = 'app/Weather/IMPORT_PICK_FILE_FAILED' as 
 export const IMPORT_FINALIZE_REQUESTED = 'app/Weather/IMPORT_FINALIZE_REQUESTED' as const
 export const IMPORT_FINALIZE_SUCCEEDED = 'app/Weather/IMPORT_FINALIZE_SUCCEEDED' as const
 export const IMPORT_FINALIZE_FAILED = 'app/Weather/IMPORT_FINALIZE_FAILED' as const
+export const IMPORT_CLEAR_REQUESTED = 'app/Weather/IMPORT_CLEAR_REQUESTED' as const
+export const IMPORT_CLEAR_SUCCEEDED = 'app/Weather/IMPORT_CLEAR_SUCCEEDED' as const
+export const IMPORT_CLEAR_FAILED = 'app/Weather/IMPORT_CLEAR_FAILED' as const
+export const IMPORT_PRECISION_WARNING_CONSUMED =
+  'app/Weather/IMPORT_PRECISION_WARNING_CONSUMED' as const
 export const IMPORT_RESET = 'app/Weather/IMPORT_RESET' as const
 
 // Wizard open / close. Held in Redux so the saga can auto-close the wizard

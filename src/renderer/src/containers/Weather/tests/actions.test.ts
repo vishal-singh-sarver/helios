@@ -12,6 +12,10 @@ import {
   IMPORT_FINALIZE_REQUESTED,
   IMPORT_FINALIZE_SUCCEEDED,
   IMPORT_FINALIZE_FAILED,
+  IMPORT_CLEAR_REQUESTED,
+  IMPORT_CLEAR_SUCCEEDED,
+  IMPORT_CLEAR_FAILED,
+  IMPORT_PRECISION_WARNING_CONSUMED,
   IMPORT_RESET,
   IMPORT_WIZARD_CLOSED,
   IMPORT_WIZARD_OPENED
@@ -81,16 +85,30 @@ describe('Import actions', () => {
   })
 
   it('importFinalizeRequested carries the dataset', () => {
-    expect(actions.importFinalizeRequested(dataset)).toEqual({
+    expect(actions.importFinalizeRequested('proj-1', 'sce-1', dataset)).toEqual({
       type: IMPORT_FINALIZE_REQUESTED,
+      projectId: 'proj-1',
+      scenarioId: 'sce-1',
       payload: dataset
     })
   })
 
   it('importFinalizeSucceeded carries the dataset', () => {
-    expect(actions.importFinalizeSucceeded(dataset)).toEqual({
+    expect(actions.importFinalizeSucceeded('proj-1', 'sce-1', dataset)).toEqual({
       type: IMPORT_FINALIZE_SUCCEEDED,
+      projectId: 'proj-1',
+      scenarioId: 'sce-1',
       payload: dataset
+    })
+  })
+
+  it('importFinalizeSucceeded carries the precision-normalized flag when present', () => {
+    expect(actions.importFinalizeSucceeded('proj-1', 'sce-1', dataset, true)).toEqual({
+      type: IMPORT_FINALIZE_SUCCEEDED,
+      projectId: 'proj-1',
+      scenarioId: 'sce-1',
+      payload: dataset,
+      precisionNormalized: true
     })
   })
 
@@ -98,6 +116,37 @@ describe('Import actions', () => {
     expect(actions.importFinalizeFailed('save cancelled')).toEqual({
       type: IMPORT_FINALIZE_FAILED,
       payload: 'save cancelled'
+    })
+  })
+
+  it('importClearRequested has correct type', () => {
+    expect(actions.importClearRequested('proj-1', 'sce-1')).toEqual({
+      type: IMPORT_CLEAR_REQUESTED,
+      projectId: 'proj-1',
+      scenarioId: 'sce-1'
+    })
+  })
+
+  it('importClearSucceeded has correct type', () => {
+    expect(actions.importClearSucceeded('proj-1', 'sce-1')).toEqual({
+      type: IMPORT_CLEAR_SUCCEEDED,
+      projectId: 'proj-1',
+      scenarioId: 'sce-1'
+    })
+  })
+
+  it('importClearFailed carries error message', () => {
+    expect(actions.importClearFailed('boom')).toEqual({
+      type: IMPORT_CLEAR_FAILED,
+      payload: 'boom'
+    })
+  })
+
+  it('importPrecisionWarningConsumed carries scope ids', () => {
+    expect(actions.importPrecisionWarningConsumed('proj-1', 'sce-1')).toEqual({
+      type: IMPORT_PRECISION_WARNING_CONSUMED,
+      projectId: 'proj-1',
+      scenarioId: 'sce-1'
     })
   })
 

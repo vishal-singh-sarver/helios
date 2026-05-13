@@ -413,7 +413,8 @@ const projectScreenReducer = (
           if (!table.rows[rowId]) table.rows[rowId] = {}
           // Server stores NaN for newly-created cells until they're touched;
           // mirror that with `null` unless the user supplied a default value.
-          table.rows[rowId][column.id] = defaultValue === '' ? null : defaultValue
+          table.rows[rowId][column.id] =
+            defaultValue === '' || defaultValue.trim().toUpperCase() === 'NAN' ? null : defaultValue
         }
         break
       }

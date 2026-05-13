@@ -1,19 +1,23 @@
 import {
   FETCH_STATUS,
-  FETCH_STATUS_SUCCESS,
   FETCH_STATUS_FAILURE,
-  SSE_CONNECT,
-  SSE_EVENT,
-  SSE_DISCONNECT,
-  IMPORT_PICK_FILE_REQUESTED,
-  IMPORT_PICK_FILE_SUCCEEDED,
-  IMPORT_PICK_FILE_FAILED,
+  FETCH_STATUS_SUCCESS,
+  IMPORT_FINALIZE_FAILED,
   IMPORT_FINALIZE_REQUESTED,
   IMPORT_FINALIZE_SUCCEEDED,
-  IMPORT_FINALIZE_FAILED,
+  IMPORT_CLEAR_FAILED,
+  IMPORT_CLEAR_REQUESTED,
+  IMPORT_CLEAR_SUCCEEDED,
+  IMPORT_PRECISION_WARNING_CONSUMED,
+  IMPORT_PICK_FILE_FAILED,
+  IMPORT_PICK_FILE_REQUESTED,
+  IMPORT_PICK_FILE_SUCCEEDED,
   IMPORT_RESET,
+  IMPORT_WIZARD_CLOSED,
   IMPORT_WIZARD_OPENED,
-  IMPORT_WIZARD_CLOSED
+  SSE_CONNECT,
+  SSE_DISCONNECT,
+  SSE_EVENT
 } from './constants'
 import type { ImportedDataset, PickedFile, WeatherStatus, WeatherStreamEvent } from './types'
 
@@ -54,15 +58,40 @@ export type ImportPickFileFailedAction = {
 // Import — finalize (saga POST)
 export type ImportFinalizeRequestedAction = {
   type: typeof IMPORT_FINALIZE_REQUESTED
+  projectId: string
+  scenarioId: string
   payload: ImportedDataset
+  truncatedDecimals?: boolean
 }
 export type ImportFinalizeSucceededAction = {
   type: typeof IMPORT_FINALIZE_SUCCEEDED
+  projectId: string
+  scenarioId: string
   payload: ImportedDataset
+  precisionNormalized?: boolean
 }
 export type ImportFinalizeFailedAction = {
   type: typeof IMPORT_FINALIZE_FAILED
   payload: string
+}
+export type ImportClearRequestedAction = {
+  type: typeof IMPORT_CLEAR_REQUESTED
+  projectId: string
+  scenarioId: string
+}
+export type ImportClearSucceededAction = {
+  type: typeof IMPORT_CLEAR_SUCCEEDED
+  projectId: string
+  scenarioId: string
+}
+export type ImportClearFailedAction = {
+  type: typeof IMPORT_CLEAR_FAILED
+  payload: string
+}
+export type ImportPrecisionWarningConsumedAction = {
+  type: typeof IMPORT_PRECISION_WARNING_CONSUMED
+  projectId: string
+  scenarioId: string
 }
 
 // Reset both flows (e.g. wizard closed without finishing)
@@ -86,6 +115,10 @@ export type WeatherAction =
   | ImportFinalizeRequestedAction
   | ImportFinalizeSucceededAction
   | ImportFinalizeFailedAction
+  | ImportClearRequestedAction
+  | ImportClearSucceededAction
+  | ImportClearFailedAction
+  | ImportPrecisionWarningConsumedAction
   | ImportResetAction
   | ImportWizardOpenedAction
   | ImportWizardClosedAction
@@ -111,23 +144,70 @@ export const sseDisconnect = (): SseDisconnectAction => ({ type: SSE_DISCONNECT 
 export const importPickFileRequested = (): ImportPickFileRequestedAction => ({
   type: IMPORT_PICK_FILE_REQUESTED
 })
-export const importPickFileSucceeded = (
-  payload: PickedFile
-): ImportPickFileSucceededAction => ({ type: IMPORT_PICK_FILE_SUCCEEDED, payload })
+export const importPickFileSucceeded = (payload: PickedFile): ImportPickFileSucceededAction => ({
+  type: IMPORT_PICK_FILE_SUCCEEDED,
+  payload
+})
 export const importPickFileFailed = (payload: string): ImportPickFileFailedAction => ({
   type: IMPORT_PICK_FILE_FAILED,
   payload
 })
 
 export const importFinalizeRequested = (
-  payload: ImportedDataset
-): ImportFinalizeRequestedAction => ({ type: IMPORT_FINALIZE_REQUESTED, payload })
+  projectId: string,
+  scenarioId: string,
+  payload: ImportedDataset,
+  truncatedDecimals?: boolean
+): ImportFinalizeRequestedAction => ({
+  type: IMPORT_FINALIZE_REQUESTED,
+  projectId,
+  scenarioId,
+  payload,
+  truncatedDecimals
+})
 export const importFinalizeSucceeded = (
-  payload: ImportedDataset
-): ImportFinalizeSucceededAction => ({ type: IMPORT_FINALIZE_SUCCEEDED, payload })
+  projectId: string,
+  scenarioId: string,
+  payload: ImportedDataset,
+  precisionNormalized?: boolean
+): ImportFinalizeSucceededAction => ({
+  type: IMPORT_FINALIZE_SUCCEEDED,
+  projectId,
+  scenarioId,
+  payload,
+  precisionNormalized
+})
 export const importFinalizeFailed = (payload: string): ImportFinalizeFailedAction => ({
   type: IMPORT_FINALIZE_FAILED,
   payload
+})
+export const importClearRequested = (
+  projectId: string,
+  scenarioId: string
+): ImportClearRequestedAction => ({
+  type: IMPORT_CLEAR_REQUESTED,
+  projectId,
+  scenarioId
+})
+export const importClearSucceeded = (
+  projectId: string,
+  scenarioId: string
+): ImportClearSucceededAction => ({
+  type: IMPORT_CLEAR_SUCCEEDED,
+  projectId,
+  scenarioId
+})
+export const importClearFailed = (payload: string): ImportClearFailedAction => ({
+  type: IMPORT_CLEAR_FAILED,
+  payload
+})
+export const importPrecisionWarningConsumed = (
+  projectId: string,
+  scenarioId: string
+): ImportPrecisionWarningConsumedAction => ({
+  type: IMPORT_PRECISION_WARNING_CONSUMED,
+  projectId,
+  scenarioId
 })
 
 export const importReset = (): ImportResetAction => ({ type: IMPORT_RESET })

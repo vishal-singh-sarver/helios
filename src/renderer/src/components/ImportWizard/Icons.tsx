@@ -49,3 +49,11 @@ export const AlertTriangleIcon = (p: SvgProps): React.JSX.Element => (
     <line x1="12" y1="17" x2="12.01" y2="17" />
   </svg>
 )
+
+export const InfoIcon = (p: SvgProps): React.JSX.Element => (
+  <svg {...baseProps} {...p} viewBox="0 0 24 24" strokeWidth="2">
+    <circle cx="12" cy="12" r="9" />
+    <line x1="12" y1="10" x2="12" y2="16" />
+    <line x1="12" y1="7" x2="12.01" y2="7" />
+  </svg>
+)

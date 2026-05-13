@@ -1,4 +1,3 @@
-import React, { useCallback, useMemo, useState } from 'react'
 import {
   INITIAL_MAPPING,
   parseDelimited,
@@ -12,22 +11,27 @@ import {
   type ImportedDatasetRecord,
   type ParseResult
 } from 'containers/Weather/parsers'
+import React, { useCallback, useMemo, useState } from 'react'
+import { isValidNumber, truncateToMaxDecimals, wouldTruncateAny } from 'utils/decimalValidation'
 import { AlertTriangleIcon, ChevronLeftIcon, CloseIcon } from './Icons'
 import { GhostBtn, PrimaryBtn, SecondaryBtn } from './primitives'
-import Stepper, { STEPS } from './Stepper'
 import StepDataPreview from './StepDataPreview'
 import StepDateTime from './StepDateTime'
 import StepFilePreview from './StepFilePreview'
+import Stepper, { STEPS } from './Stepper'
 import StepReview from './StepReview'
 import type { DateTimeStats, ImportWizardProps } from './types'
 
-const GROUP1_KEYS: ReadonlyArray<keyof DateTimeMapping> = [
-  'year',
-  'month',
-  'day',
-  'hour',
-  'minute'
-]
+const GROUP1_KEYS: ReadonlyArray<keyof DateTimeMapping> = ['year', 'month', 'day', 'hour', 'minute']
+
+const IMPORT_DECIMAL_WARNING =
+  'Only 7 decimal places have been taken for decimal values as more are not allowed.'
+
+function isUnsupportedCharacterValue(value: string | undefined): boolean {
+  const trimmed = value?.trim() ?? ''
+  if (trimmed === '') return false
+  return !isValidNumber(trimmed)
+}
 
 const findHeaderByKeyword = (headers: string[], keywords: string[]): string | null => {
   const lower = headers.map((h) => h.toLowerCase())
@@ -40,6 +44,7 @@ function ImportWizard({
   onClose,
   onRequestPickFile,
   onSubmit,
+  onImportWarning,
   pickedFile,
   fileLoading,
   fileError,
@@ -67,33 +72,45 @@ function ImportWizard({
   // Parse on pickedFile change — runs during render so it doesn't trigger a
   // setState-in-effect cascade. React schedules an immediate re-render with
   // the new state without flushing the in-progress one to DOM.
-  if (pickedFile !== lastSeenPickedFile) {
-    setLastSeenPickedFile(pickedFile)
-    if (pickedFile) {
-      setFilename(pickedFile.filename)
-      try {
-        const result = parseFile(pickedFile.filename, pickedFile.rawText)
-        setParsed(result)
-        setParseError(null)
+  React.useEffect(() => {
+    if (pickedFile !== lastSeenPickedFile) {
+      setLastSeenPickedFile(pickedFile)
 
-        const auto: DateTimeMapping = {
-          year: findHeaderByKeyword(result.headers, ['year']),
-          month: findHeaderByKeyword(result.headers, ['month']),
-          day: findHeaderByKeyword(result.headers, ['day']),
-          hour: findHeaderByKeyword(result.headers, ['hour']),
-          minute: findHeaderByKeyword(result.headers, ['minute']),
-          date: findHeaderByKeyword(result.headers, ['date']),
-          time: findHeaderByKeyword(result.headers, ['time'])
+      if (pickedFile) {
+        setFilename(pickedFile.filename)
+
+        try {
+          const result = parseFile(pickedFile.filename, pickedFile.rawText)
+
+          setParsed(result)
+          setParseError(null)
+
+          onImportWarning(null)
+
+          const auto: DateTimeMapping = {
+            year: findHeaderByKeyword(result.headers, ['year']),
+            month: findHeaderByKeyword(result.headers, ['month']),
+            day: findHeaderByKeyword(result.headers, ['day']),
+            hour: findHeaderByKeyword(result.headers, ['hour']),
+            minute: findHeaderByKeyword(result.headers, ['minute']),
+            date: findHeaderByKeyword(result.headers, ['date']),
+            time: findHeaderByKeyword(result.headers, ['time'])
+          }
+
+          setMapping(auto)
+
+          if (auto.year && auto.month && auto.day) {
+            setMode('group1')
+          } else if (auto.date) {
+            setMode('group2')
+          }
+        } catch (err) {
+          setParseError((err as Error).message)
+          setParsed(null)
         }
-        setMapping(auto)
-        if (auto.year && auto.month && auto.day) setMode('group1')
-        else if (auto.date) setMode('group2')
-      } catch (err) {
-        setParseError((err as Error).message)
-        setParsed(null)
       }
     }
-  }
+  }, [pickedFile, lastSeenPickedFile, onImportWarning])
 
   // Re-parse delimited input when delimiter changes (step 2).
   const handleChangeDelimiter = useCallback(
@@ -159,6 +176,15 @@ function ImportWizard({
     return GROUP1_KEYS.map((k) => mapping[k]).filter((v): v is string => v !== null)
   }, [mode, mapping])
 
+  const disabledColumnIndices = useMemo(() => {
+    if (!parsed) return []
+    const dtSet = new Set(dtColumns)
+    return parsed.headers.flatMap((header, index) => {
+      if (dtSet.has(header)) return []
+      return parsed.rows.some((row) => isUnsupportedCharacterValue(row[index])) ? [index] : []
+    })
+  }, [parsed, dtColumns])
+
   // Allow proceed as long as required date dropdowns are filled and at least
   // one row produces a usable Date. Time is optional — invalid time doesn't
   // block Next.
@@ -187,19 +213,29 @@ function ImportWizard({
     // keyword (case-insensitive), even if the user didn't map it. The
     // synthetic "Date-Time" is encoded into each value's {date,time} fields,
     // so these columns would be redundant in the payload.
-    const DT_NAME_KEYWORDS = new Set([
-      'year',
-      'month',
-      'day',
-      'hour',
-      'minute',
-      'date',
-      'time'
-    ])
+    const DT_NAME_KEYWORDS = new Set(['year', 'month', 'day', 'hour', 'minute', 'date', 'time'])
     const isDtName = (h: string): boolean => DT_NAME_KEYWORDS.has(h.trim().toLowerCase())
+    const disabledSet = new Set(disabledColumnIndices)
     const keptIndices = parsed.headers
       .map((h, i) => ({ h, i }))
-      .filter(({ h, i }) => !dtSet.has(h) && !isDtName(h) && columnSelection[i] !== false)
+      .filter(
+        ({ h, i }) =>
+          !dtSet.has(h) && !isDtName(h) && !disabledSet.has(i) && columnSelection[i] !== false
+      )
+
+    // Pre-check: determine if ANY values would need truncation
+    // by collecting all relevant values and checking them
+    let truncatedAnyDecimals = false
+    const allRelevantValues: string[] = []
+    for (const row of parsed.rows) {
+      for (const { i } of keptIndices) {
+        const val = String(row[i] ?? '').trim()
+        if (val) allRelevantValues.push(val)
+      }
+    }
+    if (wouldTruncateAny(allRelevantValues)) {
+      truncatedAnyDecimals = true
+    }
 
     // Synthetic "check" column — always added on import, defaults to true for
     // every record. Lets downstream tools include/exclude rows after import.
@@ -222,7 +258,9 @@ function ImportWizard({
       // Backend stores `check` as 0/1 strings, not 'true'/'false'.
       const values: Record<string, string> = { __check__: '1' }
       for (const { h, i } of keptIndices) {
-        values[`${i}__${h}`] = row[i] ?? ''
+        const rawValue = row[i] ?? ''
+        const normalized = truncateToMaxDecimals(String(rawValue))
+        values[`${i}__${h}`] = normalized.value
       }
       return {
         dtIso: dt ? dt.toISOString() : null,
@@ -245,8 +283,20 @@ function ImportWizard({
       columns,
       records
     }
-    onSubmit(dataset)
-  }, [parsed, parsedDateTimes, dtColumns, columnSelection, filename, pickedFile, onSubmit])
+
+    onImportWarning(truncatedAnyDecimals ? IMPORT_DECIMAL_WARNING : null)
+    onSubmit(dataset, truncatedAnyDecimals)
+  }, [
+    parsed,
+    parsedDateTimes,
+    dtColumns,
+    disabledColumnIndices,
+    columnSelection,
+    filename,
+    onImportWarning,
+    pickedFile,
+    onSubmit
+  ])
 
   const canGoNext = ((): boolean => {
     if (!parsed) return false
@@ -314,9 +364,7 @@ function ImportWizard({
                 mode={mode}
                 onChangeMode={setMode}
                 mapping={mapping}
-                onChangeMapping={(k, v) =>
-                  setMapping((current) => ({ ...current, [k]: v }))
-                }
+                onChangeMapping={(k, v) => setMapping((current) => ({ ...current, [k]: v }))}
                 dateFormat={dateFormat}
                 onChangeDateFormat={setDateFormat}
                 stats={dtStats}
@@ -328,8 +376,22 @@ function ImportWizard({
                 parsedDateTimes={parsedDateTimes}
                 dtColumns={dtColumns}
                 columnSelection={columnSelection}
+                disabledColumnIndices={disabledColumnIndices}
                 onToggleColumn={(i) =>
                   setColumnSelection((s) => ({ ...s, [i]: s[i] === false ? true : false }))
+                }
+                onToggleAll={(checked) =>
+                  setColumnSelection(() => {
+                    const next: Record<number, boolean> = {}
+                    parsed.headers.forEach((header, index) => {
+                      const isDateTimeColumn = dtColumns.includes(header)
+                      const isDisabled = disabledColumnIndices.includes(index)
+                      if (!isDateTimeColumn && !isDisabled) {
+                        next[index] = checked
+                      }
+                    })
+                    return next
+                  })
                 }
               />
             )}
@@ -349,10 +411,7 @@ function ImportWizard({
           <div className="flex items-center justify-between px-6 py-4">
             <div>
               {stepIdx > 0 && !importing && (
-                <GhostBtn
-                  onClick={handleBack}
-                  leftIcon={<ChevronLeftIcon className="h-4 w-4" />}
-                >
+                <GhostBtn onClick={handleBack} leftIcon={<ChevronLeftIcon className="h-4 w-4" />}>
                   Back
                 </GhostBtn>
               )}

@@ -6,6 +6,7 @@ import {
   loadDataRequest,
   loadDataTypesRequest,
   loadHeadersRequest,
+  normalizeWireCellValue,
   patchHeaderRequest,
   toCellValue,
   updateColumnsRequest,
@@ -250,6 +251,11 @@ describe('toCellValue', () => {
     expect(toCellValue(-3.14)).toBe('-3.14')
   })
 
+  it('normalizes backend float artifacts to 7 decimals', () => {
+    expect(toCellValue(0.009999999776482582)).toBe('0.0099999')
+    expect(toCellValue(1.7999999523162842)).toBe('1.7999999')
+  })
+
   it('returns null for non-finite numbers (NaN, Infinity)', () => {
     expect(toCellValue(Number.NaN)).toBeNull()
     expect(toCellValue(Number.POSITIVE_INFINITY)).toBeNull()
@@ -259,5 +265,21 @@ describe('toCellValue', () => {
   it('returns strings verbatim', () => {
     expect(toCellValue('hello')).toBe('hello')
     expect(toCellValue('')).toBe('')
+  })
+})
+
+describe('normalizeWireCellValue', () => {
+  it('reports when a backend numeric value had to be truncated', () => {
+    expect(normalizeWireCellValue(0.009999999776482582)).toEqual({
+      value: '0.0099999',
+      truncated: true
+    })
+  })
+
+  it('preserves non-numeric strings without truncation', () => {
+    expect(normalizeWireCellValue('hello')).toEqual({
+      value: 'hello',
+      truncated: false
+    })
   })
 })

@@ -3,7 +3,6 @@ import { api } from 'utils/api'
 import { API_ROUTES } from 'utils/constants'
 import { createSseChannel } from 'utils/sse'
 import type { SseMessage } from 'utils/sse'
-import { STORAGE_KEYS } from 'utils/storageKeys'
 import { loadScenarioRequested } from 'containers/ProjectScreen/actions'
 import {
   LOAD_DATA_TYPES_FAILED,
@@ -17,13 +16,18 @@ import {
 } from 'containers/ProjectScreen/selectors'
 import {
   CHECK_COL_NAME,
+  DATE_COL_ID,
   DATE_TIME_COL_NAME,
+  TIME_COL_ID,
+  type LoadedScenarioPayload,
   type LoadStatus
 } from 'containers/ProjectScreen/types'
+import { truncateToMaxDecimals } from 'utils/decimalValidation'
 import * as actions from './actions'
 import type { ImportFinalizeRequestedAction } from './actions'
 import {
   FETCH_STATUS,
+  IMPORT_CLEAR_REQUESTED,
   IMPORT_FINALIZE_REQUESTED,
   IMPORT_PICK_FILE_REQUESTED,
   SSE_CONNECT,
@@ -142,16 +146,85 @@ const matchScenarioAction = (
 ) => (a: { type: string; payload?: { scenarioId?: string } }): boolean =>
   a.type === type && a.payload?.scenarioId === scenarioId
 
+function areEquivalentImportedValues(left: string, right: string | null | undefined): boolean {
+  const leftTrimmed = left.trim()
+  const rightTrimmed = (right ?? '').trim()
+  const leftNum = Number(leftTrimmed)
+  const rightNum = Number(rightTrimmed)
+
+  if (
+    leftTrimmed !== '' &&
+    rightTrimmed !== '' &&
+    Number.isFinite(leftNum) &&
+    Number.isFinite(rightNum)
+  ) {
+    return leftNum === rightNum
+  }
+
+  return leftTrimmed === rightTrimmed
+}
+
+function backendAdjustedImportedValues(
+  dataset: ImportedDataset,
+  loaded: LoadedScenarioPayload | undefined
+): boolean {
+  if (!loaded) return false
+
+  const colIdByName = new Map<string, string>()
+  for (const col of loaded.columns) {
+    colIdByName.set(col.name, col.id)
+  }
+
+  const rowByDateTime = new Map<string, Record<string, string | null>>()
+  for (const row of loaded.rows) {
+    const date = row[DATE_COL_ID]
+    const time = row[TIME_COL_ID]
+    if (date != null && time != null) {
+      rowByDateTime.set(`${date} ${time}`, row)
+    }
+  }
+
+  for (const record of dataset.records) {
+    if (record.dtIso == null) continue
+    const key = `${fmtDate(record.dtIso)} ${fmtTime(record.dtIso)}`
+    const loadedRow = rowByDateTime.get(key)
+    if (!loadedRow) continue
+
+    for (const col of dataset.columns) {
+      if (col.key === '__check__') continue
+      const loadedColId = colIdByName.get(col.label)
+      if (!loadedColId) continue
+      const importedValue = record.values[col.key] ?? ''
+      const loadedValue = loadedRow[loadedColId]
+      if (!areEquivalentImportedValues(importedValue, loadedValue)) {
+        return true
+      }
+    }
+  }
+
+  return false
+}
+
 export function* finalizeImportWorker(action: ImportFinalizeRequestedAction): Generator {
   try {
-    const projectId = localStorage.getItem(STORAGE_KEYS.activeProjectId)
-    const scenarioId = localStorage.getItem(STORAGE_KEYS.activeScenarioId)
-    if (!projectId || !scenarioId) {
-      yield put(actions.importFinalizeFailed('No active project or scenario'))
-      return
-    }
+    const { projectId, scenarioId } = action
 
-    const dataset: ImportedDataset = action.payload
+    // Safety-net normalization: the wizard already truncates imported
+    // decimals to 7 places, but we normalize again here so every frontend
+    // import path stays aligned with backend precision rules.
+    const originalDataset: ImportedDataset = action.payload
+    const dataset: ImportedDataset = {
+      ...originalDataset,
+      records: originalDataset.records.map((record) => ({
+        ...record,
+        values: Object.fromEntries(
+          Object.entries(record.values).map(([key, value]) => [
+            key,
+            truncateToMaxDecimals(String(value ?? '')).value
+          ])
+        )
+      }))
+    }
 
     // Step 0 — wipe any existing weather data for this scenario so the new
     // import doesn't collide with stale columns/rows. Idempotent on empty
@@ -232,7 +305,7 @@ export function* finalizeImportWorker(action: ImportFinalizeRequestedAction): Ge
       succeeded: take(matchScenarioAction(LOAD_SCENARIO_SUCCEEDED, scenarioId)),
       failed: take(matchScenarioAction(LOAD_SCENARIO_FAILED, scenarioId))
     })) as {
-      succeeded?: { payload: { scenarioId: string } }
+      succeeded?: { payload: LoadedScenarioPayload }
       failed?: { payload: { scenarioId: string; error: string } }
     }
 
@@ -245,9 +318,47 @@ export function* finalizeImportWorker(action: ImportFinalizeRequestedAction): Ge
       return
     }
 
-    yield put(actions.importFinalizeSucceeded(dataset))
+    const backendAdjusted = backendAdjustedImportedValues(originalDataset, raceResult.succeeded?.payload)
+    yield put(
+      actions.importFinalizeSucceeded(
+        projectId,
+        scenarioId,
+        dataset,
+        Boolean(raceResult.succeeded?.payload.precisionNormalized) || backendAdjusted
+      )
+    )
   } catch (err) {
     yield put(actions.importFinalizeFailed((err as Error).message))
+  }
+}
+
+export function* clearImportedDataWorker(action: actions.ImportClearRequestedAction): Generator {
+  try {
+    const { projectId, scenarioId } = action
+
+    yield call(api.delete, API_ROUTES.weather.clearData(projectId, scenarioId))
+    yield put(loadScenarioRequested(projectId, scenarioId))
+
+    const raceResult = (yield race({
+      succeeded: take(matchScenarioAction(LOAD_SCENARIO_SUCCEEDED, scenarioId)),
+      failed: take(matchScenarioAction(LOAD_SCENARIO_FAILED, scenarioId))
+    })) as {
+      succeeded?: { payload: { scenarioId: string } }
+      failed?: { payload: { scenarioId: string; error: string } }
+    }
+
+    if (raceResult.failed) {
+      yield put(
+        actions.importClearFailed(
+          `Cleared imported data, but failed to refresh data: ${raceResult.failed.payload.error}`
+        )
+      )
+      return
+    }
+
+    yield put(actions.importClearSucceeded(projectId, scenarioId))
+  } catch (err) {
+    yield put(actions.importClearFailed((err as Error).message))
   }
 }
 
@@ -258,4 +369,5 @@ export default function* weatherSaga(): Generator {
   yield takeLatest(SSE_CONNECT, sseWorker)
   yield takeLatest(IMPORT_PICK_FILE_REQUESTED, pickFileWorker)
   yield takeLeading(IMPORT_FINALIZE_REQUESTED, finalizeImportWorker)
+  yield takeLeading(IMPORT_CLEAR_REQUESTED, clearImportedDataWorker)
 }

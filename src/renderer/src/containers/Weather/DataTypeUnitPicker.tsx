@@ -30,9 +30,7 @@ function DataTypeUnitPicker({
   onPatch
 }: DataTypeUnitPickerProps): React.JSX.Element {
   const [open, setOpen] = React.useState(false)
-  const [view, setView] = React.useState<'type' | 'unit'>(
-    col.dataTypeId == null ? 'type' : 'unit'
-  )
+  const [view, setView] = React.useState<'type' | 'unit'>(col.dataTypeId == null ? 'type' : 'unit')
   const wrapRef = React.useRef<HTMLDivElement>(null)
 
   React.useEffect(() => {
@@ -96,7 +94,9 @@ function DataTypeUnitPicker({
         className="flex w-full items-center justify-between gap-1 rounded border border-app-border bg-dark px-2 py-1 text-xs text-neutral-200 outline-none hover:border-neutral-500 focus:border-neutral-500"
       >
         <span className="truncate">{buttonLabel}</span>
-        <span aria-hidden className="text-neutral-400">▾</span>
+        <span aria-hidden className="text-neutral-400">
+          ▾
+        </span>
       </button>
       {open && (
         <div
