@@ -35,6 +35,8 @@ const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/
 
 const MAX_ROWS = 10_000
 const MAX_DELTA_HOURS = 24 * 365
+const WHOLE_NUMBER_PATTERN = /^\d+$/
+const WHOLE_NUMBER_INPUT_PATTERN = /^\d*$/
 
 const CalendarIcon = (
   <img src={calendarIcon} alt="" aria-hidden="true" className="h-4 w-4" />
@@ -51,6 +53,15 @@ function openPicker(input: HTMLInputElement | null): void {
   } else {
     input.focus()
     input.click()
+  }
+}
+
+function keepWholeNumberInput(
+  formik: ReturnType<typeof useFormik<AddRowsValues>>
+): (e: React.ChangeEvent<HTMLInputElement>) => void {
+  return (e) => {
+    if (!WHOLE_NUMBER_INPUT_PATTERN.test(e.target.value)) return
+    formik.handleChange(e)
   }
 }
 
@@ -104,8 +115,8 @@ function AddRowsDialog({ isOpen, onClose }: AddRowsDialogProps): React.JSX.Eleme
         errors.numberOfRows = 'Number of rows is required.'
       } else {
         const n = Number.parseInt(values.numberOfRows, 10)
-        if (Number.isNaN(n) || n <= 0) {
-          errors.numberOfRows = 'Number of rows must be a positive integer.'
+        if (Number.isNaN(n) || n <= 0 || !WHOLE_NUMBER_PATTERN.test(values.numberOfRows)) {
+          errors.numberOfRows = 'Number of rows must be a positive whole number.'
         } else if (n > MAX_ROWS) {
           errors.numberOfRows = `Number of rows must be ${MAX_ROWS} or fewer.`
         }
@@ -125,11 +136,7 @@ function AddRowsDialog({ isOpen, onClose }: AddRowsDialogProps): React.JSX.Eleme
         errors.deltaHours = 'Delta is required.'
       } else {
         const dh = Number.parseInt(values.deltaHours, 10)
-        if (
-          Number.isNaN(dh) ||
-          dh <= 0 ||
-          !/^\d+$/.test(values.deltaHours.trim())
-        ) {
+        if (Number.isNaN(dh) || dh <= 0 || !WHOLE_NUMBER_PATTERN.test(values.deltaHours)) {
           errors.deltaHours = 'Delta must be a positive whole number of hours.'
         } else if (dh > MAX_DELTA_HOURS) {
           errors.deltaHours = `Delta must be ${MAX_DELTA_HOURS} hours or fewer.`
@@ -178,7 +185,8 @@ function AddRowsDialog({ isOpen, onClose }: AddRowsDialogProps): React.JSX.Eleme
         labelProps={{ label: 'Number of Rows' }}
         inputProps={{
           ...formik.getFieldProps('numberOfRows'),
-          type: 'number',
+          type: 'text',
+          onChange: keepWholeNumberInput(formik),
           error:
             formik.touched.numberOfRows || formik.values.numberOfRows !== ''
               ? (formik.errors.numberOfRows as string | undefined)
@@ -227,7 +235,8 @@ function AddRowsDialog({ isOpen, onClose }: AddRowsDialogProps): React.JSX.Eleme
         labelProps={{ label: 'Delta (hours)' }}
         inputProps={{
           ...formik.getFieldProps('deltaHours'),
-          type: 'number',
+          type: 'text',
+          onChange: keepWholeNumberInput(formik),
           error:
             formik.touched.deltaHours || formik.values.deltaHours !== ''
               ? (formik.errors.deltaHours as string | undefined)

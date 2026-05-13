@@ -9,7 +9,6 @@ import {
   normalizeWireCellValue,
   patchHeaderRequest,
   updateProjectRequest,
-  toCellValue,
   updateCellRequest,
   updateColumnsRequest,
   type AddColumnResponse,

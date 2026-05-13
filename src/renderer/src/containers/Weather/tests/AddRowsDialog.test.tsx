@@ -146,13 +146,20 @@ describe('<AddRowsDialog />', () => {
     )
   })
 
-  it('shows a positive-integer error when numberOfRows is 0', async () => {
+  it('shows a positive whole-number error when numberOfRows is 0', async () => {
     render(<AddRowsDialog isOpen onClose={vi.fn()} />)
     fireEvent.change(screen.getByTestId('input-numberOfRows'), { target: { value: '0' } })
     fireEvent.blur(screen.getByTestId('input-numberOfRows'))
     await waitFor(() =>
-      expect(screen.getByTestId('error-numberOfRows')).toHaveTextContent('positive integer')
+      expect(screen.getByTestId('error-numberOfRows')).toHaveTextContent('positive whole number')
     )
+  })
+
+  it('does not input decimal values for numberOfRows', () => {
+    render(<AddRowsDialog isOpen onClose={vi.fn()} />)
+    const input = screen.getByTestId('input-numberOfRows')
+    fireEvent.change(input, { target: { value: '1.5' } })
+    expect(input).toHaveValue('')
   })
 
   it('shows a max-rows error above 10000', async () => {
