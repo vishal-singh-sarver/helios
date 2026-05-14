@@ -34,7 +34,7 @@ const INITIAL_VALUES: AddRowsValues = {
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/
 
 const MAX_ROWS = 10_000
-const MAX_DELTA_HOURS = 24 * 365
+const MAX_DELTA_HOURS = 24 
 const WHOLE_NUMBER_PATTERN = /^\d+$/
 const WHOLE_NUMBER_INPUT_PATTERN = /^\d*$/
 

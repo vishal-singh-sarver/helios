@@ -4,6 +4,7 @@ import {
   addColumnRequest,
   addColumnsRequest,
   addRowsRequest,
+  deleteHeaderRequest,
   getProjectRequest,
   loadDataRequest,
   loadDataTypesRequest,
@@ -17,6 +18,7 @@ import * as actions from '../actions'
 import {
   ADD_COLUMN_REQUESTED,
   ADD_ROW_REQUESTED,
+  DELETE_COLUMN_REQUESTED,
   LIST_SCENARIOS_REQUESTED,
   LOAD_DATA_TYPES_REQUESTED,
   LOAD_SCENARIO_REQUESTED,
@@ -59,6 +61,7 @@ describe('projectScreenSaga (root watcher)', () => {
       ADD_ROW_REQUESTED,
       ADD_COLUMN_REQUESTED,
       UPDATE_COLUMN_REQUESTED,
+      DELETE_COLUMN_REQUESTED,
       UPDATE_ALL_CHECKBOXES_REQUESTED,
       UPDATE_CELL_LOCAL
     ]
@@ -634,6 +637,60 @@ describe('updateColumnWorker', () => {
     gen.next()
     expect(gen.throw(new Error('rejected')).value).toEqual(
       put(actions.updateColumnFailed(PROJ, SCN, '7', previous, 'rejected'))
+    )
+  })
+})
+
+// ── deleteColumnWorker ───────────────────────────────────────────────────────
+
+describe('deleteColumnWorker', () => {
+  const snapshot = {
+    column: { id: '7', name: 'temp', dataTypeId: 1, unitId: 2 },
+    index: 2,
+    rowValues: {},
+    validationErrors: {},
+    cellSync: {}
+  }
+
+  it('DELETEs the numeric header id and dispatches succeeded', () => {
+    const action = actions.deleteColumnRequested(PROJ, SCN, '7', snapshot)
+    function* worker(): Generator {
+      const headerId = Number(action.payload.colId)
+      yield call(deleteHeaderRequest, PROJ, SCN, headerId)
+      yield put(actions.deleteColumnSucceeded(PROJ, SCN, '7'))
+    }
+    const gen = worker()
+    expect(gen.next().value).toEqual(call(deleteHeaderRequest, PROJ, SCN, 7))
+    expect(gen.next().value).toEqual(put(actions.deleteColumnSucceeded(PROJ, SCN, '7')))
+  })
+
+  it('dispatches deleteColumnFailed for non-numeric colIds', () => {
+    function* worker(): Generator {
+      const headerId = Number('date')
+      if (!Number.isFinite(headerId) || headerId <= 0) {
+        yield put(
+          actions.deleteColumnFailed(PROJ, SCN, 'date', snapshot, 'Column has no header id')
+        )
+      }
+    }
+    const gen = worker()
+    expect(gen.next().value).toEqual(
+      put(actions.deleteColumnFailed(PROJ, SCN, 'date', snapshot, 'Column has no header id'))
+    )
+  })
+
+  it('on DELETE failure: dispatches deleteColumnFailed with the snapshot for rollback', () => {
+    function* worker(): Generator {
+      try {
+        yield call(deleteHeaderRequest, PROJ, SCN, 7)
+      } catch (err) {
+        yield put(actions.deleteColumnFailed(PROJ, SCN, '7', snapshot, (err as Error).message))
+      }
+    }
+    const gen = worker()
+    gen.next()
+    expect(gen.throw(new Error('rejected')).value).toEqual(
+      put(actions.deleteColumnFailed(PROJ, SCN, '7', snapshot, 'rejected'))
     )
   })
 })

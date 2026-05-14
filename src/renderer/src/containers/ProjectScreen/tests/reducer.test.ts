@@ -436,6 +436,74 @@ describe('projectScreenReducer', () => {
     })
   })
 
+  describe('delete column header (optimistic + rollback)', () => {
+    const snapshotForLoadedColumn = () => ({
+      column: { ...sampleColumns[2] },
+      index: 2,
+      rowValues: {
+        row_0: '293.1',
+        row_1: '294.2'
+      },
+      validationErrors: {
+        row_0: 'too high',
+        row_1: undefined
+      },
+      cellSync: {
+        [cellKey('row_0', '7')]: 'pending' as const
+      }
+    })
+
+    it('DELETE_COLUMN_REQUESTED removes the column, cell values, validation errors and sync state', () => {
+      let seed = projectScreenReducer(
+        loaded(),
+        actions.setColumnValidationErrors(SCN, '7', { row_0: 'too high' })
+      )
+      seed = projectScreenReducer(
+        seed,
+        actions.updateCellLocal({
+          projectId: PROJ,
+          scenarioId: SCN,
+          rowId: 'row_0',
+          colId: '7',
+          value: '300',
+          validationError: null
+        })
+      )
+
+      const result = projectScreenReducer(
+        seed,
+        actions.deleteColumnRequested(PROJ, SCN, '7', snapshotForLoadedColumn())
+      )
+      const table = result.byScenario[SCN]
+      expect(table.columnOrder).toEqual(['date', 'time'])
+      expect(table.columns['7']).toBeUndefined()
+      expect(table.rows.row_0['7']).toBeUndefined()
+      expect(table.rows.row_1['7']).toBeUndefined()
+      expect(table.validationErrors.row_0?.['7']).toBeUndefined()
+      expect(table.cellSync[cellKey('row_0', '7')]).toBeUndefined()
+    })
+
+    it('DELETE_COLUMN_FAILED restores the removed column from the snapshot', () => {
+      const snapshot = snapshotForLoadedColumn()
+      const deleted = projectScreenReducer(
+        loaded(),
+        actions.deleteColumnRequested(PROJ, SCN, '7', snapshot)
+      )
+
+      const result = projectScreenReducer(
+        deleted,
+        actions.deleteColumnFailed(PROJ, SCN, '7', snapshot, 'rejected')
+      )
+      const table = result.byScenario[SCN]
+      expect(table.columnOrder).toEqual(['date', 'time', '7'])
+      expect(table.columns['7']).toEqual(sampleColumns[2])
+      expect(table.rows.row_0['7']).toBe('293.1')
+      expect(table.rows.row_1['7']).toBe('294.2')
+      expect(table.validationErrors.row_0['7']).toBe('too high')
+      expect(table.cellSync[cellKey('row_0', '7')]).toBe('pending')
+    })
+  })
+
   describe('cell edit', () => {
     it('UPDATE_CELL_LOCAL with no validation error writes value and marks pending', () => {
       const result = projectScreenReducer(

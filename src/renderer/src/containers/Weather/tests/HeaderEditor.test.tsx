@@ -46,24 +46,44 @@ describe('<HeaderEditor />', () => {
     cleanup()
   })
 
+  const renderEditor = (
+    props: Partial<React.ComponentProps<typeof HeaderEditor>> = {}
+  ): ReturnType<typeof render> =>
+    render(
+      <HeaderEditor
+        col={baseCol}
+        dataTypes={dataTypes}
+        onPatch={vi.fn()}
+        onDelete={vi.fn()}
+        {...props}
+      />
+    )
+
   it('renders the column name in the input', () => {
-    render(<HeaderEditor col={baseCol} dataTypes={dataTypes} onPatch={vi.fn()} />)
+    renderEditor()
     expect(screen.getByRole('textbox', { name: 'Column 1 name' })).toHaveValue('Air Temp')
   })
 
   it('renders the picker with the column wired through', () => {
-    render(<HeaderEditor col={baseCol} dataTypes={dataTypes} onPatch={vi.fn()} />)
+    renderEditor()
     expect(screen.getByTestId('picker')).toHaveAttribute('data-col-id', '1')
   })
 
   it('renders the delete button', () => {
-    render(<HeaderEditor col={baseCol} dataTypes={dataTypes} onPatch={vi.fn()} />)
+    renderEditor()
     expect(screen.getByRole('button', { name: 'Delete column 1' })).toBeInTheDocument()
+  })
+
+  it('calls onDelete when the delete button is clicked', () => {
+    const onDelete = vi.fn()
+    renderEditor({ onDelete })
+    fireEvent.click(screen.getByRole('button', { name: 'Delete column 1' }))
+    expect(onDelete).toHaveBeenCalledTimes(1)
   })
 
   it('updates the local name draft on change without committing', () => {
     const onPatch = vi.fn()
-    render(<HeaderEditor col={baseCol} dataTypes={dataTypes} onPatch={onPatch} />)
+    renderEditor({ onPatch })
     const input = screen.getByRole('textbox', { name: 'Column 1 name' })
     fireEvent.change(input, { target: { value: 'Renamed' } })
     expect(input).toHaveValue('Renamed')
@@ -72,7 +92,7 @@ describe('<HeaderEditor />', () => {
 
   it('commits a trimmed name patch on blur', () => {
     const onPatch = vi.fn()
-    render(<HeaderEditor col={baseCol} dataTypes={dataTypes} onPatch={onPatch} />)
+    renderEditor({ onPatch })
     const input = screen.getByRole('textbox', { name: 'Column 1 name' })
     fireEvent.change(input, { target: { value: '  Renamed  ' } })
     fireEvent.blur(input)
@@ -81,7 +101,7 @@ describe('<HeaderEditor />', () => {
 
   it('does not commit when blur leaves the name unchanged', () => {
     const onPatch = vi.fn()
-    render(<HeaderEditor col={baseCol} dataTypes={dataTypes} onPatch={onPatch} />)
+    renderEditor({ onPatch })
     const input = screen.getByRole('textbox', { name: 'Column 1 name' })
     fireEvent.blur(input)
     expect(onPatch).not.toHaveBeenCalled()
@@ -89,7 +109,7 @@ describe('<HeaderEditor />', () => {
 
   it('does not commit and reverts the draft when blurred while empty', () => {
     const onPatch = vi.fn()
-    render(<HeaderEditor col={baseCol} dataTypes={dataTypes} onPatch={onPatch} />)
+    renderEditor({ onPatch })
     const input = screen.getByRole('textbox', { name: 'Column 1 name' })
     fireEvent.change(input, { target: { value: '   ' } })
     fireEvent.blur(input)
@@ -98,14 +118,13 @@ describe('<HeaderEditor />', () => {
   })
 
   it('re-syncs the draft when col.name changes externally (rollback)', () => {
-    const { rerender } = render(
-      <HeaderEditor col={baseCol} dataTypes={dataTypes} onPatch={vi.fn()} />
-    )
+    const { rerender } = renderEditor()
     rerender(
       <HeaderEditor
         col={{ ...baseCol, name: 'External' }}
         dataTypes={dataTypes}
         onPatch={vi.fn()}
+        onDelete={vi.fn()}
       />
     )
     expect(screen.getByRole('textbox', { name: 'Column 1 name' })).toHaveValue('External')

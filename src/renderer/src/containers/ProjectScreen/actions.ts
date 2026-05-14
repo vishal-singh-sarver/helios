@@ -2,6 +2,9 @@ import {
   ADD_COLUMN_FAILED,
   ADD_COLUMN_REQUESTED,
   ADD_COLUMN_SUCCEEDED,
+  DELETE_COLUMN_FAILED,
+  DELETE_COLUMN_REQUESTED,
+  DELETE_COLUMN_SUCCEEDED,
   ADD_ROW_FAILED,
   ADD_ROW_REQUESTED,
   ADD_ROW_SUCCEEDED,
@@ -49,6 +52,7 @@ import type {
   ColId,
   ColumnDef,
   DataTypeDef,
+  DeleteColumnSnapshot,
   LoadedScenarioPayload,
   ProjectMetadata,
   RowId,
@@ -223,6 +227,26 @@ export interface UpdateColumnFailedAction extends Idx {
   payload: UpdateColumnFailedPayload
 }
 
+// Delete column header (DELETE /weather_data_header/{header_id})
+export interface DeleteColumnRequestedAction extends Idx {
+  type: typeof DELETE_COLUMN_REQUESTED
+  payload: { projectId: string; scenarioId: string; colId: ColId; snapshot: DeleteColumnSnapshot }
+}
+export interface DeleteColumnSucceededAction extends Idx {
+  type: typeof DELETE_COLUMN_SUCCEEDED
+  payload: { projectId: string; scenarioId: string; colId: ColId }
+}
+export interface DeleteColumnFailedAction extends Idx {
+  type: typeof DELETE_COLUMN_FAILED
+  payload: {
+    projectId: string
+    scenarioId: string
+    colId: ColId
+    snapshot: DeleteColumnSnapshot
+    error: string
+  }
+}
+
 // Cell edit
 export interface UpdateCellLocalAction extends Idx {
   type: typeof UPDATE_CELL_LOCAL
@@ -306,6 +330,9 @@ export type ProjectScreenAction =
   | UpdateColumnRequestedAction
   | UpdateColumnSucceededAction
   | UpdateColumnFailedAction
+  | DeleteColumnRequestedAction
+  | DeleteColumnSucceededAction
+  | DeleteColumnFailedAction
   | UpdateCellLocalAction
   | UpdateCellRequestedAction
   | UpdateCellSucceededAction
@@ -545,6 +572,34 @@ export const updateColumnFailed = (
 ): UpdateColumnFailedAction => ({
   type: UPDATE_COLUMN_FAILED,
   payload: { projectId, scenarioId, colId, previous, error }
+})
+
+export const deleteColumnRequested = (
+  projectId: string,
+  scenarioId: string,
+  colId: ColId,
+  snapshot: DeleteColumnSnapshot
+): DeleteColumnRequestedAction => ({
+  type: DELETE_COLUMN_REQUESTED,
+  payload: { projectId, scenarioId, colId, snapshot }
+})
+export const deleteColumnSucceeded = (
+  projectId: string,
+  scenarioId: string,
+  colId: ColId
+): DeleteColumnSucceededAction => ({
+  type: DELETE_COLUMN_SUCCEEDED,
+  payload: { projectId, scenarioId, colId }
+})
+export const deleteColumnFailed = (
+  projectId: string,
+  scenarioId: string,
+  colId: ColId,
+  snapshot: DeleteColumnSnapshot,
+  error: string
+): DeleteColumnFailedAction => ({
+  type: DELETE_COLUMN_FAILED,
+  payload: { projectId, scenarioId, colId, snapshot, error }
 })
 
 export const updateCellLocal = (payload: UpdateCellLocalPayload): UpdateCellLocalAction => ({

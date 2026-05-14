@@ -2,6 +2,7 @@ import {
   addColumnRequest,
   addColumnsRequest,
   addRowsRequest,
+  deleteHeaderRequest,
   getProjectRequest,
   loadDataRequest,
   loadDataTypesRequest,
@@ -28,6 +29,7 @@ import { STORAGE_KEYS } from 'utils/storageKeys'
 import type {
   AddColumnRequestedAction,
   AddRowRequestedAction,
+  DeleteColumnRequestedAction,
   ListScenariosRequestedAction,
   LoadScenarioRequestedAction,
   SeedDefaultColumnsRequestedAction,
@@ -39,6 +41,7 @@ import * as actions from './actions'
 import {
   ADD_COLUMN_REQUESTED,
   ADD_ROW_REQUESTED,
+  DELETE_COLUMN_REQUESTED,
   LIST_SCENARIOS_REQUESTED,
   LOAD_DATA_TYPES_FAILED,
   LOAD_DATA_TYPES_REQUESTED,
@@ -531,6 +534,33 @@ function* updateColumnWorker(action: UpdateColumnRequestedAction): Generator {
   }
 }
 
+// ── Delete column header ────────────────────────────────────────────────────
+//
+// DELETE /weather_data_header/{header_id}. The reducer removes the column
+// optimistically on _REQUESTED; this worker confirms with the backend or
+// asks the reducer to restore the caller's snapshot on failure.
+
+function* deleteColumnWorker(action: DeleteColumnRequestedAction): Generator {
+  const { projectId, scenarioId, colId, snapshot } = action.payload
+
+  const headerId = Number(colId)
+  if (!Number.isFinite(headerId) || headerId <= 0) {
+    yield put(
+      actions.deleteColumnFailed(projectId, scenarioId, colId, snapshot, 'Column has no header id')
+    )
+    return
+  }
+
+  try {
+    yield call(deleteHeaderRequest, projectId, scenarioId, headerId)
+    yield put(actions.deleteColumnSucceeded(projectId, scenarioId, colId))
+  } catch (err) {
+    yield put(
+      actions.deleteColumnFailed(projectId, scenarioId, colId, snapshot, (err as Error).message)
+    )
+  }
+}
+
 // Walk every row of one column, validating against the catalog's per-unit
 // range. Bails when the catalog hasn't loaded or the column has been
 // removed. Same shape used by loadScenarioWorker (via revalidateScenarioColumns)
@@ -632,6 +662,7 @@ export default function* projectScreenSaga(): Generator {
   yield takeLatest(ADD_ROW_REQUESTED, addRowWorker)
   yield takeLatest(ADD_COLUMN_REQUESTED, addColumnWorker)
   yield takeEvery(UPDATE_COLUMN_REQUESTED, updateColumnWorker)
+  yield takeEvery(DELETE_COLUMN_REQUESTED, deleteColumnWorker)
   yield takeEvery(UPDATE_CELL_LOCAL, updateCellWorker)
   yield takeLatest(UPDATE_ALL_CHECKBOXES_REQUESTED, updateAllCheckboxesWorker)
 }

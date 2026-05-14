@@ -2,6 +2,7 @@ import {
   addColumnRequest,
   addColumnsRequest,
   addRowsRequest,
+  deleteHeaderRequest,
   getProjectRequest,
   loadDataRequest,
   loadDataTypesRequest,
@@ -33,12 +34,14 @@ const mockedApi = api as unknown as {
   get: ReturnType<typeof vi.fn>
   post: ReturnType<typeof vi.fn>
   patch: ReturnType<typeof vi.fn>
+  delete: ReturnType<typeof vi.fn>
 }
 
 beforeEach(() => {
   mockedApi.get.mockReset()
   mockedApi.post.mockReset()
   mockedApi.patch.mockReset()
+  mockedApi.delete.mockReset()
 })
 
 describe('loadDataTypesRequest', () => {
@@ -163,9 +166,7 @@ describe('addColumnsRequest (bulk)', () => {
   it('throws when count of returned columns differs from request', async () => {
     mockedApi.post.mockResolvedValueOnce({ success: true, columns: [] })
     await expect(
-      addColumnsRequest('p1', 's1', [
-        { name: 'a', dataTypeId: null, dataUnitId: null, values: [] }
-      ])
+      addColumnsRequest('p1', 's1', [{ name: 'a', dataTypeId: null, dataUnitId: null, values: [] }])
     ).rejects.toBeInstanceOf(ApiError)
   })
 })
@@ -174,10 +175,19 @@ describe('patchHeaderRequest', () => {
   it('PATCHes the header route with the body', async () => {
     mockedApi.patch.mockResolvedValueOnce('ok')
     await patchHeaderRequest('p1', 's1', 7, { name: 'renamed' })
-    expect(mockedApi.patch).toHaveBeenCalledWith(
-      API_ROUTES.weather.headerPatch('p1', 's1', 7),
-      { name: 'renamed' }
-    )
+    expect(mockedApi.patch).toHaveBeenCalledWith(API_ROUTES.weather.headerPatch('p1', 's1', 7), {
+      name: 'renamed'
+    })
+  })
+})
+
+describe('deleteHeaderRequest', () => {
+  it('DELETEs the header route', async () => {
+    const payload = { success: true, header_id: 7 }
+    mockedApi.delete.mockResolvedValueOnce(payload)
+    const res = await deleteHeaderRequest('p1', 's1', 7)
+    expect(mockedApi.delete).toHaveBeenCalledWith(API_ROUTES.weather.headerDelete('p1', 's1', 7))
+    expect(res).toBe(payload)
   })
 })
 
@@ -229,10 +239,9 @@ describe('updateCellRequest', () => {
       value: '42'
     }
     await updateCellRequest('p1', 's1', body)
-    expect(mockedApi.patch).toHaveBeenCalledWith(
-      API_ROUTES.weather.update('p1', 's1'),
-      { updates: [body] }
-    )
+    expect(mockedApi.patch).toHaveBeenCalledWith(API_ROUTES.weather.update('p1', 's1'), {
+      updates: [body]
+    })
   })
 })
 

@@ -275,6 +275,21 @@ export function patchHeaderRequest(
   )
 }
 
+export interface DeleteHeaderResponse {
+  success: boolean
+  header_id: number
+}
+
+export function deleteHeaderRequest(
+  projectId: string,
+  scenarioId: string,
+  headerId: number
+): Promise<DeleteHeaderResponse> {
+  return api.delete<DeleteHeaderResponse>(
+    API_ROUTES.weather.headerDelete(projectId, scenarioId, headerId)
+  )
+}
+
 // ── Add rows ─────────────────────────────────────────────────────────────────
 //
 // POST /api/weather/.../addRow takes a fully-built rows[] array. The saga
@@ -329,9 +344,10 @@ export function updateCellRequest(
 
 // ── Helpers used by the load saga to coerce wire shapes ──────────────────────
 
-export function normalizeWireCellValue(
-  raw: string | number | null | undefined
-): { value: CellValue; truncated: boolean } {
+export function normalizeWireCellValue(raw: string | number | null | undefined): {
+  value: CellValue
+  truncated: boolean
+} {
   if (raw == null) return { value: null, truncated: false }
   if (typeof raw === 'number') {
     if (!Number.isFinite(raw)) return { value: null, truncated: false }

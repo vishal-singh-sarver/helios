@@ -1,5 +1,6 @@
 import deleteIcon from '@renderer/assets/delete.svg'
 import {
+  deleteColumnRequested,
   setAllRowsSelection,
   setRowSelection,
   updateAllCheckboxesRequested,
@@ -14,6 +15,7 @@ import {
   isReservedColId,
   type CellValue,
   type ColumnDef,
+  type DeleteColumnSnapshot,
   type UpdateColumnPatch
 } from 'containers/ProjectScreen/types'
 import React from 'react'
@@ -139,6 +141,25 @@ function WeatherTable(): React.JSX.Element {
     dispatch(updateColumnRequested(projectId, scenarioId, col.id, patch, previous))
   }
 
+  const dispatchHeaderDelete = (col: ColumnDef): void => {
+    if (!projectId || !scenarioId || !table) return
+    const snapshot: DeleteColumnSnapshot = {
+      column: { ...col },
+      index: table.columnOrder.indexOf(col.id),
+      rowValues: {},
+      validationErrors: {},
+      cellSync: {}
+    }
+    for (const rowId of table.rowOrder) {
+      snapshot.rowValues[rowId] = table.rows[rowId]?.[col.id]
+      snapshot.validationErrors[rowId] = table.validationErrors[rowId]?.[col.id]
+    }
+    for (const [key, status] of Object.entries(table.cellSync)) {
+      if (key.endsWith(`:${col.id}`)) snapshot.cellSync[key] = status
+    }
+    dispatch(deleteColumnRequested(projectId, scenarioId, col.id, snapshot))
+  }
+
   const dateTimeColId = React.useMemo(() => {
     for (const colId of Object.keys(columns)) {
       if (columns[colId]?.name === DATE_TIME_COL_NAME) return colId
@@ -251,6 +272,7 @@ function WeatherTable(): React.JSX.Element {
                         col={col}
                         dataTypes={dataTypes}
                         onPatch={(patch) => dispatchHeaderPatch(col, patch)}
+                        onDelete={() => dispatchHeaderDelete(col)}
                       />
                     ) : isDateTime ? (
                       <DateTimeHeader value={dateFormat} onChange={setDateFormat} />

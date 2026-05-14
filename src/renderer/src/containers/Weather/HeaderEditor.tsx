@@ -18,9 +18,10 @@ interface HeaderEditorProps {
   col: ColumnDef
   dataTypes: DataTypeDef[]
   onPatch: (patch: UpdateColumnPatch) => void
+  onDelete: () => void
 }
 
-function HeaderEditor({ col, dataTypes, onPatch }: HeaderEditorProps): React.JSX.Element {
+function HeaderEditor({ col, dataTypes, onPatch, onDelete }: HeaderEditorProps): React.JSX.Element {
   const [nameDraft, setNameDraft] = React.useState(col.name)
   const [nameError, setNameError] = React.useState<string | null>(null)
   // Re-sync when the canonical column name changes (rollback, external update).
@@ -30,10 +31,7 @@ function HeaderEditor({ col, dataTypes, onPatch }: HeaderEditorProps): React.JSX
   }, [col.name])
 
   const currentDataType = React.useMemo(
-    () =>
-      col.dataTypeId == null
-        ? undefined
-        : dataTypes.find((dt) => dt.id === col.dataTypeId),
+    () => (col.dataTypeId == null ? undefined : dataTypes.find((dt) => dt.id === col.dataTypeId)),
     [dataTypes, col.dataTypeId]
   )
 
@@ -61,7 +59,7 @@ function HeaderEditor({ col, dataTypes, onPatch }: HeaderEditorProps): React.JSX
     const trimmed = nameDraft.trim()
     const error = validateColumnName(trimmed)
     setNameError(error)
-    
+
     if (error || trimmed === col.name) {
       setNameDraft(col.name)
       return
@@ -84,9 +82,7 @@ function HeaderEditor({ col, dataTypes, onPatch }: HeaderEditorProps): React.JSX
               : 'border-app-border focus:border-neutral-500'
           }`}
         />
-        {nameError && (
-          <p className="pt-1 text-xs text-red-500">{nameError}</p>
-        )}
+        {nameError && <p className="pt-1 text-xs text-red-500">{nameError}</p>}
       </div>
       <div className="flex items-center gap-1">
         <DataTypeUnitPicker
@@ -99,6 +95,7 @@ function HeaderEditor({ col, dataTypes, onPatch }: HeaderEditorProps): React.JSX
         <button
           type="button"
           aria-label={`Delete column ${col.id}`}
+          onClick={onDelete}
           className="shrink-0 rounded p-1 hover:bg-neutral-800"
         >
           <img src={deleteIcon} alt="" className="h-4 w-4" />

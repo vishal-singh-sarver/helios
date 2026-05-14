@@ -4,6 +4,9 @@ import {
   ADD_COLUMN_FAILED,
   ADD_COLUMN_REQUESTED,
   ADD_COLUMN_SUCCEEDED,
+  DELETE_COLUMN_FAILED,
+  DELETE_COLUMN_REQUESTED,
+  DELETE_COLUMN_SUCCEEDED,
   ADD_ROW_FAILED,
   ADD_ROW_REQUESTED,
   ADD_ROW_SUCCEEDED,
@@ -452,6 +455,62 @@ const projectScreenReducer = (
         if (previous.name !== undefined) col.name = previous.name
         if (previous.dataTypeId !== undefined) col.dataTypeId = previous.dataTypeId
         if (previous.unitId !== undefined) col.unitId = previous.unitId
+        break
+      }
+
+      // ── Delete column header (DELETE) ─────────────────────────────────────
+      //
+      // Optimistic: remove the column and all of its table-local cells/errors
+      // on request. If the backend rejects, restore the snapshot captured by
+      // the dispatcher.
+
+      case DELETE_COLUMN_REQUESTED: {
+        const { scenarioId, colId } = action.payload
+        const table = draft.byScenario[scenarioId]
+        if (!table?.columns[colId]) break
+
+        table.columnOrder = table.columnOrder.filter((id) => id !== colId)
+        delete table.columns[colId]
+        for (const rowId of table.rowOrder) {
+          delete table.rows[rowId]?.[colId]
+          if (table.validationErrors[rowId]) {
+            delete table.validationErrors[rowId][colId]
+          }
+        }
+        for (const key of Object.keys(table.cellSync)) {
+          if (key.endsWith(`:${colId}`)) delete table.cellSync[key]
+        }
+        break
+      }
+
+      case DELETE_COLUMN_SUCCEEDED:
+        break
+
+      case DELETE_COLUMN_FAILED: {
+        const { scenarioId, colId, snapshot } = action.payload
+        const table = draft.byScenario[scenarioId]
+        if (!table || table.columns[colId]) break
+
+        table.columns[colId] = { ...snapshot.column }
+        const boundedIndex =
+          snapshot.index < 0
+            ? table.columnOrder.length
+            : Math.min(snapshot.index, table.columnOrder.length)
+        table.columnOrder.splice(boundedIndex, 0, colId)
+
+        for (const rowId of table.rowOrder) {
+          const value = snapshot.rowValues[rowId]
+          if (value !== undefined) {
+            if (!table.rows[rowId]) table.rows[rowId] = {}
+            table.rows[rowId][colId] = value
+          }
+          const error = snapshot.validationErrors[rowId]
+          if (error !== undefined) {
+            if (!table.validationErrors[rowId]) table.validationErrors[rowId] = {}
+            table.validationErrors[rowId][colId] = error
+          }
+        }
+        Object.assign(table.cellSync, snapshot.cellSync)
         break
       }
 

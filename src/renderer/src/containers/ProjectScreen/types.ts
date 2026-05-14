@@ -255,6 +255,14 @@ export interface UpdateColumnFailedPayload {
   error: string
 }
 
+export interface DeleteColumnSnapshot {
+  column: ColumnDef
+  index: number
+  rowValues: Record<RowId, CellValue | undefined>
+  validationErrors: Record<RowId, string | undefined>
+  cellSync: Record<string, CellSyncStatus>
+}
+
 export interface UpdateCellLocalPayload {
   projectId: string
   scenarioId: string
