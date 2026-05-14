@@ -40,6 +40,14 @@ const messages = {
     body: 'Are you sure you want to delete this? This action cannot be undone.',
     confirmButton: 'Delete',
     cancelButton: 'Cancel'
+  },
+
+  deleteColumn: {
+    dialogTitle: 'Delete',
+    heading: (name: string) => `Delete ${name}`,
+    body: 'Are you sure you want to delete this column? This action cannot be undone.',
+    confirmButton: 'Delete',
+    cancelButton: 'Cancel'
   }
 } as const
 

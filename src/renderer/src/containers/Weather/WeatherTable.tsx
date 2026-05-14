@@ -1,4 +1,5 @@
 import deleteIcon from '@renderer/assets/delete.svg'
+import Dialog from '@renderer/components/Dialog'
 import {
   deleteColumnRequested,
   setAllRowsSelection,
@@ -23,6 +24,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import CellInput from './CellInput'
 import DateTimeHeader, { type DateFormat } from './DateTimeHeader'
 import HeaderEditor from './HeaderEditor'
+import messages from './messages'
 import {
   selectActiveProject,
   selectActiveProjectId,
@@ -100,6 +102,7 @@ function WeatherTable(): React.JSX.Element {
   const dataTypes = useSelector(selectSelectableDataTypes)
   const activeProject = useSelector(selectActiveProject)
   const [dateFormat, setDateFormat] = React.useState<DateFormat>('MM/DD/YYYY HH:MM')
+  const [pendingDeleteColumn, setPendingDeleteColumn] = React.useState<ColumnDef | null>(null)
 
   const toggleAll = (): void => {
     if (!scenarioId) return
@@ -141,7 +144,17 @@ function WeatherTable(): React.JSX.Element {
     dispatch(updateColumnRequested(projectId, scenarioId, col.id, patch, previous))
   }
 
-  const dispatchHeaderDelete = (col: ColumnDef): void => {
+  const handleRequestHeaderDelete = (col: ColumnDef): void => {
+    setPendingDeleteColumn(col)
+  }
+
+  const handleCancelHeaderDelete = (): void => {
+    setPendingDeleteColumn(null)
+  }
+
+  const handleConfirmHeaderDelete = (): void => {
+    if (!pendingDeleteColumn) return
+    const col = columns[pendingDeleteColumn.id] ?? pendingDeleteColumn
     if (!projectId || !scenarioId || !table) return
     const snapshot: DeleteColumnSnapshot = {
       column: { ...col },
@@ -158,6 +171,7 @@ function WeatherTable(): React.JSX.Element {
       if (key.endsWith(`:${col.id}`)) snapshot.cellSync[key] = status
     }
     dispatch(deleteColumnRequested(projectId, scenarioId, col.id, snapshot))
+    setPendingDeleteColumn(null)
   }
 
   const dateTimeColId = React.useMemo(() => {
@@ -272,7 +286,7 @@ function WeatherTable(): React.JSX.Element {
                         col={col}
                         dataTypes={dataTypes}
                         onPatch={(patch) => dispatchHeaderPatch(col, patch)}
-                        onDelete={() => dispatchHeaderDelete(col)}
+                        onDelete={() => handleRequestHeaderDelete(col)}
                       />
                     ) : isDateTime ? (
                       <DateTimeHeader value={dateFormat} onChange={setDateFormat} />
@@ -379,6 +393,34 @@ function WeatherTable(): React.JSX.Element {
           </tbody>
         </table>
       </div>
+
+      <Dialog
+        isOpen={pendingDeleteColumn !== null}
+        title={messages.deleteColumn.dialogTitle}
+        onClose={handleCancelHeaderDelete}
+      >
+        <h3 className="text-base font-medium text-white">
+          {pendingDeleteColumn ? messages.deleteColumn.heading(pendingDeleteColumn.name) : ''}
+        </h3>
+        <p className="text-sm text-neutral-400">{messages.deleteColumn.body}</p>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <button
+            type="button"
+            onClick={handleCancelHeaderDelete}
+            className="rounded bg-neutral-200 px-3 py-1 text-sm text-black hover:bg-neutral-100"
+          >
+            {messages.deleteColumn.cancelButton}
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirmHeaderDelete}
+            className="rounded bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-500"
+          >
+            {messages.deleteColumn.confirmButton}
+          </button>
+        </div>
+      </Dialog>
     </div>
   )
 }
