@@ -34,17 +34,13 @@ const INITIAL_VALUES: AddRowsValues = {
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/
 
 const MAX_ROWS = 10_000
-const MAX_DELTA_HOURS = 24 
+const MAX_DELTA_HOURS = 24
 const WHOLE_NUMBER_PATTERN = /^\d+$/
 const WHOLE_NUMBER_INPUT_PATTERN = /^\d*$/
 
-const CalendarIcon = (
-  <img src={calendarIcon} alt="" aria-hidden="true" className="h-4 w-4" />
-)
+const CalendarIcon = <img src={calendarIcon} alt="" aria-hidden="true" className="h-4 w-4" />
 
-const ClockIcon = (
-  <img src={clockIcon} alt="" aria-hidden="true" className="h-4 w-4" />
-)
+const ClockIcon = <img src={clockIcon} alt="" aria-hidden="true" className="h-4 w-4" />
 
 function openPicker(input: HTMLInputElement | null): void {
   if (!input) return
@@ -193,22 +189,33 @@ function AddRowsDialog({ isOpen, onClose }: AddRowsDialogProps): React.JSX.Eleme
               : undefined
         }}
       />
-      <FormField
-        labelProps={{ label: 'Start Date' }}
-        inputProps={{
-          ...formik.getFieldProps('startDate'),
-          type: 'date',
-          placeholder: 'Start Date',
-          iconLeft: CalendarIcon,
-          inputRef: startDateRef,
-          onIconLeftClick: () => openPicker(startDateRef.current),
-          error:
-            formik.touched.startDate || formik.values.startDate !== ''
-              ? (formik.errors.startDate as string | undefined)
-              : undefined
-        }}
-      />
-      <div ref={timePickerContainerRef} className="relative">
+      <div className="relative">
+        <FormField
+          labelProps={{ label: 'Start Date' }}
+          inputProps={{
+            ...formik.getFieldProps('startDate'),
+            type: 'date',
+            placeholder: 'Start Date',
+            iconLeft: CalendarIcon,
+            inputRef: startDateRef,
+            onIconLeftClick: () => openPicker(startDateRef.current),
+            error:
+              formik.touched.startDate || formik.values.startDate !== ''
+                ? (formik.errors.startDate as string | undefined)
+                : undefined
+          }}
+        />
+
+        <style>
+          {`
+      input[type='date']::-webkit-calendar-picker-indicator {
+        display: none;
+        -webkit-appearance: none;
+      }
+    `}
+        </style>
+      </div>
+      <div ref={timePickerContainerRef} className="relative overflow-visible">
         <FormField
           labelProps={{ label: 'Start Time' }}
           inputProps={{
@@ -227,7 +234,11 @@ function AddRowsDialog({ isOpen, onClose }: AddRowsDialogProps): React.JSX.Eleme
         {isTimePickerOpen && (
           <TimePicker24
             value={formik.values.startTime}
-            onChange={(v) => formik.setFieldValue('startTime', v)}
+            listClassName="h-24"
+            onChange={(v) => {
+              formik.setFieldValue('startTime', v)
+              setIsTimePickerOpen(false)
+            }}
           />
         )}
       </div>
