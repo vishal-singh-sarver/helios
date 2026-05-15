@@ -1,7 +1,10 @@
 import { getProjectRequest } from '@renderer/containers/Weather/service'
+import { setActiveProject } from 'containers/ProjectScreen/actions'
 import { call, put, takeEvery, takeLatest, takeLeading } from 'redux-saga/effects'
+import { navigate } from 'store/navigationReducer'
 import { api, ApiError } from 'utils/api'
 import { API_ROUTES } from 'utils/constants'
+import { STORAGE_KEYS } from 'utils/storageKeys'
 import * as actions from '../actions'
 import {
   CREATE_PROJECT,
@@ -68,15 +71,19 @@ describe('createProjectWorker', () => {
 
     expect(gen.next().value).toEqual(call(getProjectRequest, 'uuid-1'))
 
-    expect(gen.next().value).toEqual(put(actions.fetchRecentProjects()))
-    expect(
-      gen.next({
-        project: {
-          id: 'uuid-1'
-        }
-      }).value
-    ).toEqual(put(actions.fetchRecentProjects()))
+    const projectResponse = {
+      project: {
+        id: 'uuid-1',
+        scenarios: []
+      }
+    }
+    expect(gen.next(projectResponse).value).toEqual(
+      call([localStorage, 'setItem'], STORAGE_KEYS.activeProjectId, 'uuid-1')
+    )
 
+    expect(gen.next().value).toEqual(put(setActiveProject('uuid-1')))
+    expect(gen.next().value).toEqual(put(navigate('project')))
+    expect(gen.next().value).toEqual(put(actions.fetchRecentProjects()))
     expect(gen.next().done).toBe(true)
   })
 

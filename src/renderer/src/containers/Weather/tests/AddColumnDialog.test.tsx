@@ -225,7 +225,7 @@ describe('<AddColumnDialog />', () => {
     expect(screen.getByTestId('ff-defaultValue')).toBeInTheDocument()
   })
 
-  it('pre-fills the default value with "0"', () => {
+  it('leaves the default value empty', () => {
     render(<AddColumnDialog isOpen onClose={vi.fn()} />)
     expect(screen.getByTestId('input-defaultValue')).toHaveValue('')
   })
@@ -271,13 +271,13 @@ describe('<AddColumnDialog />', () => {
     )
   })
 
-  it('shows a length error when name exceeds 50 characters', async () => {
+  it('shows a length error when name exceeds 30 characters', async () => {
     render(<AddColumnDialog isOpen onClose={vi.fn()} />)
     const input = screen.getByTestId('input-parameterName')
-    fireEvent.change(input, { target: { value: 'A'.repeat(51) } })
+    fireEvent.change(input, { target: { value: 'A'.repeat(31) } })
     await waitFor(() =>
       expect(screen.getByTestId('error-parameterName')).toHaveTextContent(
-        'Column name must be 50 characters or fewer.'
+        'Column name must have 30 characters or fewer.'
       )
     )
   })
@@ -300,6 +300,7 @@ describe('<AddColumnDialog />', () => {
     render(<AddColumnDialog isOpen onClose={vi.fn()} />)
     fireEvent.change(screen.getByTestId('input-parameterName'), { target: { value: 'Pressure' } })
     fireEvent.change(screen.getByTestId('input-dataTypeId'), { target: { value: '2' } })
+    fireEvent.change(screen.getByTestId('input-defaultValue'), { target: { value: '0' } })
 
     await waitFor(() =>
       expect(screen.getByTestId('error-defaultValue')).toHaveTextContent('Pa must be in 10–20')
@@ -311,6 +312,7 @@ describe('<AddColumnDialog />', () => {
     render(<AddColumnDialog isOpen onClose={vi.fn()} />)
     fireEvent.change(screen.getByTestId('input-parameterName'), { target: { value: 'Pressure' } })
     fireEvent.change(screen.getByTestId('input-dataTypeId'), { target: { value: '2' } })
+    fireEvent.change(screen.getByTestId('input-defaultValue'), { target: { value: '0' } })
     await waitFor(() => expect(within(screen.getByTestId('dialog')).getByText('Add')).toBeDisabled())
 
     fireEvent.change(screen.getByTestId('input-defaultValue'), { target: { value: '15' } })

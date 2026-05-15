@@ -191,12 +191,14 @@ describe('<AddRowsDialog />', () => {
     )
   })
 
-  it('shows a max-delta error above 24*365 hours', async () => {
+  it('shows a max-delta error above 24 hours', async () => {
     render(<AddRowsDialog isOpen onClose={vi.fn()} />)
     fireEvent.change(screen.getByTestId('input-deltaHours'), { target: { value: '99999' } })
     fireEvent.blur(screen.getByTestId('input-deltaHours'))
     await waitFor(() =>
-      expect(screen.getByTestId('error-deltaHours')).toHaveTextContent('Delta must be 8760')
+      expect(screen.getByTestId('error-deltaHours')).toHaveTextContent(
+        'Delta must be 24 hours or fewer.'
+      )
     )
   })
 

@@ -30,8 +30,6 @@ const INITIAL_VALUES: AddColumnValues = {
   parameterName: '',
   dataTypeId: '',
   unitId: '',
-  // Pre-fill "0" so existing rows get a sensible default in the new column
-  // without the user having to type it. Cleared/changed values are honored.
   defaultValue: ''
 }
 
