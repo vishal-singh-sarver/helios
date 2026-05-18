@@ -99,7 +99,7 @@ function* sseWorker(): Generator {
 export function* pickFileWorker(): Generator {
   try {
     const path = (yield call(window.api.openFile, [
-      { name: 'Weather data', extensions: ['csv', 'txt', 'xml'] }
+      { name: 'Weather data', extensions: ['csv', 'txt', 'tsv', 'tab', 'xml'] }
     ])) as string | null
     if (!path) {
       // User cancelled the dialog — clear fileLoading so Browse re-enables.

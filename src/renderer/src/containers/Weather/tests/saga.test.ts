@@ -53,7 +53,9 @@ describe('pickFileWorker', () => {
 
     // 1) opens the native file dialog with weather extensions
     expect(gen.next().value).toEqual(
-      call(window.api.openFile, [{ name: 'Weather data', extensions: ['csv', 'txt', 'xml'] }])
+      call(window.api.openFile, [
+        { name: 'Weather data', extensions: ['csv', 'txt', 'tsv', 'tab', 'xml'] }
+      ])
     )
 
     // 2) reads the chosen path

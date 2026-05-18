@@ -41,6 +41,9 @@ import {
 } from './selectors'
 import { validateCellValue } from './validation'
 
+const ROW_HEIGHT_PX = 36
+const ROW_OVERSCAN = 12
+
 // A column is backend-managed (PATCH-able) when its id is a positive integer —
 // the stringified WeatherDataHeader.id. Reserved date/time, upload-slug, and
 // the seeded date-time/check columns fail this check and stay read-only.
@@ -103,6 +106,8 @@ function WeatherTable(): React.JSX.Element {
   const activeProject = useSelector(selectActiveProject)
   const [dateFormat, setDateFormat] = React.useState<DateFormat>('MM/DD/YYYY HH:MM')
   const [pendingDeleteColumn, setPendingDeleteColumn] = React.useState<ColumnDef | null>(null)
+  const [bodyScrollTop, setBodyScrollTop] = React.useState(0)
+  const [bodyViewportHeight, setBodyViewportHeight] = React.useState(0)
 
   const toggleAll = (): void => {
     if (!scenarioId) return
@@ -240,11 +245,42 @@ function WeatherTable(): React.JSX.Element {
   // clip. Because `clip` disallows programmatic `scrollLeft`, we sync the
   // horizontal pan via CSS `translateX()` on the header table instead.
   const headerTableRef = React.useRef<HTMLTableElement>(null)
+  const bodyRef = React.useRef<HTMLDivElement>(null)
   const onBodyScroll = (e: React.UIEvent<HTMLDivElement>): void => {
     if (headerTableRef.current) {
       headerTableRef.current.style.transform = `translateX(-${e.currentTarget.scrollLeft}px)`
     }
+    setBodyScrollTop(e.currentTarget.scrollTop)
   }
+
+  React.useEffect(() => {
+    if (!bodyRef.current) return
+    const el = bodyRef.current
+    setBodyViewportHeight(el.clientHeight)
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0]
+      if (entry) setBodyViewportHeight(entry.contentRect.height)
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  const totalRows = rowOrder.length
+  const visibleWindow = React.useMemo(() => {
+    const viewportRows = Math.max(1, Math.ceil(bodyViewportHeight / ROW_HEIGHT_PX))
+    const startIndex = Math.max(0, Math.floor(bodyScrollTop / ROW_HEIGHT_PX) - ROW_OVERSCAN)
+    const endIndex = Math.min(totalRows, startIndex + viewportRows + ROW_OVERSCAN * 2)
+    return { startIndex, endIndex }
+  }, [bodyScrollTop, bodyViewportHeight, totalRows])
+
+  const visibleRowIds = React.useMemo(
+    () => rowOrder.slice(visibleWindow.startIndex, visibleWindow.endIndex),
+    [rowOrder, visibleWindow]
+  )
+
+  const topSpacerHeight = visibleWindow.startIndex * ROW_HEIGHT_PX
+  const bottomSpacerHeight = Math.max(0, (totalRows - visibleWindow.endIndex) * ROW_HEIGHT_PX)
+  const spacerColSpan = visibleColumnOrder.length + 3
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-dark">
@@ -308,10 +344,15 @@ function WeatherTable(): React.JSX.Element {
       </div>
 
       {/* Body — owns both scrollbars. */}
-      <div className="scrollbar-custom flex-1 overflow-auto" onScroll={onBodyScroll}>
+      <div ref={bodyRef} className="scrollbar-custom flex-1 overflow-auto" onScroll={onBodyScroll}>
         <table className="w-full border-collapse text-sm text-neutral-200">
           <tbody>
-            {rowOrder.map((rowId) => {
+            {topSpacerHeight > 0 && (
+              <tr aria-hidden="true">
+                <td colSpan={spacerColSpan} style={{ height: topSpacerHeight, padding: 0 }} />
+              </tr>
+            )}
+            {visibleRowIds.map((rowId) => {
               const row = table?.rows[rowId] ?? {}
               const checkValue: CellValue = checkColId != null ? (row[checkColId] ?? null) : null
               return (
@@ -390,6 +431,11 @@ function WeatherTable(): React.JSX.Element {
                 </tr>
               )
             })}
+            {bottomSpacerHeight > 0 && (
+              <tr aria-hidden="true">
+                <td colSpan={spacerColSpan} style={{ height: bottomSpacerHeight, padding: 0 }} />
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

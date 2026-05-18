@@ -2,7 +2,8 @@ import type {
   DateFormatKey,
   DateTimeFormatKey,
   DateTimeMapping,
-  DateTimeMode,
+  DateSelectionMode,
+  TimeSelectionMode,
   ImportedDataset,
   ParseResult
 } from 'containers/Weather/parsers'
@@ -53,8 +54,10 @@ export interface DateTimeStats {
 
 export interface StepDateTimeProps {
   parsed: ParseResult
-  mode: DateTimeMode
-  onChangeMode: (mode: DateTimeMode) => void
+  dateMode: DateSelectionMode
+  onChangeDateMode: (mode: DateSelectionMode) => void
+  timeMode: TimeSelectionMode
+  onChangeTimeMode: (mode: TimeSelectionMode) => void
   mapping: DateTimeMapping
   onChangeMapping: (key: keyof DateTimeMapping, value: string | null) => void
   dateFormat: DateFormatKey

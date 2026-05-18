@@ -19,11 +19,15 @@ export interface ParseResult {
 }
 
 export type DateTimeMode = 'group1' | 'group2' | 'group3'
+export type DateSelectionMode = 'parts' | 'string' | 'julian' | 'datetime'
+export type TimeSelectionMode = 'none' | 'parts' | 'string' | 'compact'
 
 export interface DateTimeMapping {
   year: string | null
   month: string | null
   day: string | null
+  julianYear: string | null
+  julianDay: string | null
   hour: string | null
   minute: string | null
   date: string | null
@@ -35,6 +39,8 @@ export const INITIAL_MAPPING: DateTimeMapping = {
   year: null,
   month: null,
   day: null,
+  julianYear: null,
+  julianDay: null,
   hour: null,
   minute: null,
   date: null,
@@ -588,6 +594,35 @@ export function parseRowDateTime(
   dateFormat: DateFormatKey,
   datetimeFormat?: DateTimeFormatKey
 ): RowDateTimeResult {
+  const selectionMap: Record<
+    DateTimeMode,
+    { dateMode: DateSelectionMode; timeMode: TimeSelectionMode }
+  > = {
+    group1: { dateMode: 'parts', timeMode: 'parts' },
+    group2: { dateMode: 'string', timeMode: 'string' },
+    group3: { dateMode: 'datetime', timeMode: 'none' }
+  }
+  const { dateMode, timeMode } = selectionMap[mode]
+  return parseRowDateTimeSelections(
+    row,
+    headers,
+    dateMode,
+    timeMode,
+    mapping,
+    dateFormat,
+    datetimeFormat
+  )
+}
+
+export function parseRowDateTimeSelections(
+  row: string[],
+  headers: string[],
+  dateMode: DateSelectionMode,
+  timeMode: TimeSelectionMode,
+  mapping: DateTimeMapping,
+  dateFormat: DateFormatKey,
+  datetimeFormat?: DateTimeFormatKey
+): RowDateTimeResult {
   const get = (key: keyof DateTimeMapping): string | undefined => {
     const colName = mapping[key]
     if (!colName) return undefined
@@ -595,17 +630,74 @@ export function parseRowDateTime(
     return idx >= 0 ? row[idx] : undefined
   }
 
-  if (mode === 'group2') {
+  if (dateMode === 'datetime') {
+    const datetimeRaw = get('datetime')
+    if (datetimeRaw === undefined || datetimeRaw === '' || !datetimeFormat) {
+      return { kind: 'invalid_date' }
+    }
+    const parsed = tryParseDateTime(datetimeRaw, datetimeFormat)
+    return parsed ? { kind: 'ok', date: parsed } : { kind: 'invalid_date' }
+  }
+
+  let dateParts: DateParts | null = null
+
+  if (dateMode === 'string') {
     const dateRaw = get('date')
     if (dateRaw === undefined || dateRaw === '') return { kind: 'invalid_date' }
-    const d = tryParseDate(dateRaw, dateFormat)
-    if (!d) return { kind: 'invalid_date' }
+    dateParts = tryParseDate(dateRaw, dateFormat)
+  } else if (dateMode === 'julian') {
+    const yearRaw = get('julianYear')
+    const dayRaw = get('julianDay')
+    if (yearRaw === undefined || dayRaw === undefined) return { kind: 'invalid_date' }
+    if (!/^\d{4}$/.test(String(yearRaw).trim()) || !/^\d{1,3}$/.test(String(dayRaw).trim())) {
+      return { kind: 'invalid_date' }
+    }
+    dateParts = dateFromDayOfYear(parseInt(yearRaw, 10), parseInt(dayRaw, 10))
+  } else {
+    const yRaw = get('year')
+    const mRaw = get('month')
+    const dRaw = get('day')
+    if (yRaw === undefined || mRaw === undefined || dRaw === undefined) {
+      return { kind: 'invalid_date' }
+    }
+    if (!/^\d{4}$/.test(String(yRaw).trim())) return { kind: 'invalid_date' }
+    const Y = parseInt(yRaw, 10)
+    const Mo = parseInt(mRaw, 10)
+    const D = parseInt(dRaw, 10)
+    if (Number.isNaN(Y) || Number.isNaN(Mo) || Number.isNaN(D)) {
+      return { kind: 'invalid_date' }
+    }
+    if (Mo < 1 || Mo > 12) return { kind: 'invalid_date' }
+    if (D < 1 || D > 31) return { kind: 'invalid_date' }
+    dateParts = validateDateParts({ Y, M: Mo, D })
+  }
 
-    let H = 0
-    let Min = 0
-    let Sec = 0
-    let rollover = false
-    let timeInvalid = false
+  if (!dateParts) return { kind: 'invalid_date' }
+
+  let H = 0
+  let Min = 0
+  let Sec = 0
+  let rollover = false
+  let timeInvalid = false
+
+  if (timeMode === 'parts') {
+    if (mapping.hour) {
+      const hRaw = get('hour')
+      if (hRaw !== undefined && hRaw !== '') {
+        const hv = parseInt(hRaw, 10)
+        if (Number.isNaN(hv) || hv < 0 || hv > 23) timeInvalid = true
+        else H = hv
+      }
+    }
+    if (mapping.minute) {
+      const mRaw2 = get('minute')
+      if (mRaw2 !== undefined && mRaw2 !== '') {
+        const mv = parseInt(mRaw2, 10)
+        if (Number.isNaN(mv) || mv < 0 || mv > 59) timeInvalid = true
+        else Min = mv
+      }
+    }
+  } else if (timeMode === 'string' || timeMode === 'compact') {
     if (mapping.time) {
       const timeRaw = get('time')
       if (timeRaw !== undefined && timeRaw !== '') {
@@ -620,58 +712,9 @@ export function parseRowDateTime(
         }
       }
     }
-    const date = buildDate(d, { H, M: Min, S: Sec, rollover })
-    return timeInvalid ? { kind: 'invalid_time', date } : { kind: 'ok', date }
   }
 
-  if (mode === 'group3') {
-    const datetimeRaw = get('datetime')
-    if (datetimeRaw === undefined || datetimeRaw === '' || !datetimeFormat) {
-      return { kind: 'invalid_date' }
-    }
-    const parsed = tryParseDateTime(datetimeRaw, datetimeFormat)
-    return parsed ? { kind: 'ok', date: parsed } : { kind: 'invalid_date' }
-  }
-
-  const yRaw = get('year')
-  const mRaw = get('month')
-  const dRaw = get('day')
-  if (yRaw === undefined || mRaw === undefined || dRaw === undefined) {
-    return { kind: 'invalid_date' }
-  }
-  if (!/^\d{4}$/.test(String(yRaw).trim())) return { kind: 'invalid_date' }
-
-  const Y = parseInt(yRaw, 10)
-  const Mo = parseInt(mRaw, 10)
-  const D = parseInt(dRaw, 10)
-  if (Number.isNaN(Y) || Number.isNaN(Mo) || Number.isNaN(D)) {
-    return { kind: 'invalid_date' }
-  }
-  if (Mo < 1 || Mo > 12) return { kind: 'invalid_date' }
-  if (D < 1 || D > 31) return { kind: 'invalid_date' }
-
-  let H = 0
-  let Min = 0
-  let timeInvalid = false
-  if (mapping.hour) {
-    const hRaw = get('hour')
-    if (hRaw !== undefined && hRaw !== '') {
-      const hv = parseInt(hRaw, 10)
-      if (Number.isNaN(hv) || hv < 0 || hv > 23) timeInvalid = true
-      else H = hv
-    }
-  }
-  if (mapping.minute) {
-    const mRaw2 = get('minute')
-    if (mRaw2 !== undefined && mRaw2 !== '') {
-      const mv = parseInt(mRaw2, 10)
-      if (Number.isNaN(mv) || mv < 0 || mv > 59) timeInvalid = true
-      else Min = mv
-    }
-  }
-  const validated = validateDateParts({ Y, M: Mo, D })
-  if (!validated) return { kind: 'invalid_date' }
-  const date = buildDate(validated, { H, M: Min, S: 0, rollover: false })
+  const date = buildDate(dateParts, { H, M: Min, S: Sec, rollover })
   return timeInvalid ? { kind: 'invalid_time', date } : { kind: 'ok', date }
 }
 

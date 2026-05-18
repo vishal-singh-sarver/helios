@@ -2,11 +2,12 @@ import {
   INITIAL_MAPPING,
   parseDelimited,
   parseFile,
-  parseRowDateTime,
+  parseRowDateTimeSelections,
   type DateFormatKey,
   type DateTimeFormatKey,
   type DateTimeMapping,
-  type DateTimeMode,
+  type DateSelectionMode,
+  type TimeSelectionMode,
   type ImportedDataset,
   type ImportedDatasetColumn,
   type ImportedDatasetRecord,
@@ -23,7 +24,9 @@ import Stepper, { STEPS } from './Stepper'
 import StepReview from './StepReview'
 import type { DateTimeStats, ImportWizardProps } from './types'
 
-const GROUP1_KEYS: ReadonlyArray<keyof DateTimeMapping> = ['year', 'month', 'day', 'hour', 'minute']
+const DATE_PART_KEYS: ReadonlyArray<keyof DateTimeMapping> = ['year', 'month', 'day']
+const JULIAN_KEYS: ReadonlyArray<keyof DateTimeMapping> = ['julianYear', 'julianDay']
+const TIME_PART_KEYS: ReadonlyArray<keyof DateTimeMapping> = ['hour', 'minute']
 
 const IMPORT_DECIMAL_WARNING =
   'Only 7 decimal places have been taken for decimal values as more are not allowed.'
@@ -56,7 +59,8 @@ function ImportWizard({
   const [parsed, setParsed] = useState<ParseResult | null>(null)
   const [parseError, setParseError] = useState<string | null>(null)
   const [parsedDateTimes, setParsedDateTimes] = useState<Array<Date | null>>([])
-  const [mode, setMode] = useState<DateTimeMode>('group2')
+  const [dateMode, setDateMode] = useState<DateSelectionMode>('string')
+  const [timeMode, setTimeMode] = useState<TimeSelectionMode>('string')
   const [mapping, setMapping] = useState<DateTimeMapping>(INITIAL_MAPPING)
   const [dateFormat, setDateFormat] = useState<DateFormatKey>('YYYY-MM-DD')
   const [datetimeFormat, setDateTimeFormat] = useState<DateTimeFormatKey>('YYYY-MM-DDTHH:MM:SSZ')
@@ -93,6 +97,8 @@ function ImportWizard({
             year: findHeaderByKeyword(result.headers, ['year']),
             month: findHeaderByKeyword(result.headers, ['month']),
             day: findHeaderByKeyword(result.headers, ['day']),
+            julianYear: findHeaderByKeyword(result.headers, ['julian year', 'year']),
+            julianDay: findHeaderByKeyword(result.headers, ['julian day', 'day of year', 'doy']),
             hour: findHeaderByKeyword(result.headers, ['hour']),
             minute: findHeaderByKeyword(result.headers, ['minute']),
             date: findHeaderByKeyword(result.headers, ['date']),
@@ -103,11 +109,16 @@ function ImportWizard({
           setMapping(auto)
 
           if (auto.datetime) {
-            setMode('group3')
-          } else if (auto.year && auto.month && auto.day) {
-            setMode('group1')
-          } else if (auto.date) {
-            setMode('group2')
+            setDateMode('datetime')
+            setTimeMode('none')
+          } else {
+            if (auto.year && auto.month && auto.day) setDateMode('parts')
+            else if (auto.julianYear && auto.julianDay) setDateMode('julian')
+            else if (auto.date) setDateMode('string')
+
+            if (auto.hour || auto.minute) setTimeMode('parts')
+            else if (auto.time) setTimeMode('string')
+            else setTimeMode('none')
           }
         } catch (err) {
           setParseError((err as Error).message)
@@ -151,11 +162,13 @@ function ImportWizard({
   const dtStats: DateTimeStats = useMemo(() => {
     if (!parsed) return { configReady: false, valid: 0, invalid: 0, total: 0 }
     const configReady =
-      mode === 'group2'
+      dateMode === 'string'
         ? Boolean(mapping.date) && Boolean(dateFormat)
-        : mode === 'group3'
+        : dateMode === 'datetime'
           ? Boolean(mapping.datetime) && Boolean(datetimeFormat)
-          : Boolean(mapping.year) && Boolean(mapping.month) && Boolean(mapping.day)
+          : dateMode === 'julian'
+            ? Boolean(mapping.julianYear) && Boolean(mapping.julianDay)
+            : Boolean(mapping.year) && Boolean(mapping.month) && Boolean(mapping.day)
     if (!configReady) {
       return {
         configReady: false,
@@ -169,22 +182,40 @@ function ImportWizard({
     for (const row of parsed.rows) {
       // 'ok' and 'invalid_time' both produce a usable Date; only 'invalid_date'
       // rows can't be imported. Time is optional so it doesn't gate Next.
-      const r = parseRowDateTime(row, parsed.headers, mode, mapping, dateFormat, datetimeFormat)
+      const r = parseRowDateTimeSelections(
+        row,
+        parsed.headers,
+        dateMode,
+        dateMode === 'datetime' ? 'none' : timeMode,
+        mapping,
+        dateFormat,
+        datetimeFormat
+      )
       if (r.kind === 'invalid_date') invalid++
       else valid++
     }
     return { configReady: true, valid, invalid, total: parsed.rows.length }
-  }, [parsed, mode, mapping, dateFormat, datetimeFormat])
+  }, [parsed, dateMode, timeMode, mapping, dateFormat, datetimeFormat])
 
   const dtColumns: string[] = useMemo(() => {
-    if (mode === 'group2') {
-      return [mapping.date, mapping.time].filter((v): v is string => v !== null)
-    }
-    if (mode === 'group3') {
-      return [mapping.datetime].filter((v): v is string => v !== null)
-    }
-    return GROUP1_KEYS.map((k) => mapping[k]).filter((v): v is string => v !== null)
-  }, [mode, mapping])
+    const dateColumns =
+      dateMode === 'string'
+        ? [mapping.date]
+        : dateMode === 'datetime'
+          ? [mapping.datetime]
+          : dateMode === 'julian'
+            ? JULIAN_KEYS.map((k) => mapping[k])
+            : DATE_PART_KEYS.map((k) => mapping[k])
+
+    const timeColumns =
+      dateMode === 'datetime' || timeMode === 'none'
+        ? []
+        : timeMode === 'parts'
+          ? TIME_PART_KEYS.map((k) => mapping[k])
+          : [mapping.time]
+
+    return [...dateColumns, ...timeColumns].filter((v): v is string => v !== null)
+  }, [dateMode, timeMode, mapping])
 
   const disabledColumnIndices = useMemo(() => {
     if (!parsed) return []
@@ -204,10 +235,11 @@ function ImportWizard({
     if (!parsed) return
     if (stepIdx === 2) {
       const dts: Array<Date | null> = parsed.rows.map((r) => {
-        const result = parseRowDateTime(
+        const result = parseRowDateTimeSelections(
           r,
           parsed.headers,
-          mode,
+          dateMode,
+          dateMode === 'datetime' ? 'none' : timeMode,
           mapping,
           dateFormat,
           datetimeFormat
@@ -217,7 +249,7 @@ function ImportWizard({
       setParsedDateTimes(dts)
     }
     setStepIdx((i) => Math.min(i + 1, STEPS.length - 1))
-  }, [parsed, stepIdx, mode, mapping, dateFormat, datetimeFormat])
+  }, [parsed, stepIdx, dateMode, timeMode, mapping, dateFormat, datetimeFormat])
 
   const handleBack = useCallback((): void => {
     setStepIdx((i) => Math.max(i - 1, 0))
@@ -389,8 +421,13 @@ function ImportWizard({
             {stepIdx === 2 && parsed && (
               <StepDateTime
                 parsed={parsed}
-                mode={mode}
-                onChangeMode={setMode}
+                dateMode={dateMode}
+                onChangeDateMode={(nextMode) => {
+                  setDateMode(nextMode)
+                  if (nextMode === 'datetime') setTimeMode('none')
+                }}
+                timeMode={timeMode}
+                onChangeTimeMode={setTimeMode}
                 mapping={mapping}
                 onChangeMapping={(k, v) => setMapping((current) => ({ ...current, [k]: v }))}
                 dateFormat={dateFormat}
