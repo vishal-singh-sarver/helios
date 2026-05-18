@@ -699,18 +699,18 @@ describe('deleteColumnWorker', () => {
 
 describe('updateAllCheckboxesWorker', () => {
   it('builds one timestamped value per row and PATCHes updateCol for the check column', () => {
-    const action = actions.updateAllCheckboxesRequested(PROJ, SCN, 'check', '1')
+    const action = actions.updateAllCheckboxesRequested(PROJ, SCN, '15', '1')
     const table: WeatherTable = {
       columns: {
         date: { id: 'date', name: 'date', dataTypeId: null, unitId: null },
         time: { id: 'time', name: 'time', dataTypeId: null, unitId: null },
-        check: { id: 'check', name: 'check', dataTypeId: null, unitId: null }
+        '15': { id: '15', name: 'check', dataTypeId: null, unitId: null }
       },
-      columnOrder: ['date', 'time', 'check'],
+      columnOrder: ['date', 'time', '15'],
       rows: {
-        row_0: { date: '2026-04-27', time: '10:00:00', check: '0' },
-        row_1: { date: '2026-04-27', time: '11:00:00', check: '0' },
-        row_2: { date: '2026-04-27', time: null, check: '0' }
+        row_0: { date: '2026-04-27', time: '10:00:00', '15': '0' },
+        row_1: { date: '2026-04-27', time: '11:00:00', '15': '0' },
+        row_2: { date: '2026-04-27', time: null, '15': '0' }
       },
       rowOrder: ['row_0', 'row_1', 'row_2'],
       validationErrors: {},
@@ -731,7 +731,7 @@ describe('updateAllCheckboxesWorker', () => {
         }
       }
       yield call(updateColumnsRequest, PROJ, SCN, {
-        columns: [{ name: 'check', values }]
+        columns: [{ id: Number(action.payload.checkColId), name: 'check', values }]
       })
     }
     const gen = worker()
@@ -740,6 +740,7 @@ describe('updateAllCheckboxesWorker', () => {
       call(updateColumnsRequest, PROJ, SCN, {
         columns: [
           {
+            id: 15,
             name: 'check',
             values: [
               { date: '2026-04-27', time: '10:00:00', value: '1' },

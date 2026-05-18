@@ -620,9 +620,12 @@ function* updateCellWorker(action: UpdateCellLocalAction): Generator {
   }
 }
 function* updateAllCheckboxesWorker(action: UpdateAllCheckboxesRequestedAction): Generator {
-  const { projectId, scenarioId, value } = action.payload
+  const { projectId, scenarioId, checkColId, value } = action.payload
 
   try {
+    const checkHeaderId = Number(checkColId)
+    if (!Number.isFinite(checkHeaderId) || checkHeaderId <= 0) return
+
     const table = (yield select(selectActiveWeatherTable)) as WeatherTable | null
     const values: Array<{ date: string; time: string; value: string }> = []
 
@@ -640,6 +643,7 @@ function* updateAllCheckboxesWorker(action: UpdateAllCheckboxesRequestedAction):
     yield call(updateColumnsRequest, projectId, scenarioId, {
       columns: [
         {
+          id: checkHeaderId,
           name: CHECK_COL_NAME,
           values
         }

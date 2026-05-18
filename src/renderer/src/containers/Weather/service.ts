@@ -121,6 +121,7 @@ export interface AddColumnRequestBody {
 
 interface AddColumnWireBody {
   column: Array<{
+    id?: number
     name: string
     datatype: number | null
     data_unit: number | null
@@ -219,6 +220,7 @@ export async function addColumnsRequest(
 
 export interface UpdateColumnsRequestBody {
   columns: Array<{
+    id: number
     name: string
     dataTypeId?: number | null
     dataUnitId?: number | null
@@ -236,6 +238,7 @@ export function updateColumnsRequest(
 ): Promise<UpdateColumnsResponse> {
   const wire: AddColumnWireBody = {
     column: body.columns.map((col) => ({
+      id: col.id,
       name: col.name,
       datatype: col.dataTypeId ?? null,
       data_unit: col.dataUnitId ?? null,

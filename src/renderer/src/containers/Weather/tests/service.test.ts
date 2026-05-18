@@ -197,6 +197,7 @@ describe('updateColumnsRequest', () => {
     await updateColumnsRequest('p1', 's1', {
       columns: [
         {
+          id: 15,
           name: 'check',
           values: [
             { date: '2026-01-01', time: '00:00:00', value: '1' },
@@ -208,6 +209,7 @@ describe('updateColumnsRequest', () => {
     expect(mockedApi.patch).toHaveBeenCalledWith(API_ROUTES.weather.updateCol('p1', 's1'), {
       column: [
         {
+          id: 15,
           name: 'check',
           datatype: null,
           data_unit: null,
