@@ -51,7 +51,7 @@ function Dialog({
         <button
           aria-label="Close dialog"
           onClick={onClose}
-          className="px-2 py-1 text-sm text-black hover:bg-neutral-300"
+          className="px-2 py-1 text-xl font-light text-[#101828] cursor-pointer rounded"
         >
           ×
         </button>

@@ -1,10 +1,9 @@
 import chevronIcon from '@renderer/assets/chevron.svg'
 import deleteIcon from '@renderer/assets/delete.svg'
-import documentIcon from '@renderer/assets/Icon (Stroke).svg'
 import newProjectIcon from '@renderer/assets/new_project.svg'
 import uploadIcon from '@renderer/assets/Upload.svg'
-import ToolbarButton from '@renderer/components/ToolbarButton'
 import Dialog from '@renderer/components/Dialog'
+import ToolbarButton from '@renderer/components/ToolbarButton'
 import React from 'react'
 import { useSelector } from 'react-redux'
 import AddColumnDialog from './AddColumnDialog'
@@ -14,7 +13,8 @@ import {
   selectAddColumnError,
   selectAddColumnLoading,
   selectAddRowError,
-  selectAddRowLoading
+  selectAddRowLoading,
+  selectRowOrder
 } from './selectors'
 
 interface WeatherToolbarProps {
@@ -52,6 +52,12 @@ function WeatherToolbar({
   const addColumnError = useSelector(selectAddColumnError)
   const addRowLoading = useSelector(selectAddRowLoading)
   const addRowError = useSelector(selectAddRowError)
+  const rowOrder = useSelector(selectRowOrder)
+
+  // Delete is available if data exists from either source: an imported file,
+  // or rows added manually.
+  const hasData = Boolean(importedFilename) || rowOrder.length > 0
+  const canDelete = hasData && !clearingImport
 
   // Close the dialog on the loading→idle transition only when there's no
   // error — otherwise the dialog stays open so the user can see the failure
@@ -70,7 +76,7 @@ function WeatherToolbar({
   }, [importedFilename, clearingImport])
 
   const handleRequestDeleteImportedFile = (): void => {
-    if (clearingImport) return
+    if (!canDelete) return
     setIsDeleteDialogOpen(true)
   }
 
@@ -114,38 +120,27 @@ function WeatherToolbar({
         />
       </div>
 
-      {importedFilename && (
-        <div className="flex min-w-0 items-center gap-2 rounded border border-[#4a4a4a] bg-[#2d2d2d] px-3 py-2 text-sm text-white">
-          <img src={documentIcon} alt="" className="h-4 w-4 shrink-0 opacity-90" />
-          <span className="max-w-[280px] truncate">{importedFilename}</span>
-          <button
-            type="button"
-            aria-label="Delete uploaded weather file"
-            onClick={handleRequestDeleteImportedFile}
-            disabled={clearingImport}
-            className="shrink-0 opacity-90 transition hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <img src={deleteIcon} alt="" className="h-4 w-4" />
-          </button>
-        </div>
-      )}
+      <button
+        type="button"
+        aria-label="Delete uploaded weather file"
+        onClick={handleRequestDeleteImportedFile}
+        disabled={!canDelete}
+        className={`flex min-w-0 items-center gap-1 rounded border border-[#4a4a4a] bg-[#2d2d2d] px-3 py-2 text-sm text-white ${
+          canDelete ? 'cursor-pointer' : 'cursor-default opacity-50'
+        }`}
+      >
+        <span className="max-w-[200px] text-sm font-normal leading-5">Delete Data</span>
+        <img src={deleteIcon} alt="" className="h-4 w-4 shrink-0 opacity-90" />
+      </button>
 
-      <AddColumnDialog
-        isOpen={isAddColumnOpen}
-        onClose={() => setIsAddColumnOpen(false)}
-      />
-      <AddRowsDialog
-        isOpen={isAddRowsOpen}
-        onClose={() => setIsAddRowsOpen(false)}
-      />
+      <AddColumnDialog isOpen={isAddColumnOpen} onClose={() => setIsAddColumnOpen(false)} />
+      <AddRowsDialog isOpen={isAddRowsOpen} onClose={() => setIsAddRowsOpen(false)} />
       <Dialog
         isOpen={isDeleteDialogOpen}
         title={messages.deleteImport.dialogTitle}
         onClose={handleCancelDeleteImportedFile}
       >
-        <h3 className="text-base font-medium text-white">
-          {importedFilename ? messages.deleteImport.heading(importedFilename) : ''}
-        </h3>
+        <h3 className="text-base font-medium text-white">{messages.deleteImport.heading}</h3>
         <p className="text-sm text-neutral-400">{messages.deleteImport.body}</p>
 
         <div className="flex justify-end gap-2 pt-2">

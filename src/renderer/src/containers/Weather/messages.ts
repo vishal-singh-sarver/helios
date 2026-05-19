@@ -36,7 +36,7 @@ const messages = {
 
   deleteImport: {
     dialogTitle: 'Delete',
-    heading: (filename: string) => `Delete ${filename}`,
+    heading: 'Delete Data',
     body: 'Are you sure you want to delete this? This action cannot be undone.',
     confirmButton: 'Delete',
     cancelButton: 'Cancel'

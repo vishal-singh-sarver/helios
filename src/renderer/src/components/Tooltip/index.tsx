@@ -18,7 +18,7 @@ interface TooltipProps {
 }
 
 const DEFAULT_TRIGGER_CLS =
-  'flex h-5 w-5 cursor-default items-center justify-center rounded-full border border-neutral-300 text-xs font-semibold text-white'
+  'flex h-5 w-5 cursor-default items-center justify-center rounded-full border border-neutral-300 text-xs font-semibold text-white outline-none'
 
 function Tooltip({
   text,

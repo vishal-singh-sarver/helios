@@ -128,6 +128,19 @@ function ImportWizard({
     }
   }, [pickedFile, lastSeenPickedFile, onImportWarning])
 
+  // Close on Esc — the wizard uses a custom <div> overlay (not <dialog>),
+  // so we wire up the key handler ourselves. Skipped while importing.
+  React.useEffect(() => {
+    if (!isOpen) return
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape' && !importing) {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, importing, onClose])
+
   // Re-parse delimited input when delimiter changes (step 2).
   const handleChangeDelimiter = useCallback(
     (d: string) => {
