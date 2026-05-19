@@ -78,11 +78,21 @@ function AddColumnDialog({ isOpen, onClose }: AddColumnDialogProps): React.JSX.E
         dataTypeId,
         unitId
       }
-      const defaultValueError = validateCellValue(values.defaultValue, {
-        col: validationCol,
-        dataTypes
-      })
-      if (defaultValueError) errors.defaultValue = defaultValueError
+      const trimmedDefault = values.defaultValue.trim()
+      if (trimmedDefault !== '' && !Number.isFinite(Number(trimmedDefault))) {
+        // Catalog-aware range check (validateCellValue) only kicks in once a
+        // unit is selected; enforce numeric-only here so garbage text can't
+        // slip through when Data Type / Unit are left unset.
+        errors.defaultValue = 'Default value must be a number.'
+      } else if (trimmedDefault !== '' && (trimmedDefault.split('.')[1]?.length ?? 0) > 7) {
+        errors.defaultValue = 'Default value can have at most 7 decimal places.'
+      } else {
+        const defaultValueError = validateCellValue(values.defaultValue, {
+          col: validationCol,
+          dataTypes
+        })
+        if (defaultValueError) errors.defaultValue = defaultValueError
+      }
 
       return errors
     },
