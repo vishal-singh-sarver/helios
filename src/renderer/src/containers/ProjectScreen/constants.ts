@@ -66,6 +66,7 @@ export const SEED_DEFAULT_COLUMNS_FAILED = 'app/ProjectScreen/SEED_DEFAULT_COLUM
 export const UPDATE_COLUMN_REQUESTED = 'app/ProjectScreen/UPDATE_COLUMN_REQUESTED' as const
 export const UPDATE_COLUMN_SUCCEEDED = 'app/ProjectScreen/UPDATE_COLUMN_SUCCEEDED' as const
 export const UPDATE_COLUMN_FAILED = 'app/ProjectScreen/UPDATE_COLUMN_FAILED' as const
+export const UPDATE_COLUMN_VALUES_LOCAL = 'app/ProjectScreen/UPDATE_COLUMN_VALUES_LOCAL' as const
 
 // Delete one backend-managed weather data header. Optimistic remove on
 // _REQUESTED, rollback on _FAILED.

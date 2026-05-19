@@ -21,6 +21,7 @@ import {
   type PatchHeaderRequestBody,
   type UpdateCellResponse
 } from 'containers/Weather/service'
+import { buildConvertedColumnValues } from 'containers/Weather/unitConversion'
 import { validateCellValue } from 'containers/Weather/validation'
 import { all, call, put, race, select, take, takeEvery, takeLatest } from 'redux-saga/effects'
 import { navigate } from 'store/navigationReducer'
@@ -71,6 +72,7 @@ import {
   type ColId,
   type ColumnDef,
   type DataTypeDef,
+  type DataUnitDef,
   type LoadStatus,
   type WeatherHeader,
   type WeatherTable
@@ -516,10 +518,73 @@ function* updateColumnWorker(action: UpdateColumnRequestedAction): Generator {
   if (patch.dataTypeId !== undefined) wire.helios_data_type_id = patch.dataTypeId
   if (patch.unitId !== undefined) wire.unit_id = patch.unitId
 
+  const table = (yield select(selectActiveWeatherTable)) as WeatherTable | null
+  const col = table?.columns[colId]
+  const dataTypes = (yield select(selectAllDataTypes)) as DataTypeDef[]
+  const dataType =
+    col?.dataTypeId == null ? undefined : dataTypes.find((dt) => dt.id === col.dataTypeId)
+  const fromUnit =
+    previous.unitId == null || dataType == null
+      ? undefined
+      : dataType.units.find((unit) => unit.id === previous.unitId)
+  const toUnit =
+    patch.unitId == null || dataType == null
+      ? undefined
+      : dataType.units.find((unit) => unit.id === patch.unitId)
+  const isConvertibleUnitOnlyChange =
+    table != null &&
+    col != null &&
+    dataType != null &&
+    fromUnit != null &&
+    toUnit != null &&
+    patch.unitId !== undefined &&
+    patch.dataTypeId === undefined &&
+    previous.unitId !== patch.unitId
+  const converted = isConvertibleUnitOnlyChange
+    ? buildConvertedColumnValues({
+        table,
+        colId,
+        dataType,
+        fromUnit: fromUnit as DataUnitDef,
+        toUnit: toUnit as DataUnitDef
+      })
+    : null
+
   try {
-    yield call(patchHeaderRequest, projectId, scenarioId, headerId, wire)
+    if (converted && col && dataType) {
+      yield put(
+        actions.updateColumnValuesLocal({
+          scenarioId,
+          colId,
+          valuesByRowId: converted.valuesByRowId
+        })
+      )
+      yield call(updateColumnsRequest, projectId, scenarioId, {
+        columns: [
+          {
+            id: headerId,
+            name: col.name,
+            dataTypeId: dataType.id,
+            dataUnitId: patch.unitId ?? col.unitId,
+            values: converted.values,
+            defaultValue: 'NAN'
+          }
+        ]
+      })
+    } else {
+      yield call(patchHeaderRequest, projectId, scenarioId, headerId, wire)
+    }
     yield put(actions.updateColumnSucceeded(projectId, scenarioId, colId))
   } catch (err) {
+    if (converted) {
+      yield put(
+        actions.updateColumnValuesLocal({
+          scenarioId,
+          colId,
+          valuesByRowId: converted.previousValuesByRowId
+        })
+      )
+    }
     yield put(
       actions.updateColumnFailed(projectId, scenarioId, colId, previous, (err as Error).message)
     )

@@ -36,6 +36,7 @@ import {
   UPDATE_COLUMN_FAILED,
   UPDATE_COLUMN_REQUESTED,
   UPDATE_COLUMN_SUCCEEDED,
+  UPDATE_COLUMN_VALUES_LOCAL,
   UPDATE_PROJECT_FAILED,
   UPDATE_PROJECT_REQUESTED,
   UPDATE_PROJECT_SUCCEEDED,
@@ -455,6 +456,17 @@ const projectScreenReducer = (
         if (previous.name !== undefined) col.name = previous.name
         if (previous.dataTypeId !== undefined) col.dataTypeId = previous.dataTypeId
         if (previous.unitId !== undefined) col.unitId = previous.unitId
+        break
+      }
+
+      case UPDATE_COLUMN_VALUES_LOCAL: {
+        const { scenarioId, colId, valuesByRowId } = action.payload
+        const table = draft.byScenario[scenarioId]
+        if (!table) break
+        for (const [rowId, value] of Object.entries(valuesByRowId)) {
+          if (!table.rows[rowId]) table.rows[rowId] = {}
+          table.rows[rowId][colId] = value
+        }
         break
       }
 

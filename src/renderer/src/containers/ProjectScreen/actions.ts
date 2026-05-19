@@ -40,6 +40,7 @@ import {
   UPDATE_COLUMN_FAILED,
   UPDATE_COLUMN_REQUESTED,
   UPDATE_COLUMN_SUCCEEDED,
+  UPDATE_COLUMN_VALUES_LOCAL,
   UPLOAD_FILE_FAILED,
   UPLOAD_FILE_REQUESTED,
   UPLOAD_FILE_SUCCEEDED
@@ -63,6 +64,7 @@ import type {
   UpdateColumnPatch,
   UpdateColumnRequestedPayload,
   UpdateColumnSucceededPayload,
+  UpdateColumnValuesLocalPayload,
   WeatherHeader
 } from './types'
 
@@ -226,6 +228,10 @@ export interface UpdateColumnFailedAction extends Idx {
   type: typeof UPDATE_COLUMN_FAILED
   payload: UpdateColumnFailedPayload
 }
+export interface UpdateColumnValuesLocalAction extends Idx {
+  type: typeof UPDATE_COLUMN_VALUES_LOCAL
+  payload: UpdateColumnValuesLocalPayload
+}
 
 // Delete column header (DELETE /weather_data_header/{header_id})
 export interface DeleteColumnRequestedAction extends Idx {
@@ -330,6 +336,7 @@ export type ProjectScreenAction =
   | UpdateColumnRequestedAction
   | UpdateColumnSucceededAction
   | UpdateColumnFailedAction
+  | UpdateColumnValuesLocalAction
   | DeleteColumnRequestedAction
   | DeleteColumnSucceededAction
   | DeleteColumnFailedAction
@@ -572,6 +579,13 @@ export const updateColumnFailed = (
 ): UpdateColumnFailedAction => ({
   type: UPDATE_COLUMN_FAILED,
   payload: { projectId, scenarioId, colId, previous, error }
+})
+
+export const updateColumnValuesLocal = (
+  payload: UpdateColumnValuesLocalPayload
+): UpdateColumnValuesLocalAction => ({
+  type: UPDATE_COLUMN_VALUES_LOCAL,
+  payload
 })
 
 export const deleteColumnRequested = (

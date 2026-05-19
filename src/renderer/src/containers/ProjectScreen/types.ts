@@ -271,3 +271,9 @@ export interface UpdateCellLocalPayload {
   value: string // raw editor value; "" clears (NaN)
   validationError: string | null // non-null short-circuits the saga
 }
+
+export interface UpdateColumnValuesLocalPayload {
+  scenarioId: string
+  colId: ColId
+  valuesByRowId: Record<RowId, CellValue>
+}
