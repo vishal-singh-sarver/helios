@@ -1,15 +1,11 @@
 import infoIcon from '@renderer/assets/info.svg'
 import Tooltip from '@renderer/components/Tooltip'
 import { setCellValidationError } from 'containers/ProjectScreen/actions'
+import type { ColumnDef, DataTypeDef } from 'containers/ProjectScreen/types'
 import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { exceedsMaxDecimals, VALIDATION_MESSAGES } from 'utils/decimalValidation'
-import {
-  makeSelectCellError,
-  selectActiveScenarioId,
-  selectColumns,
-  selectSelectableDataTypes
-} from './selectors'
+import { makeSelectCellError } from './selectors'
 import {
   GLOBAL_CELL_MAX,
   GLOBAL_CELL_MIN,
@@ -21,6 +17,13 @@ interface CellInputProps {
   rowId: string
   colId: string
   value: string
+  // col / dataTypes / scenarioId used to live as per-cell useSelector calls.
+  // Each visible row × column added 3 store subscriptions; at ~300 cells that
+  // meant ~900 extra subscriptions notified on every dispatch. Lifted to the
+  // parent (WeatherTable) which selects them once and passes stable refs down.
+  col: ColumnDef | undefined
+  dataTypes: DataTypeDef[]
+  scenarioId: string | null
   onCommit: (next: string) => void
 }
 
@@ -33,12 +36,16 @@ function exceedsGlobalBound(raw: string): boolean {
   return num < GLOBAL_CELL_MIN || num > GLOBAL_CELL_MAX
 }
 
-function CellInput({ rowId, colId, value, onCommit }: CellInputProps): React.JSX.Element {
+function CellInput({
+  rowId,
+  colId,
+  value,
+  col,
+  dataTypes,
+  scenarioId,
+  onCommit
+}: CellInputProps): React.JSX.Element {
   const dispatch = useDispatch()
-  const scenarioId = useSelector(selectActiveScenarioId)
-  const columns = useSelector(selectColumns)
-  const dataTypes = useSelector(selectSelectableDataTypes)
-  const col = columns[colId]
 
   const [draft, setDraft] = React.useState(value)
   const [decimalValidationError, setDecimalValidationError] = React.useState<string | null>(null)
@@ -137,4 +144,8 @@ function CellInput({ rowId, colId, value, onCommit }: CellInputProps): React.JSX
   )
 }
 
-export default CellInput
+// Memoized so a parent re-render (e.g. another row's cell changes, or the
+// scroll handler updating the visible window) doesn't reconcile cells whose
+// props are referentially unchanged. With ~300 visible cells this is the
+// difference between reconciling 300 inputs per scroll tick and reconciling 0.
+export default React.memo(CellInput)
