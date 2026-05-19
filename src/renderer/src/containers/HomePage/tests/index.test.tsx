@@ -432,6 +432,32 @@ describe('<HomePage />', () => {
     )
   })
 
+  it('shows an error when latitude has more than 7 decimal places', async () => {
+    render(<HomePage />)
+    fireEvent.click(screen.getByTestId('menu-New Project'))
+    const input = screen.getByTestId('input-latitude')
+    fireEvent.change(input, { target: { value: '12.123456789' } })
+    fireEvent.blur(input)
+    await waitFor(() =>
+      expect(screen.getByTestId('error-latitude')).toHaveTextContent(
+        'Latitude can have at most 7 decimal places.'
+      )
+    )
+  })
+
+  it('shows an error when longitude has more than 7 decimal places', async () => {
+    render(<HomePage />)
+    fireEvent.click(screen.getByTestId('menu-New Project'))
+    const input = screen.getByTestId('input-longitude')
+    fireEvent.change(input, { target: { value: '-45.12345678' } })
+    fireEvent.blur(input)
+    await waitFor(() =>
+      expect(screen.getByTestId('error-longitude')).toHaveTextContent(
+        'Longitude can have at most 7 decimal places.'
+      )
+    )
+  })
+
   // NOTE: The latitude / longitude inputs are type="number". jsdom (like real
   // browsers) rejects non-numeric text, so the "Invalid latitude" branch cannot
   // be reached through the DOM. Cover that branch via a direct unit test on
@@ -455,6 +481,24 @@ describe('<HomePage />', () => {
     fireEvent.change(input, { target: { value: '180' } })
     fireEvent.blur(input)
     await waitFor(() => expect(screen.queryByTestId('error-longitude')).not.toBeInTheDocument())
+  })
+
+  it('accepts latitude with exactly 7 decimal places', async () => {
+    render(<HomePage />)
+    fireEvent.click(screen.getByTestId('menu-New Project'))
+    const input = screen.getByTestId('input-latitude')
+    fireEvent.change(input, { target: { value: '12.1234567' } })
+    fireEvent.blur(input)
+    await waitFor(() => expect(screen.queryByTestId('error-latitude')).not.toBeInTheDocument())
+  })
+
+  it('accepts a trailing-dot latitude like "7." as valid mid-typing', async () => {
+    render(<HomePage />)
+    fireEvent.click(screen.getByTestId('menu-New Project'))
+    const input = screen.getByTestId('input-latitude')
+    fireEvent.change(input, { target: { value: '7.' } })
+    fireEvent.blur(input)
+    await waitFor(() => expect(screen.queryByTestId('error-latitude')).not.toBeInTheDocument())
   })
 
   // ── Form submission ──

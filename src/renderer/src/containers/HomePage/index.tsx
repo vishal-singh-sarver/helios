@@ -159,7 +159,7 @@ export function HomePage(): React.JSX.Element {
 
       if (latitudeValue === '') {
         errors.latitude = 'Latitude is required.'
-      } else if (!/^[-+]?\d*\.?\d+$/.test(latitudeValue)) {
+      } else if (!/^[-+]?(\d+\.?\d*|\.\d+)$/.test(latitudeValue)) {
         errors.latitude = 'Invalid latitude'
       } else {
         const lat = Number(latitudeValue)
@@ -167,6 +167,8 @@ export function HomePage(): React.JSX.Element {
         if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
           errors.latitude =
             'Invalid latitude. Enter latitude in decimal degrees. Valid range: -90 <= latitude <= 90.'
+        } else if ((latitudeValue.split('.')[1]?.length ?? 0) > 7) {
+          errors.latitude = 'Latitude can have at most 7 decimal places.'
         }
       }
 
@@ -174,7 +176,7 @@ export function HomePage(): React.JSX.Element {
 
       if (longitudeValue === '') {
         errors.longitude = 'Longitude is required.'
-      } else if (!/^[-+]?\d*\.?\d+$/.test(longitudeValue)) {
+      } else if (!/^[-+]?(\d+\.?\d*|\.\d+)$/.test(longitudeValue)) {
         errors.longitude = 'Invalid longitude'
       } else {
         const lon = Number(longitudeValue)
@@ -182,6 +184,8 @@ export function HomePage(): React.JSX.Element {
         if (!Number.isFinite(lon) || lon < -180 || lon > 180) {
           errors.longitude =
             'Invalid longitude. Enter longitude in decimal degrees. Valid range: -180 <= longitude <= 180.'
+        } else if ((longitudeValue.split('.')[1]?.length ?? 0) > 7) {
+          errors.longitude = 'Longitude can have at most 7 decimal places.'
         }
       }
 

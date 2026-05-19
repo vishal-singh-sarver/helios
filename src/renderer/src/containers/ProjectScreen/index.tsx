@@ -5,6 +5,7 @@ import Tooltip from '@renderer/components/Tooltip'
 import CenterWorkspace from '@renderer/containers/CenterWorkspace'
 import LeftPanel from '@renderer/containers/LeftPanel'
 import RightPanel from '@renderer/containers/RightPanel'
+import { useFormik } from 'formik'
 import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import type { Reducer } from 'redux'
@@ -31,21 +32,52 @@ const LATITUDE_HELP =
 const LONGITUDE_HELP =
   'Enter longitude in decimal degrees. Valid range: -180 <= longitude <= 180. Negative for West, positive for East.'
 
-// Validation rules mirror the New Project dialog.
-// Returns true when the value is parseable and within range, OR when the
-// field is empty (empty = "not yet entered", not invalid). No error UI is
-// rendered; callers use the derived booleans to flip the `invalid` prop
-// on LabeledField, which shows a red border.
-function isLatitudeValid(value: string): boolean {
-  if (value === '') return true
-  const n = Number.parseFloat(value)
-  return !Number.isNaN(n) && n >= -90 && n <= 90
+// Validation rules mirror the New Project dialog. An empty value is treated
+// as "not yet entered" — no error — so the field renders neutrally before
+// the user starts typing.
+// Accepts `7`, `7.`, `7.5`, `.5`, and their signed forms — `7.` is a valid
+// intermediate state while the user is still typing the fractional part.
+const DECIMAL_RE = /^[-+]?(\d+\.?\d*|\.\d+)$/
+
+interface CoordinateForm {
+  latitude: string
+  longitude: string
 }
 
-function isLongitudeValid(value: string): boolean {
-  if (value === '') return true
-  const n = Number.parseFloat(value)
-  return !Number.isNaN(n) && n >= -180 && n <= 180
+function validateCoordinates(values: CoordinateForm): Partial<Record<keyof CoordinateForm, string>> {
+  const errors: Partial<Record<keyof CoordinateForm, string>> = {}
+
+  const lat = values.latitude.trim()
+  if (lat !== '') {
+    if (!DECIMAL_RE.test(lat)) {
+      errors.latitude = 'Invalid latitude'
+    } else {
+      const n = Number(lat)
+      if (!Number.isFinite(n) || n < -90 || n > 90) {
+        errors.latitude =
+          'Invalid latitude. Enter latitude in decimal degrees. Valid range: -90 <= latitude <= 90.'
+      } else if ((lat.split('.')[1]?.length ?? 0) > 7) {
+        errors.latitude = 'Latitude can have at most 7 decimal places.'
+      }
+    }
+  }
+
+  const lon = values.longitude.trim()
+  if (lon !== '') {
+    if (!DECIMAL_RE.test(lon)) {
+      errors.longitude = 'Invalid longitude'
+    } else {
+      const n = Number(lon)
+      if (!Number.isFinite(n) || n < -180 || n > 180) {
+        errors.longitude =
+          'Invalid longitude. Enter longitude in decimal degrees. Valid range: -180 <= longitude <= 180.'
+      } else if ((lon.split('.')[1]?.length ?? 0) > 7) {
+        errors.longitude = 'Longitude can have at most 7 decimal places.'
+      }
+    }
+  }
+
+  return errors
 }
 
 export function ProjectScreen(): React.JSX.Element {
@@ -86,8 +118,14 @@ export function ProjectScreen(): React.JSX.Element {
     }
   }, [])
 
-  const [latitude, setLatitude] = React.useState('')
-  const [longitude, setLongitude] = React.useState('')
+  const formik = useFormik<CoordinateForm>({
+    initialValues: { latitude: '', longitude: '' },
+    validateOnChange: true,
+    validateOnBlur: true,
+    validate: validateCoordinates,
+    onSubmit: () => {}
+  })
+
   const [utcOffset, setUtcOffset] = React.useState('')
 
   // Seed the header inputs from the project metadata once it lands. Re-seed
@@ -95,12 +133,20 @@ export function ProjectScreen(): React.JSX.Element {
   // displayed values), but not on every metadata refresh — otherwise the
   // user's in-progress edits would be clobbered.
   const seededProjectIdRef = React.useRef<string | null>(null)
+  const resetFormRef = React.useRef(formik.resetForm)
+  React.useEffect(() => {
+    resetFormRef.current = formik.resetForm
+  })
   React.useEffect(() => {
     if (!activeProject) return
     if (seededProjectIdRef.current === activeProject.id) return
     seededProjectIdRef.current = activeProject.id
-    setLatitude(String(activeProject.latitude))
-    setLongitude(String(activeProject.longitude))
+    resetFormRef.current({
+      values: {
+        latitude: String(activeProject.latitude),
+        longitude: String(activeProject.longitude)
+      }
+    })
     setUtcOffset(activeProject.utc_offset)
   }, [activeProject])
 
@@ -111,16 +157,18 @@ export function ProjectScreen(): React.JSX.Element {
     setUtcOffset(activeProject.utc_offset)
   }, [activeProject?.utc_offset, activeProject])
 
-  // Validity drives only the red-border indicator — no text errors.
-  const latitudeInvalid = !isLatitudeValid(latitude)
-  const longitudeInvalid = !isLongitudeValid(longitude)
+  // Compute errors synchronously off the current values. Formik's own
+  // `errors` map is updated asynchronously (microtask), which would lag
+  // by one render and let invalid input briefly look valid.
+  const errors = validateCoordinates(formik.values)
+  const latitudeInvalid = formik.values.latitude !== '' && Boolean(errors.latitude)
+  const longitudeInvalid = formik.values.longitude !== '' && Boolean(errors.longitude)
 
   const commitCoordinate = (field: 'latitude' | 'longitude'): void => {
     if (!activeProjectId || !activeProject) return
 
-    const value = field === 'latitude' ? latitude : longitude
-    const valid = field === 'latitude' ? isLatitudeValid(value) : isLongitudeValid(value)
-    if (!valid || value === '') return
+    const value = formik.values[field]
+    if (errors[field] || value === '') return
 
     const next = Number.parseFloat(value)
     const current = activeProject[field]
@@ -142,8 +190,8 @@ export function ProjectScreen(): React.JSX.Element {
         <div className="flex items-center gap-2">
           <LabeledField
             label="Latitude"
-            value={latitude}
-            onChange={setLatitude}
+            value={formik.values.latitude}
+            onChange={(value) => formik.setFieldValue('latitude', value)}
             onBlur={() => commitCoordinate('latitude')}
             invalid={latitudeInvalid}
             labelAdornment={<Tooltip text={LATITUDE_HELP} ariaLabel="Show latitude help" />}
@@ -151,8 +199,8 @@ export function ProjectScreen(): React.JSX.Element {
 
           <LabeledField
             label="Longitude"
-            value={longitude}
-            onChange={setLongitude}
+            value={formik.values.longitude}
+            onChange={(value) => formik.setFieldValue('longitude', value)}
             onBlur={() => commitCoordinate('longitude')}
             invalid={longitudeInvalid}
             labelAdornment={<Tooltip text={LONGITUDE_HELP} ariaLabel="Show longitude help" />}

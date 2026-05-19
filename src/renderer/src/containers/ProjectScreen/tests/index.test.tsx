@@ -235,6 +235,34 @@ describe('<ProjectScreen />', () => {
     expect(screen.getByTestId('field-Latitude')).toHaveAttribute('data-invalid', 'true')
   })
 
+  it('flags latitude with embedded junk characters as invalid', () => {
+    render(<ProjectScreen />)
+    fireEvent.change(screen.getByTestId('input-Latitude'), {
+      target: { value: '89.@#$#$980--210341-4' }
+    })
+    expect(screen.getByTestId('field-Latitude')).toHaveAttribute('data-invalid', 'true')
+  })
+
+  it('flags latitude with more than 7 decimal places as invalid', () => {
+    render(<ProjectScreen />)
+    fireEvent.change(screen.getByTestId('input-Latitude'), { target: { value: '12.12345678' } })
+    expect(screen.getByTestId('field-Latitude')).toHaveAttribute('data-invalid', 'true')
+  })
+
+  it('flags longitude with more than 7 decimal places as invalid', () => {
+    render(<ProjectScreen />)
+    fireEvent.change(screen.getByTestId('input-Longitude'), {
+      target: { value: '-45.123456789' }
+    })
+    expect(screen.getByTestId('field-Longitude')).toHaveAttribute('data-invalid', 'true')
+  })
+
+  it('accepts a trailing-dot value like "7." as valid mid-typing', () => {
+    render(<ProjectScreen />)
+    fireEvent.change(screen.getByTestId('input-Latitude'), { target: { value: '7.' } })
+    expect(screen.getByTestId('field-Latitude')).toHaveAttribute('data-invalid', 'false')
+  })
+
   it('dispatches project update on latitude blur when value is valid and changed', () => {
     sel.activeProjectId = 'p-1'
     sel.activeProject = {
