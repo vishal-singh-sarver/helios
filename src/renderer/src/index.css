@@ -128,3 +128,16 @@ textarea:focus-visible {
 .scrollbar-custom-thin::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+/* ── Frameless window drag regions ────────────────────────────────────────
+   The app uses frame: false on all platforms (custom title bar). Areas the
+   user can grab to move the window get .app-drag; interactive children
+   (buttons, inputs) inside that area must opt out with .app-no-drag, since
+   drag regions swallow pointer events otherwise. */
+.app-drag {
+  -webkit-app-region: drag;
+}
+
+.app-no-drag {
+  -webkit-app-region: no-drag;
+}

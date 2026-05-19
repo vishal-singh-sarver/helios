@@ -13,6 +13,11 @@ declare global {
       getBackendUrl: () => Promise<string | null>
       startBackend: () => Promise<{ ok: boolean }>
       stopBackend: () => Promise<{ ok: boolean }>
+      windowMinimize: () => Promise<void>
+      windowToggleMaximize: () => Promise<boolean>
+      windowClose: () => Promise<void>
+      windowIsMaximized: () => Promise<boolean>
+      getPlatform: () => Promise<NodeJS.Platform>
     }
     __APP_BASE_URL__?: string
   }
