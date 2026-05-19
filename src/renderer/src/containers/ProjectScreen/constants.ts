@@ -88,6 +88,11 @@ export const UPDATE_ALL_CHECKBOXES_REQUESTED =
 // range (covers manually-built columns and upload-imported columns alike).
 export const SET_COLUMN_VALIDATION_ERRORS =
   'app/ProjectScreen/SET_COLUMN_VALIDATION_ERRORS' as const
+// Single-cell validation error setter. Used by CellInput's live keystroke
+// validator to paint the red outline + tooltip without writing the cell
+// value (UPDATE_CELL_LOCAL would mark the cell pending sync on every keystroke).
+export const SET_CELL_VALIDATION_ERROR =
+  'app/ProjectScreen/SET_CELL_VALIDATION_ERROR' as const
 
 // Selection
 export const SET_ROW_SELECTION = 'app/ProjectScreen/SET_ROW_SELECTION' as const

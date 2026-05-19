@@ -1,9 +1,21 @@
 import infoIcon from '@renderer/assets/info.svg'
 import Tooltip from '@renderer/components/Tooltip'
+import { setCellValidationError } from 'containers/ProjectScreen/actions'
 import React from 'react'
-import { useSelector } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import { exceedsMaxDecimals, VALIDATION_MESSAGES } from 'utils/decimalValidation'
-import { makeSelectCellError } from './selectors'
+import {
+  makeSelectCellError,
+  selectActiveScenarioId,
+  selectColumns,
+  selectSelectableDataTypes
+} from './selectors'
+import {
+  GLOBAL_CELL_MAX,
+  GLOBAL_CELL_MIN,
+  GLOBAL_RANGE_MESSAGE,
+  validateCellValue
+} from './validation'
 
 interface CellInputProps {
   rowId: string
@@ -12,21 +24,45 @@ interface CellInputProps {
   onCommit: (next: string) => void
 }
 
+// True when the parsed number would breach the global ±1e6 bound. Partial
+// inputs like "" or "-" parse to NaN and are allowed through so the user can
+// keep typing.
+function exceedsGlobalBound(raw: string): boolean {
+  const num = Number(raw.trim())
+  if (!Number.isFinite(num)) return false
+  return num < GLOBAL_CELL_MIN || num > GLOBAL_CELL_MAX
+}
+
 function CellInput({ rowId, colId, value, onCommit }: CellInputProps): React.JSX.Element {
+  const dispatch = useDispatch()
+  const scenarioId = useSelector(selectActiveScenarioId)
+  const columns = useSelector(selectColumns)
+  const dataTypes = useSelector(selectSelectableDataTypes)
+  const col = columns[colId]
+
   const [draft, setDraft] = React.useState(value)
   const [decimalValidationError, setDecimalValidationError] = React.useState<string | null>(null)
+  // Local-only error for the global ±1e6 keystroke block. We reject the
+  // character before it reaches `draft`, so this error isn't reflected in the
+  // redux validationError map — using local state keeps it isolated from the
+  // committed value's validation lifecycle.
+  const [globalBoundError, setGlobalBoundError] = React.useState<string | null>(null)
   React.useEffect(() => {
     setDraft(value)
     setDecimalValidationError(null)
+    setGlobalBoundError(null)
   }, [value])
 
-  // Per-cell validation error pushed by handleCellBlur (manual edits) or by
-  // the updateColumnWorker saga (after data type / unit changes).
+  // Per-cell validation error pushed by handleCellBlur (manual edits), by
+  // the updateColumnWorker saga (after data type / unit changes), and by
+  // the live keystroke validator below (via SET_CELL_VALIDATION_ERROR).
   const selectError = React.useMemo(() => makeSelectCellError(rowId, colId), [rowId, colId])
   const error = useSelector(selectError)
 
-  // Combine backend validation error with decimal validation error
-  const displayError = decimalValidationError || error
+  // Combine backend / redux validation error with local guards. The global
+  // bound takes precedence because the keystroke that triggered it never
+  // made it into `draft`.
+  const displayError = globalBoundError || decimalValidationError || error
 
   // Error visual is the cell <td>'s red border (rendered by WeatherTable);
   // here we only reserve right-side room for the info icon when in error
@@ -36,24 +72,43 @@ function CellInput({ rowId, colId, value, onCommit }: CellInputProps): React.JSX
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const newValue = e.target.value
 
-    // Check if the new value exceeds max decimals
+    // Block #1 — too many decimal places (existing behavior).
     if (exceedsMaxDecimals(newValue)) {
-      // Show error but don't update draft
       setDecimalValidationError(VALIDATION_MESSAGES.MANUAL_INPUT)
       return
     }
-
-    // Clear decimal validation error if the value is now valid
     if (decimalValidationError) {
       setDecimalValidationError(null)
     }
 
+    // Block #2 — global ±1e6 hard bound. Refuse the keystroke so the value
+    // can never reach blur / backend in a state that violates the bound.
+    if (exceedsGlobalBound(newValue)) {
+      setGlobalBoundError(GLOBAL_RANGE_MESSAGE)
+      return
+    }
+    if (globalBoundError) {
+      setGlobalBoundError(null)
+    }
+
     setDraft(newValue)
+
+    // Live unit-range / number-format validation. Does NOT block — we just
+    // surface the error through redux so the red <td> outline + tooltip
+    // update while typing. Re-uses the same validationErrors slot that
+    // handleCellBlur writes on commit, so on blur the slot is overwritten
+    // with the final result (no stale live error survives).
+    if (scenarioId && col) {
+      const liveError = validateCellValue(newValue, { col, dataTypes })
+      dispatch(setCellValidationError(scenarioId, rowId, colId, liveError))
+    }
   }
 
   const handleBlur = (): void => {
-    // Clear decimal validation error on blur to allow the backend validation to take over
+    // Clear local guards so the redux/backend error becomes the single
+    // source of truth for displayError.
     setDecimalValidationError(null)
+    setGlobalBoundError(null)
     onCommit(draft)
   }
 

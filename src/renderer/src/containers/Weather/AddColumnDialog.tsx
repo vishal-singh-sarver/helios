@@ -145,6 +145,16 @@ function AddColumnDialog({ isOpen, onClose }: AddColumnDialogProps): React.JSX.E
     [selectedDataType]
   )
 
+  // Mirror the column header (DataTypeUnitPicker) which displays `u.unit`
+  // when a unit is set — so the default-value field reads the same way.
+  const selectedUnit = React.useMemo(
+    () =>
+      formik.values.unitId === ''
+        ? undefined
+        : selectedDataType?.units.find((u) => String(u.id) === formik.values.unitId),
+    [selectedDataType, formik.values.unitId]
+  )
+
   const handleDataTypeChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ): void => {
@@ -202,7 +212,10 @@ function AddColumnDialog({ isOpen, onClose }: AddColumnDialogProps): React.JSX.E
       />
 
       <FormField
-        labelProps={{ label: m.fields.value, optional: true }}
+        labelProps={{
+          label: selectedUnit ? `${m.fields.value} (${selectedUnit.unit})` : m.fields.value,
+          optional: true
+        }}
         inputProps={{
           ...formik.getFieldProps('defaultValue'),
           error:

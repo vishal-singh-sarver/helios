@@ -27,6 +27,7 @@ import {
   SET_ACTIVE_PROJECT,
   SET_ACTIVE_SCENARIO,
   SET_ALL_ROWS_SELECTION,
+  SET_CELL_VALIDATION_ERROR,
   SET_COLUMN_VALIDATION_ERRORS,
   SET_ROW_SELECTION,
   UPDATE_PROJECT_FAILED,
@@ -288,6 +289,17 @@ export interface SetColumnValidationErrorsAction extends Idx {
     errors: Record<RowId, string | null>
   }
 }
+// Single-cell validation error setter. `validationError === null` clears.
+// Reducer touches only validationErrors — leaves rows[] and cellSync alone.
+export interface SetCellValidationErrorAction extends Idx {
+  type: typeof SET_CELL_VALIDATION_ERROR
+  payload: {
+    scenarioId: string
+    rowId: RowId
+    colId: ColId
+    validationError: string | null
+  }
+}
 export interface UpdateAllCheckboxesRequestedAction extends Idx {
   type: typeof UPDATE_ALL_CHECKBOXES_REQUESTED
   payload: { projectId: string; scenarioId: string; checkColId: ColId; value: string }
@@ -346,6 +358,7 @@ export type ProjectScreenAction =
   | UpdateCellFailedAction
   | UpdateAllCheckboxesRequestedAction
   | SetColumnValidationErrorsAction
+  | SetCellValidationErrorAction
   | SetRowSelectionAction
   | SetAllRowsSelectionAction
 
@@ -667,6 +680,16 @@ export const setColumnValidationErrors = (
 ): SetColumnValidationErrorsAction => ({
   type: SET_COLUMN_VALIDATION_ERRORS,
   payload: { scenarioId, colId, errors }
+})
+
+export const setCellValidationError = (
+  scenarioId: string,
+  rowId: RowId,
+  colId: ColId,
+  validationError: string | null
+): SetCellValidationErrorAction => ({
+  type: SET_CELL_VALIDATION_ERROR,
+  payload: { scenarioId, rowId, colId, validationError }
 })
 
 export const setRowSelection = (

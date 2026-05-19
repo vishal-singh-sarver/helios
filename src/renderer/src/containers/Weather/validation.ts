@@ -7,6 +7,15 @@
 
 import type { ColumnDef, DataTypeDef, DataUnitDef } from 'containers/ProjectScreen/types'
 
+// Cell-wide hard bound applied regardless of data type / unit. The live
+// CellInput keystroke guard refuses input that would put the value outside
+// this range, but the bound is also enforced here so non-keystroke paths
+// (paste, import, saga revalidation on data-type/unit change) reject the
+// same values.
+export const GLOBAL_CELL_MIN = -1_000_000
+export const GLOBAL_CELL_MAX = 1_000_000
+export const GLOBAL_RANGE_MESSAGE = 'Value must be in -1,000,000–1,000,000'
+
 export interface CellValidationContext {
   col: ColumnDef
   dataTypes: DataTypeDef[]
@@ -43,13 +52,29 @@ export function validateCellValue(rawValue: string, ctx: CellValidationContext):
   if (trimmed === '') return null
 
   const unit = findUnit(ctx.dataTypes, ctx.col.dataTypeId, ctx.col.unitId)
-  if (!unit) return null
-  if (unit.min == null && unit.max == null) return null
-
   const num = Number(trimmed)
+
+  // No unit configured: only the global bound applies. Anything else
+  // (including non-numeric input) is accepted because we can't be sure the
+  // column is even numeric yet.
+  if (!unit) {
+    if (Number.isFinite(num) && (num < GLOBAL_CELL_MIN || num > GLOBAL_CELL_MAX)) {
+      return GLOBAL_RANGE_MESSAGE
+    }
+    return null
+  }
+
   if (!Number.isFinite(num)) {
     return `${unitLabel(unit)} must be a number`
   }
+
+  // Global bound wins over unit-specific range when both would trip — the
+  // global rule is the hard floor/ceiling for any cell.
+  if (num < GLOBAL_CELL_MIN || num > GLOBAL_CELL_MAX) {
+    return GLOBAL_RANGE_MESSAGE
+  }
+
+  if (unit.min == null && unit.max == null) return null
 
   if (unit.min != null && num < unit.min) {
     return formatRangeMessage(unit, unit.min, unit.max)

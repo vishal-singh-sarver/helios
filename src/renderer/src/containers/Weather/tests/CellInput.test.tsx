@@ -2,20 +2,26 @@ import React from 'react'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import CellInput from '../CellInput'
 
-// CellInput reads its per-cell error through useSelector(makeSelectCellError…).
-// We mock react-redux directly so the test stays hermetic — no store, no
-// reducer wiring needed.
+// CellInput reads its per-cell error through useSelector(makeSelectCellError…)
+// plus a handful of other selectors for live validation. We mock react-redux
+// and the selectors module so the test stays hermetic — no store, no reducer
+// wiring needed. `useSelector` invokes the passed function with a dummy
+// state, so each mocked selector controls its own return value.
 let mockError: string | null = null
 
 vi.mock('react-redux', () => ({
   useSelector: (selector: (state: unknown) => unknown) =>
-    // The factory selector returned by makeSelectCellError ultimately reads
-    // from the RootState. We bypass it and feed back the configured error.
-    typeof selector === 'function' ? mockError : mockError
+    typeof selector === 'function' ? selector({}) : selector,
+  useDispatch: () => vi.fn()
 }))
 
 vi.mock('../selectors', () => ({
-  makeSelectCellError: () => () => mockError
+  makeSelectCellError: () => () => mockError,
+  selectActiveScenarioId: () => 'scen-1',
+  selectColumns: () => ({
+    c1: { id: 'c1', name: 'col', dataTypeId: null, unitId: null }
+  }),
+  selectSelectableDataTypes: () => []
 }))
 
 vi.mock('@renderer/components/Tooltip', () => ({

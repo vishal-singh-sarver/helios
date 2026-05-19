@@ -26,6 +26,7 @@ import {
   SET_ACTIVE_PROJECT,
   SET_ACTIVE_SCENARIO,
   SET_ALL_ROWS_SELECTION,
+  SET_CELL_VALIDATION_ERROR,
   SET_COLUMN_VALIDATION_ERRORS,
   SET_ROW_SELECTION,
   UPDATE_ALL_CHECKBOXES_REQUESTED,
@@ -609,6 +610,24 @@ const projectScreenReducer = (
             if (!table.validationErrors[rowId]) table.validationErrors[rowId] = {}
             table.validationErrors[rowId][colId] = msg
           }
+        }
+        break
+      }
+
+      // Single-cell live validation: write/clear the error slot without
+      // touching rows[] or cellSync. Used by CellInput's keystroke validator
+      // so the red outline + tooltip update while typing.
+      case SET_CELL_VALIDATION_ERROR: {
+        const { scenarioId, rowId, colId, validationError } = action.payload
+        const table = draft.byScenario[scenarioId]
+        if (!table) break
+        if (validationError == null) {
+          if (table.validationErrors[rowId]) {
+            delete table.validationErrors[rowId][colId]
+          }
+        } else {
+          if (!table.validationErrors[rowId]) table.validationErrors[rowId] = {}
+          table.validationErrors[rowId][colId] = validationError
         }
         break
       }
