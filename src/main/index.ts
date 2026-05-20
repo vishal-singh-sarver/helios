@@ -51,6 +51,9 @@ function createWindow(onReadyToShow?: () => void): BrowserWindow {
     height: 600,
     show: false,
     autoHideMenuBar: true,
+    // Frameless: the renderer paints its own title bar (traffic lights on
+    // Mac, min/max/close on Linux/Windows). Drag regions are set in CSS.
+    frame: false,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
@@ -269,6 +272,35 @@ app.on('second-instance', () => {
   writeEarlyLog('second-instance event received — opening a new window')
   createWindow()
 })
+
+// --- Window control IPC handlers ---
+// Frameless windows have no native controls, so the renderer paints its own
+// and asks the main process to perform the action.
+
+ipcMain.handle('window:minimize', (event) => {
+  BrowserWindow.fromWebContents(event.sender)?.minimize()
+})
+
+ipcMain.handle('window:toggleMaximize', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender)
+  if (!win) return false
+  if (win.isMaximized()) {
+    win.unmaximize()
+    return false
+  }
+  win.maximize()
+  return true
+})
+
+ipcMain.handle('window:close', (event) => {
+  BrowserWindow.fromWebContents(event.sender)?.close()
+})
+
+ipcMain.handle('window:isMaximized', (event) => {
+  return BrowserWindow.fromWebContents(event.sender)?.isMaximized() ?? false
+})
+
+ipcMain.handle('window:getPlatform', () => process.platform)
 
 // --- File dialog IPC handlers ---
 

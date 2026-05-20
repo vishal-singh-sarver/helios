@@ -185,7 +185,7 @@ export function ProjectScreen(): React.JSX.Element {
 
   return (
     <div className="flex flex-col h-full">
-      <Header onLogoClick={() => dispatch(navigate('home'))}>
+      <Header onLogoClick={() => dispatch(navigate('home'))} title={activeProject?.name}>
         <MenuBar items={TOOLBAR_ITEMS} onItemSelect={() => {}} />
         <div className="flex items-center gap-2">
           <LabeledField

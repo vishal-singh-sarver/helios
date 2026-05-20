@@ -35,7 +35,14 @@ const api = {
 
   startBackend: (): Promise<{ ok: boolean }> => ipcRenderer.invoke('backend:start'),
 
-  stopBackend: (): Promise<{ ok: boolean }> => ipcRenderer.invoke('backend:stop')
+  stopBackend: (): Promise<{ ok: boolean }> => ipcRenderer.invoke('backend:stop'),
+
+  // Window controls — the renderer paints its own title bar (frameless window).
+  windowMinimize: (): Promise<void> => ipcRenderer.invoke('window:minimize'),
+  windowToggleMaximize: (): Promise<boolean> => ipcRenderer.invoke('window:toggleMaximize'),
+  windowClose: (): Promise<void> => ipcRenderer.invoke('window:close'),
+  windowIsMaximized: (): Promise<boolean> => ipcRenderer.invoke('window:isMaximized'),
+  getPlatform: (): Promise<NodeJS.Platform> => ipcRenderer.invoke('window:getPlatform')
 }
 
 if (process.contextIsolated) {
