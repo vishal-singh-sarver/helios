@@ -23,7 +23,7 @@ export function PrimaryBtn({
       disabled={disabled}
       className={[
         // Spec: 74×34, 4px radius, 1px border, 5/10 padding, 4px gap.
-        'inline-flex h-[34px] w-[74px] items-center justify-center gap-1 rounded-[4px] border border-[#5888E5] bg-[#245AC5] px-[10px] py-[5px] text-sm font-medium text-white outline-none transition-colors hover:bg-[#1f4fb0] focus:outline-none focus-visible:outline-none',
+        'inline-flex h-[34px] w-[74px] shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-[4px] border border-[#5888E5] bg-[#245AC5] px-[10px] py-[5px] text-sm font-medium text-white outline-none transition-colors hover:bg-[#1f4fb0] focus:outline-none focus-visible:outline-none',
         disabled ? 'cursor-not-allowed' : ''
       ].join(' ')}
     >

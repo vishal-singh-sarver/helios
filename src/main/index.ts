@@ -46,14 +46,25 @@ function writeEarlyLog(message: string): void {
 }
 
 function createWindow(onReadyToShow?: () => void): BrowserWindow {
+  const isMac = process.platform === 'darwin'
+  // macOS: titleBarStyle 'hidden' keeps the native traffic lights (so the OS
+  // handles the fullscreen hover-reveal for free) while the rest of the title
+  // bar is painted by the renderer. trafficLightPosition centers the lights
+  // vertically in our 45px header row.
+  // Linux/Windows: fully frameless — the renderer paints all window controls.
+  const frameOptions = isMac
+    ? {
+        titleBarStyle: 'hidden' as const,
+        trafficLightPosition: { x: 15, y: 16 }
+      }
+    : { frame: false }
+
   const mainWindow = new BrowserWindow({
     width: 1000,
     height: 600,
     show: false,
     autoHideMenuBar: true,
-    // Frameless: the renderer paints its own title bar (traffic lights on
-    // Mac, min/max/close on Linux/Windows). Drag regions are set in CSS.
-    frame: false,
+    ...frameOptions,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
@@ -63,6 +74,25 @@ function createWindow(onReadyToShow?: () => void): BrowserWindow {
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
     onReadyToShow?.()
+  })
+
+  // F11 toggles fullscreen. enter/leave-full-screen fire AFTER the OS animation
+  // completes, so we also notify the renderer up front to keep the custom
+  // title bar collapse in sync with the transition start.
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.type === 'keyDown' && input.key === 'F11') {
+      const next = !mainWindow.isFullScreen()
+      mainWindow.webContents.send('window:fullScreenChange', next)
+      mainWindow.setFullScreen(next)
+      event.preventDefault()
+    }
+  })
+
+  mainWindow.on('enter-full-screen', () => {
+    mainWindow.webContents.send('window:fullScreenChange', true)
+  })
+  mainWindow.on('leave-full-screen', () => {
+    mainWindow.webContents.send('window:fullScreenChange', false)
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -298,6 +328,10 @@ ipcMain.handle('window:close', (event) => {
 
 ipcMain.handle('window:isMaximized', (event) => {
   return BrowserWindow.fromWebContents(event.sender)?.isMaximized() ?? false
+})
+
+ipcMain.handle('window:isFullScreen', (event) => {
+  return BrowserWindow.fromWebContents(event.sender)?.isFullScreen() ?? false
 })
 
 ipcMain.handle('window:getPlatform', () => process.platform)

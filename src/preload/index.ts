@@ -42,6 +42,12 @@ const api = {
   windowToggleMaximize: (): Promise<boolean> => ipcRenderer.invoke('window:toggleMaximize'),
   windowClose: (): Promise<void> => ipcRenderer.invoke('window:close'),
   windowIsMaximized: (): Promise<boolean> => ipcRenderer.invoke('window:isMaximized'),
+  windowIsFullScreen: (): Promise<boolean> => ipcRenderer.invoke('window:isFullScreen'),
+  onFullScreenChange: (cb: (isFullScreen: boolean) => void): (() => void) => {
+    const listener = (_: unknown, isFullScreen: boolean): void => cb(isFullScreen)
+    ipcRenderer.on('window:fullScreenChange', listener)
+    return () => ipcRenderer.removeListener('window:fullScreenChange', listener)
+  },
   getPlatform: (): Promise<NodeJS.Platform> => ipcRenderer.invoke('window:getPlatform')
 }
 

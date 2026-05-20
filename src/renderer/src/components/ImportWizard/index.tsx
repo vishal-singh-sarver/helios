@@ -1,17 +1,18 @@
+import Spinner from 'components/LoadingScreen/Spinner'
 import {
   INITIAL_MAPPING,
   parseDelimited,
   parseFile,
   parseRowDateTimeSelections,
   type DateFormatKey,
+  type DateSelectionMode,
   type DateTimeFormatKey,
   type DateTimeMapping,
-  type DateSelectionMode,
-  type TimeSelectionMode,
   type ImportedDataset,
   type ImportedDatasetColumn,
   type ImportedDatasetRecord,
-  type ParseResult
+  type ParseResult,
+  type TimeSelectionMode
 } from 'containers/Weather/parsers'
 import React, { useCallback, useMemo, useState } from 'react'
 import { isValidNumber, truncateToMaxDecimals, wouldTruncateAny } from 'utils/decimalValidation'
@@ -504,7 +505,7 @@ function ImportWizard({
                 </PrimaryBtn>
               ) : (
                 <PrimaryBtn onClick={handleImport} disabled={!canGoNext || importing}>
-                  {importing ? 'Importing…' : 'Import'}
+                  {importing ? <Spinner className="h-4 w-4 text-white" /> : 'Import'}
                 </PrimaryBtn>
               )}
             </div>

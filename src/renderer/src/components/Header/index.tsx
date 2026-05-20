@@ -24,8 +24,25 @@ function useIsMac(): boolean {
   return isMac
 }
 
+function useIsFullScreen(): boolean {
+  const [isFullScreen, setIsFullScreen] = React.useState(false)
+  React.useEffect(() => {
+    let cancelled = false
+    window.api.windowIsFullScreen().then((v) => {
+      if (!cancelled) setIsFullScreen(v)
+    })
+    const unsubscribe = window.api.onFullScreenChange((v) => setIsFullScreen(v))
+    return () => {
+      cancelled = true
+      unsubscribe()
+    }
+  }, [])
+  return isFullScreen
+}
+
 function Header({ children, onLogoClick, title }: HeaderProps): React.JSX.Element {
   const isMac = useIsMac()
+  const isFullScreen = useIsFullScreen()
   const logo = <img src={heliosLogo} alt="Helios logo" className="h-5 w-auto" />
   const logoButton = onLogoClick ? (
     <button
@@ -40,10 +57,20 @@ function Header({ children, onLogoClick, title }: HeaderProps): React.JSX.Elemen
     logo
   )
 
+  // On Windows/Linux, the entire 45px title bar row disappears in fullscreen
+  // (the OS has no hover-reveal there, so leaving it would be wasted space).
+  // On macOS the row stays — native traffic lights auto-hide via the OS and
+  // reveal on hover, matching every other Mac app.
+  const showTitleBar = isMac || !isFullScreen
+
   return (
     <header className="border-b border-app-border">
-      <div className="app-drag flex h-[45px] items-center gap-3 border-b border-app-border px-4">
-        {isMac && <WindowControls side="left" />}
+      {showTitleBar && (
+      <div
+        className={`app-drag flex h-[45px] items-center gap-3 border-b border-app-border px-4 ${
+          isMac ? 'pl-[80px]' : ''
+        }`}
+      >
         {logoButton}
         {title && (
           <div className="flex items-center gap-3">
@@ -86,8 +113,9 @@ function Header({ children, onLogoClick, title }: HeaderProps): React.JSX.Elemen
           </div>
         )}
         <div className="flex-1" />
-        {!isMac && <WindowControls side="right" />}
+        {!isMac && !isFullScreen && <WindowControls side="right" />}
       </div>
+      )}
 
       <div className="flex h-[50px] items-center justify-between bg-[#202020] px-5 py-[10px]">
         {children}

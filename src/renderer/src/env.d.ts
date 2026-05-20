@@ -17,6 +17,8 @@ declare global {
       windowToggleMaximize: () => Promise<boolean>
       windowClose: () => Promise<void>
       windowIsMaximized: () => Promise<boolean>
+      windowIsFullScreen: () => Promise<boolean>
+      onFullScreenChange: (cb: (isFullScreen: boolean) => void) => () => void
       getPlatform: () => Promise<NodeJS.Platform>
     }
     __APP_BASE_URL__?: string
