@@ -9,7 +9,8 @@ const sel = {
   addColumnLoading: false,
   addColumnError: null as string | null,
   addRowLoading: false,
-  addRowError: null as string | null
+  addRowError: null as string | null,
+  rowOrder: [] as string[]
 }
 
 vi.mock('react-redux', () => ({
@@ -21,7 +22,8 @@ vi.mock('../selectors', () => ({
   selectAddColumnLoading: () => sel.addColumnLoading,
   selectAddColumnError: () => sel.addColumnError,
   selectAddRowLoading: () => sel.addRowLoading,
-  selectAddRowError: () => sel.addRowError
+  selectAddRowError: () => sel.addRowError,
+  selectRowOrder: () => sel.rowOrder
 }))
 
 vi.mock('../AddColumnDialog', () => ({
@@ -77,6 +79,7 @@ function resetSel(): void {
   sel.addColumnError = null
   sel.addRowLoading = false
   sel.addRowError = null
+  sel.rowOrder = []
 }
 
 describe('<WeatherToolbar />', () => {
@@ -188,17 +191,16 @@ describe('<WeatherToolbar />', () => {
     expect(onFilter).toHaveBeenCalledTimes(1)
   })
 
-  it('renders the imported filename chip when a file has been uploaded', () => {
+  it('enables the delete button when a file has been uploaded', () => {
     render(<WeatherToolbar importedFilename="sample.csv" />)
-    expect(screen.getByText('sample.csv')).toBeInTheDocument()
-    expect(screen.getByLabelText('Delete uploaded weather file')).toBeInTheDocument()
+    expect(screen.getByLabelText('Delete uploaded weather file')).not.toBeDisabled()
   })
 
   it('opens the confirm dialog when delete is clicked', () => {
     render(<WeatherToolbar importedFilename="sample.csv" />)
     fireEvent.click(screen.getByLabelText('Delete uploaded weather file'))
     expect(screen.getByTestId('dialog')).toBeInTheDocument()
-    expect(screen.getByText('Delete sample.csv')).toBeInTheDocument()
+    expect(screen.getAllByText('Delete Data').length).toBeGreaterThan(0)
   })
 
   it('forwards onClearImportedFile when delete is confirmed', () => {

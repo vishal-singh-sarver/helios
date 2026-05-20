@@ -62,8 +62,10 @@ describe('<StepDateTime />', () => {
     render(
       <StepDateTime
         parsed={group1Parsed}
-        mode="group1"
-        onChangeMode={vi.fn()}
+        dateMode="parts"
+        onChangeDateMode={vi.fn()}
+        timeMode="parts"
+        onChangeTimeMode={vi.fn()}
         mapping={group1Mapping}
         onChangeMapping={vi.fn()}
         dateFormat="YYYY-MM-DD"
@@ -73,19 +75,21 @@ describe('<StepDateTime />', () => {
         stats={baseStats}
       />
     )
-    expect(screen.getAllByText('year').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('month').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('day').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('hour').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('minute').length).toBeGreaterThan(0)
+    expect(screen.getByText('Day')).toBeInTheDocument()
+    expect(screen.getByText('Month')).toBeInTheDocument()
+    expect(screen.getByText('Year')).toBeInTheDocument()
+    expect(screen.getByText('Hour')).toBeInTheDocument()
+    expect(screen.getByText('Minute')).toBeInTheDocument()
   })
 
   it('renders all three date/time mapping sections on one page', () => {
     render(
       <StepDateTime
         parsed={group2Parsed}
-        mode="group2"
-        onChangeMode={vi.fn()}
+        dateMode="string"
+        onChangeDateMode={vi.fn()}
+        timeMode="string"
+        onChangeTimeMode={vi.fn()}
         mapping={group2Mapping}
         onChangeMapping={vi.fn()}
         dateFormat="DD/MM/YYYY"
@@ -95,18 +99,20 @@ describe('<StepDateTime />', () => {
         stats={baseStats}
       />
     )
-    expect(screen.getAllByText('year').length).toBeGreaterThan(0)
-    expect(screen.getByText('date')).toBeInTheDocument()
-    expect(screen.getByText('date-time')).toBeInTheDocument()
+    expect(screen.getByText('Year')).toBeInTheDocument()
+    expect(screen.getByText('Date String')).toBeInTheDocument()
+    expect(screen.getByText('Date-Time')).toBeInTheDocument()
   })
 
-  it('clicking another card calls onChangeMode', () => {
-    const onChangeMode = vi.fn()
+  it('clicking another card calls onChangeDateMode', () => {
+    const onChangeDateMode = vi.fn()
     render(
       <StepDateTime
         parsed={group2Parsed}
-        mode="group2"
-        onChangeMode={onChangeMode}
+        dateMode="string"
+        onChangeDateMode={onChangeDateMode}
+        timeMode="string"
+        onChangeTimeMode={vi.fn()}
         mapping={group2Mapping}
         onChangeMapping={vi.fn()}
         dateFormat="DD/MM/YYYY"
@@ -116,16 +122,20 @@ describe('<StepDateTime />', () => {
         stats={baseStats}
       />
     )
-    fireEvent.click(screen.getByRole('button', { name: /year/i }))
-    expect(onChangeMode).toHaveBeenCalledWith('group1')
+    const partsCard = screen.getByLabelText('day month year')
+    const grid = partsCard.closest('.grid') as HTMLElement
+    fireEvent.click(within(grid).getByRole('button'))
+    expect(onChangeDateMode).toHaveBeenCalledWith('parts')
   })
 
-  it('disables controls in unselected cards', () => {
+  it('disables controls in unselected date cards', () => {
     render(
       <StepDateTime
         parsed={group2Parsed}
-        mode="group2"
-        onChangeMode={vi.fn()}
+        dateMode="string"
+        onChangeDateMode={vi.fn()}
+        timeMode="string"
+        onChangeTimeMode={vi.fn()}
         mapping={group2Mapping}
         onChangeMapping={vi.fn()}
         dateFormat="DD/MM/YYYY"
@@ -136,19 +146,14 @@ describe('<StepDateTime />', () => {
       />
     )
 
-    const yearCard = screen.getByRole('button', { name: /year/i })
-    const dateCard = screen.getByRole('button', {
-      name: /date dd\/mm\/yyyy/i
-    })
+    const partsCard = screen.getByLabelText('day month year')
+    const dateStringCard = screen.getByLabelText('date string')
+    const dateTimeCard = screen.getByLabelText('date-time')
 
-    const dateTimeCard = screen.getByRole('button', {
-      name: /date-time yyyy-mm-ddthh:mm:ssz/i
-    })
-
-    within(yearCard)
+    within(partsCard)
       .getAllByRole('combobox')
       .forEach((select) => expect(select).toBeDisabled())
-    within(dateCard)
+    within(dateStringCard)
       .getAllByRole('combobox')
       .forEach((select) => expect(select).not.toBeDisabled())
     within(dateTimeCard)
@@ -156,12 +161,14 @@ describe('<StepDateTime />', () => {
       .forEach((select) => expect(select).toBeDisabled())
   })
 
-  it('shows formatted parsed Date-Time in 24-hour for valid rows', () => {
+  it('shows formatted parsed Date-Time in the preview for valid rows', () => {
     render(
       <StepDateTime
         parsed={group2Parsed}
-        mode="group2"
-        onChangeMode={vi.fn()}
+        dateMode="string"
+        onChangeDateMode={vi.fn()}
+        timeMode="string"
+        onChangeTimeMode={vi.fn()}
         mapping={group2Mapping}
         onChangeMapping={vi.fn()}
         dateFormat="DD/MM/YYYY"
@@ -171,16 +178,18 @@ describe('<StepDateTime />', () => {
         stats={baseStats}
       />
     )
-    // Row 1 has "26/02/2026 10:00" → "26/02/2026, 10:00"
-    expect(screen.getByText(/26\/02\/2026, 10:00/)).toBeInTheDocument()
+    // Row 1 has "26/02/2026 10:00" → formatted via en-US locale
+    expect(screen.getByText(/2\/26\/2026, 10:00:00\s*AM/)).toBeInTheDocument()
   })
 
   it('shows "Invalid time format" when time is unparseable but date is OK', () => {
     render(
       <StepDateTime
         parsed={group2Parsed}
-        mode="group2"
-        onChangeMode={vi.fn()}
+        dateMode="string"
+        onChangeDateMode={vi.fn()}
+        timeMode="string"
+        onChangeTimeMode={vi.fn()}
         mapping={group2Mapping}
         onChangeMapping={vi.fn()}
         dateFormat="DD/MM/YYYY"
@@ -201,8 +210,10 @@ describe('<StepDateTime />', () => {
     render(
       <StepDateTime
         parsed={badDate}
-        mode="group2"
-        onChangeMode={vi.fn()}
+        dateMode="string"
+        onChangeDateMode={vi.fn()}
+        timeMode="string"
+        onChangeTimeMode={vi.fn()}
         mapping={group2Mapping}
         onChangeMapping={vi.fn()}
         dateFormat="DD/MM/YYYY"
@@ -219,8 +230,10 @@ describe('<StepDateTime />', () => {
     render(
       <StepDateTime
         parsed={group1Parsed}
-        mode="group1"
-        onChangeMode={vi.fn()}
+        dateMode="parts"
+        onChangeDateMode={vi.fn()}
+        timeMode="parts"
+        onChangeTimeMode={vi.fn()}
         mapping={group1Mapping}
         onChangeMapping={vi.fn()}
         dateFormat="YYYY-MM-DD"
@@ -237,8 +250,10 @@ describe('<StepDateTime />', () => {
     render(
       <StepDateTime
         parsed={group2Parsed}
-        mode="group2"
-        onChangeMode={vi.fn()}
+        dateMode="string"
+        onChangeDateMode={vi.fn()}
+        timeMode="string"
+        onChangeTimeMode={vi.fn()}
         mapping={group2Mapping}
         onChangeMapping={vi.fn()}
         dateFormat="DD/MM/YYYY"
@@ -249,15 +264,17 @@ describe('<StepDateTime />', () => {
       />
     )
     expect(screen.getByText(/1 of 2 valid/)).toBeInTheDocument()
-    expect(screen.getByText(/1 will import as Invalid/)).toBeInTheDocument()
+    expect(screen.getByText(/1 invalid/)).toBeInTheDocument()
   })
 
   it('renders combined Date-Time mode and previews ISO rows', () => {
     render(
       <StepDateTime
         parsed={group3Parsed}
-        mode="group3"
-        onChangeMode={vi.fn()}
+        dateMode="datetime"
+        onChangeDateMode={vi.fn()}
+        timeMode="none"
+        onChangeTimeMode={vi.fn()}
         mapping={group3Mapping}
         onChangeMapping={vi.fn()}
         dateFormat="YYYY-MM-DD"
@@ -268,7 +285,7 @@ describe('<StepDateTime />', () => {
       />
     )
 
-    expect(screen.getByText('date-time')).toBeInTheDocument()
-    expect(screen.getByText(/26\/02\/2026, 10:00/)).toBeInTheDocument()
+    expect(screen.getByLabelText('date-time')).toBeInTheDocument()
+    expect(screen.getAllByText(/2\/26\/2026/).length).toBeGreaterThan(0)
   })
 })
