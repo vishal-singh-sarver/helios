@@ -207,7 +207,7 @@ describe('<DataTypeUnitPicker />', () => {
     expect(screen.getByRole('option', { name: 'C (°C)' })).toBeInTheDocument()
   })
 
-  it('marks the base unit as Default in the unit view', () => {
+  it('does not mark the base unit with a Default badge', () => {
     render(
       <DataTypeUnitPicker
         col={colWithType}
@@ -218,7 +218,7 @@ describe('<DataTypeUnitPicker />', () => {
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /data type and unit/i }))
-    expect(screen.getByText('Default')).toBeInTheDocument()
+    expect(screen.queryByText('Default')).not.toBeInTheDocument()
   })
 
   it('switches back to the type view from "Back to Assign Type" and clears the assignment', () => {
@@ -240,7 +240,27 @@ describe('<DataTypeUnitPicker />', () => {
 
   // ── Picking a data type ─────────────────────────────────────────────────
 
-  it('picking a different data type patches dataTypeId and a base unit, then advances to unit view', () => {
+  it('picking a data type stashes it as pending and does not patch yet', () => {
+    const onPatch = vi.fn()
+    render(
+      <DataTypeUnitPicker
+        col={colNoType}
+        dataTypes={dataTypes}
+        currentDataType={undefined}
+        unitsForType={[]}
+        onPatch={onPatch}
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: /data type and unit/i }))
+    fireEvent.click(screen.getByRole('option', { name: 'Temperature' }))
+    expect(onPatch).not.toHaveBeenCalled()
+    // Advanced to the unit view for the pending type — Temperature's units
+    // (C and K) are now visible.
+    expect(screen.getByRole('option', { name: 'C (°C)' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'K' })).toBeInTheDocument()
+  })
+
+  it('picking a pending data type then a unit patches the pair together', () => {
     const onPatch = vi.fn()
     render(
       <DataTypeUnitPicker
@@ -253,9 +273,52 @@ describe('<DataTypeUnitPicker />', () => {
     )
     fireEvent.click(screen.getByRole('button', { name: /data type and unit/i }))
     fireEvent.click(screen.getByText(/Back to Assign Type/))
+    onPatch.mockClear()
     fireEvent.click(screen.getByRole('option', { name: 'Speed' }))
-    // km/h is the is_base unit for speedType.
+    fireEvent.click(screen.getByRole('option', { name: 'km/h' }))
     expect(onPatch).toHaveBeenCalledWith({ dataTypeId: 2, unitId: 21 })
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  })
+
+  it('discards the pending data type when the popover closes without a unit pick', () => {
+    const onPatch = vi.fn()
+    render(
+      <DataTypeUnitPicker
+        col={colNoType}
+        dataTypes={dataTypes}
+        currentDataType={undefined}
+        unitsForType={[]}
+        onPatch={onPatch}
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: /data type and unit/i }))
+    fireEvent.click(screen.getByRole('option', { name: 'Temperature' }))
+    // Close via outside click without picking a unit.
+    fireEvent.mouseDown(document.body)
+    expect(onPatch).not.toHaveBeenCalled()
+    // Reopen — should land back on the type view because the column is
+    // still untyped (the pending pick was discarded).
+    fireEvent.click(screen.getByRole('button', { name: /data type and unit/i }))
+    expect(screen.getByRole('option', { name: 'Temperature' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Speed' })).toBeInTheDocument()
+  })
+
+  it('"Back to Assign Type" with a pending type only discards it (no patch)', () => {
+    const onPatch = vi.fn()
+    render(
+      <DataTypeUnitPicker
+        col={colNoType}
+        dataTypes={dataTypes}
+        currentDataType={undefined}
+        unitsForType={[]}
+        onPatch={onPatch}
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: /data type and unit/i }))
+    fireEvent.click(screen.getByRole('option', { name: 'Temperature' }))
+    fireEvent.click(screen.getByText(/Back to Assign Type/))
+    expect(onPatch).not.toHaveBeenCalled()
+    expect(screen.getByRole('option', { name: 'Temperature' })).toBeInTheDocument()
   })
 
   it('picking the same data type does not patch and just advances to unit view', () => {
@@ -274,45 +337,6 @@ describe('<DataTypeUnitPicker />', () => {
     onPatch.mockClear()
     fireEvent.click(screen.getByRole('option', { name: 'Temperature' }))
     expect(onPatch).not.toHaveBeenCalled()
-  })
-
-  it('falls back to the first unit when no unit is flagged is_base', () => {
-    // Build a type whose units have no base — picker should pick units[0].
-    const noBaseType: DataTypeDef = {
-      id: 3,
-      data_type: 'NoBase',
-      description: '',
-      created_at: '',
-      updated_at: '',
-      units: [
-        {
-          id: 30,
-          unit: 'a',
-          alias: '',
-          data_type_id: 3,
-          min: null,
-          max: null,
-          to_base_factor: 1,
-          to_base_offset: 0,
-          is_base: false,
-          created_at: '',
-          updated_at: ''
-        }
-      ]
-    }
-    const onPatch = vi.fn()
-    render(
-      <DataTypeUnitPicker
-        col={colNoType}
-        dataTypes={[noBaseType]}
-        currentDataType={undefined}
-        unitsForType={[]}
-        onPatch={onPatch}
-      />
-    )
-    fireEvent.click(screen.getByRole('button', { name: /data type and unit/i }))
-    fireEvent.click(screen.getByRole('option', { name: 'NoBase' }))
-    expect(onPatch).toHaveBeenCalledWith({ dataTypeId: 3, unitId: 30 })
   })
 
   // ── Picking a unit ──────────────────────────────────────────────────────

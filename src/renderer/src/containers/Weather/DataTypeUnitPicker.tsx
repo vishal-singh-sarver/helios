@@ -10,9 +10,12 @@ import React from 'react'
 //      "Back to Assign Type").
 //   2. Unit list for the chosen data type, with a "Back to Assign Type" header
 //      link that returns to step 1.
-// Picking a data type does not auto-clear the unit (per saga contract); it
-// patches dataTypeId only and advances to step 2. Picking a unit patches
-// unitId and closes the popover.
+// Data type + unit are an atomic pair: picking a data type stashes it as
+// *pending* locally (no patch yet) and advances to step 2; picking a unit
+// then commits { dataTypeId, unitId } together. Closing the popover without
+// picking a unit discards the pending data type — leaving a type set with
+// no unit would let the saga run a conversion against an assumed unit the
+// user never chose.
 
 interface DataTypeUnitPickerProps {
   col: ColumnDef
@@ -31,10 +34,16 @@ function DataTypeUnitPicker({
 }: DataTypeUnitPickerProps): React.JSX.Element {
   const [open, setOpen] = React.useState(false)
   const [view, setView] = React.useState<'type' | 'unit'>(col.dataTypeId == null ? 'type' : 'unit')
+  const [pendingDataTypeId, setPendingDataTypeId] = React.useState<number | null>(null)
   const wrapRef = React.useRef<HTMLDivElement>(null)
 
   React.useEffect(() => {
-    if (!open) return
+    if (!open) {
+      // Closing always discards a pending data type — only an explicit unit
+      // pick commits the pair, per the atomic-pair contract above.
+      setPendingDataTypeId(null)
+      return
+    }
     setView(col.dataTypeId == null ? 'type' : 'unit')
   }, [open, col.dataTypeId])
 
@@ -55,31 +64,39 @@ function DataTypeUnitPicker({
       ? currentDataType.data_type
       : 'Data Type'
 
+  // When a pending data type is selected, the unit list must reflect that
+  // pending type's units (the parent's `unitsForType` prop is derived from
+  // the committed `col.dataTypeId` and is stale during the pending step).
+  const pendingDataType =
+    pendingDataTypeId == null ? undefined : dataTypes.find((dt) => dt.id === pendingDataTypeId)
+  const unitsToShow = pendingDataType ? pendingDataType.units : unitsForType
+
   const pickDataType = (dtId: number): void => {
-    if (dtId !== col.dataTypeId) {
-      // The currently-selected unit belongs to the previous data type, so
-      // we must replace it in the same patch — the backend rejects mixed
-      // pairs like {data_type: Y, unit_id: <unit-of-X>} and treats null as
-      // "leave alone", so we can't clear it. Pick the new type's base unit
-      // (or the first one if no base is flagged) as a sensible default.
-      // The picker advances to the unit step so the user can override.
-      const newType = dataTypes.find((dt) => dt.id === dtId)
-      const baseUnit = newType?.units.find((u) => u.is_base) ?? newType?.units[0]
-      const patch: UpdateColumnPatch = { dataTypeId: dtId }
-      if (baseUnit) patch.unitId = baseUnit.id
-      onPatch(patch)
-    }
+    // Stash the choice locally and advance to the unit step. The patch is
+    // deferred until the user picks a unit, so a half-finished selection
+    // can't leave a data type committed without a matching unit.
+    setPendingDataTypeId(dtId === col.dataTypeId ? null : dtId)
     setView('unit')
   }
 
   const pickUnit = (unitId: number): void => {
-    if (unitId !== col.unitId) onPatch({ unitId })
+    if (pendingDataTypeId != null) {
+      onPatch({ dataTypeId: pendingDataTypeId, unitId })
+    } else if (unitId !== col.unitId) {
+      onPatch({ unitId })
+    }
+    setPendingDataTypeId(null)
     setOpen(false)
   }
 
   const handleBackToAssignType = (): void => {
-    const clearAssignment: UpdateColumnPatch = { dataTypeId: null, unitId: null }
-    onPatch(clearAssignment)
+    if (pendingDataTypeId != null) {
+      // Pending selection wasn't committed — just discard it and return to
+      // the type list. The column's stored type/unit are untouched.
+      setPendingDataTypeId(null)
+    } else {
+      onPatch({ dataTypeId: null, unitId: null })
+    }
     setView('type')
   }
 
@@ -117,46 +134,48 @@ function DataTypeUnitPicker({
             </button>
           )}
           {view === 'type' &&
-            dataTypes.map((dt) => (
-              <button
-                key={dt.id}
-                type="button"
-                role="option"
-                aria-selected={dt.id === col.dataTypeId}
-                onClick={() => pickDataType(dt.id)}
-                className={`block h-[42px] w-full truncate px-3 text-left text-xs leading-[42px] hover:bg-[#2b2b2b] ${
-                  dt.id === col.dataTypeId ? 'bg-[#111111] text-neutral-100' : 'text-neutral-300'
-                }`}
-              >
-                {dt.data_type}
-              </button>
-            ))}
-          {view === 'unit' &&
-            (unitsForType.length === 0 ? (
-              <div className="px-3 py-2 text-xs text-neutral-500">No units</div>
-            ) : (
-              unitsForType.map((u) => (
+            dataTypes.map((dt) => {
+              const selectedId = pendingDataTypeId ?? col.dataTypeId
+              const isSelected = dt.id === selectedId
+              return (
                 <button
-                  key={u.id}
+                  key={dt.id}
                   type="button"
                   role="option"
-                  aria-selected={u.id === col.unitId}
-                  onClick={() => pickUnit(u.id)}
-                  className={`flex h-[42px] w-full items-center justify-between gap-3 px-3 text-left text-xs hover:bg-[#2b2b2b] ${
-                    u.id === col.unitId ? 'bg-[#111111] text-neutral-100' : 'text-neutral-300'
+                  aria-selected={isSelected}
+                  onClick={() => pickDataType(dt.id)}
+                  className={`block h-[42px] w-full truncate px-3 text-left text-xs leading-[42px] hover:bg-[#2b2b2b] ${
+                    isSelected ? 'bg-[#111111] text-neutral-100' : 'text-neutral-300'
                   }`}
                 >
-                  <span className="truncate">{u.alias ? `${u.unit} (${u.alias})` : u.unit}</span>
-                  {u.is_base && (
-                    <span
-                      aria-hidden="true"
-                      className="h-[15px] w-[41px] shrink-0 bg-transparent text-center text-[12px] font-normal leading-[15px] tracking-normal text-[#B2C9F5]"
-                    >
-                      Default
-                    </span>
-                  )}
+                  {dt.data_type}
                 </button>
-              ))
+              )
+            })}
+          {view === 'unit' &&
+            (unitsToShow.length === 0 ? (
+              <div className="px-3 py-2 text-xs text-neutral-500">No units</div>
+            ) : (
+              unitsToShow.map((u) => {
+                // Don't highlight the committed unitId while a pending data
+                // type is staged — the committed unit belongs to the old
+                // type and isn't a valid selection in the pending list.
+                const isSelected = pendingDataTypeId == null && u.id === col.unitId
+                return (
+                  <button
+                    key={u.id}
+                    type="button"
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={() => pickUnit(u.id)}
+                    className={`flex h-[42px] w-full items-center justify-between gap-3 px-3 text-left text-xs hover:bg-[#2b2b2b] ${
+                      isSelected ? 'bg-[#111111] text-neutral-100' : 'text-neutral-300'
+                    }`}
+                  >
+                    <span className="truncate">{u.alias ? `${u.unit} (${u.alias})` : u.unit}</span>
+                  </button>
+                )
+              })
             ))}
         </div>
       )}
