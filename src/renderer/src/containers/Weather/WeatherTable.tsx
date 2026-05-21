@@ -25,7 +25,7 @@ import {
 import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import CellInput from './CellInput'
-import DateTimeHeader, { type DateFormat } from './DateTimeHeader'
+import DateTimeHeader from './DateTimeHeader'
 import HeaderEditor from './HeaderEditor'
 import messages from './messages'
 import {
@@ -38,6 +38,7 @@ import {
   selectCheckColId,
   selectColumnOrder,
   selectColumns,
+  selectDateTimeDataType,
   selectRowOrder,
   selectRowSelection,
   selectSelectableDataTypes
@@ -64,11 +65,13 @@ function isBackendManagedCol(col: ColumnDef): boolean {
 
 // "2026-02-26" + "10:00:00" → "02/26/2026 10:00". Returns "" when either
 // half is missing so the merged cell renders blank, matching how unfilled
-// date/time cells render today.
+// date/time cells render today. `format` is the catalog unit string for the
+// `date_time` data type (e.g. "MM/DD/YYYY HH:MM"); unknown formats fall back
+// to the spec's base pattern so a backend-added unit can't break rendering.
 function formatDateTime(
   date: CellValue,
   time: CellValue,
-  format: DateFormat,
+  format: string,
   utcOffset: string
 ): string {
   if (date == null || time == null) return ''
@@ -95,6 +98,8 @@ function formatDateTime(
       return `${y}-${mo}-${d}T${hhmm}:${ss}${utcOffset || '+00:00'}`
     case 'YYYY-MM-DDTHH:MM:SSZ':
       return `${y}-${mo}-${d}T${hhmm}:${ss}`
+    default:
+      return `${mo}/${d}/${y} ${hhmm}`
   }
 }
 
@@ -117,7 +122,7 @@ interface WeatherRowProps {
   scenarioId: string | null
   checkColId: ColId | null
   dateTimeColId: ColId | null
-  dateFormat: DateFormat
+  dateFormat: string
   utcOffset: string
   onToggleRow: (rowId: string) => void
   onToggleCheck: (rowId: string, currentValue: CellValue) => void
@@ -217,8 +222,8 @@ function WeatherTable(): React.JSX.Element {
   const checkColId = useSelector(selectCheckColId)
   const table = useSelector(selectActiveWeatherTable)
   const dataTypes = useSelector(selectSelectableDataTypes)
+  const dateTimeDataType = useSelector(selectDateTimeDataType)
   const activeProject = useSelector(selectActiveProject)
-  const [dateFormat, setDateFormat] = React.useState<DateFormat>('MM/DD/YYYY HH:MM')
   const [pendingDeleteColumn, setPendingDeleteColumn] = React.useState<ColumnDef | null>(null)
   const [bodyViewportHeight, setBodyViewportHeight] = React.useState(0)
   // Visible row band is the only scroll-derived state that drives JSX. Storing
@@ -340,6 +345,32 @@ function WeatherTable(): React.JSX.Element {
     }
     return null
   }, [columns])
+
+  // Display format: prefer the unit the column has committed; otherwise show
+  // the `date_time` data type's is_base unit. Returns '' until the catalog
+  // loads so a missing format string can't get switched on as if it were a
+  // real one (formatDateTime would fall back to the base layout anyway).
+  const dateTimeCol = dateTimeColId != null ? columns[dateTimeColId] : undefined
+  const dateFormat = React.useMemo(() => {
+    if (!dateTimeDataType) return ''
+    if (dateTimeCol?.unitId != null) {
+      const u = dateTimeDataType.units.find((unit) => unit.id === dateTimeCol.unitId)
+      if (u) return u.unit
+    }
+    return dateTimeDataType.units.find((u) => u.is_base)?.unit ?? ''
+  }, [dateTimeDataType, dateTimeCol?.unitId])
+
+  const handleDateTimePatch = React.useCallback(
+    (patch: UpdateColumnPatch): void => {
+      if (!dateTimeCol) return
+      dispatchHeaderPatch(dateTimeCol, patch)
+    },
+    // dispatchHeaderPatch closes over projectId/scenarioId/dispatch — its
+    // identity changes on render, so we don't memoize it here; the inner
+    // ref-read still produces a stable PATCH.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dateTimeCol]
+  )
 
   // Columns rendered in the table body: hide check (rendered as the leftmost
   // checkbox column instead) and hide the raw date/time pseudo-columns when
@@ -525,7 +556,11 @@ function WeatherTable(): React.JSX.Element {
                         onDelete={() => handleRequestHeaderDelete(col)}
                       />
                     ) : isDateTime ? (
-                      <DateTimeHeader value={dateFormat} onChange={setDateFormat} />
+                      <DateTimeHeader
+                        dataType={dateTimeDataType}
+                        currentUnitId={dateTimeCol?.unitId ?? null}
+                        onPatch={handleDateTimePatch}
+                      />
                     ) : (
                       <span className="block truncate">{col.name}</span>
                     )}

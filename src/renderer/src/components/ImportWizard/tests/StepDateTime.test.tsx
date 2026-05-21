@@ -178,8 +178,8 @@ describe('<StepDateTime />', () => {
         stats={baseStats}
       />
     )
-    // Row 1 has "26/02/2026 10:00" → formatted via en-US locale
-    expect(screen.getByText(/2\/26\/2026, 10:00:00\s*AM/)).toBeInTheDocument()
+    // Row 1 has "26/02/2026 10:00" → formatted via en-US locale in 24-hour clock
+    expect(screen.getByText(/2\/26\/2026, 10:00:00/)).toBeInTheDocument()
   })
 
   it('shows "Invalid time format" when time is unparseable but date is OK', () => {

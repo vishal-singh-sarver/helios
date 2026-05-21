@@ -1,9 +1,11 @@
 import Spinner from 'components/LoadingScreen/Spinner'
 import {
+  DATETIME_FORMATS,
   INITIAL_MAPPING,
   parseDelimited,
   parseFile,
   parseRowDateTimeSelections,
+  tryParseDateTime,
   type DateFormatKey,
   type DateSelectionMode,
   type DateTimeFormatKey,
@@ -29,9 +31,6 @@ const DATE_PART_KEYS: ReadonlyArray<keyof DateTimeMapping> = ['year', 'month', '
 const JULIAN_KEYS: ReadonlyArray<keyof DateTimeMapping> = ['julianYear', 'julianDay']
 const TIME_PART_KEYS: ReadonlyArray<keyof DateTimeMapping> = ['hour', 'minute']
 
-const IMPORT_DECIMAL_WARNING =
-  'Only 7 decimal places have been taken for decimal values as more are not allowed.'
-
 function isUnsupportedCharacterValue(value: string | undefined): boolean {
   const trimmed = value?.trim() ?? ''
   if (trimmed === '') return false
@@ -42,6 +41,21 @@ const findHeaderByKeyword = (headers: string[], keywords: string[]): string | nu
   const lower = headers.map((h) => h.toLowerCase())
   const i = lower.findIndex((h) => keywords.some((k) => h.includes(k)))
   return i >= 0 ? headers[i] : null
+}
+
+const detectDateTimeFormat = (
+  headers: string[],
+  rows: string[][],
+  datetimeCol: string
+): DateTimeFormatKey | null => {
+  const idx = headers.indexOf(datetimeCol)
+  if (idx < 0) return null
+  const sample = rows.find((r) => (r[idx] ?? '').trim() !== '')?.[idx]?.trim()
+  if (!sample) return null
+  for (const { value } of DATETIME_FORMATS) {
+    if (tryParseDateTime(sample, value)) return value
+  }
+  return null
 }
 
 function ImportWizard({
@@ -112,6 +126,8 @@ function ImportWizard({
           if (auto.datetime) {
             setDateMode('datetime')
             setTimeMode('none')
+            const detected = detectDateTimeFormat(result.headers, result.rows, auto.datetime)
+            if (detected) setDateTimeFormat(detected)
           } else {
             if (auto.year && auto.month && auto.day) setDateMode('parts')
             else if (auto.julianYear && auto.julianDay) setDateMode('julian')
@@ -194,8 +210,11 @@ function ImportWizard({
     let valid = 0
     let invalid = 0
     for (const row of parsed.rows) {
-      // 'ok' and 'invalid_time' both produce a usable Date; only 'invalid_date'
-      // rows can't be imported. Time is optional so it doesn't gate Next.
+      // Both invalid_date and invalid_time block Next. invalid_time produces a
+      // technically-importable Date (time defaults to 00:00), but the preview
+      // shows those rows as red "Invalid time format", so counting them as
+      // valid here would contradict what the user sees and let them proceed
+      // with no rows that actually parsed cleanly.
       const r = parseRowDateTimeSelections(
         row,
         parsed.headers,
@@ -205,8 +224,8 @@ function ImportWizard({
         dateFormat,
         datetimeFormat
       )
-      if (r.kind === 'invalid_date') invalid++
-      else valid++
+      if (r.kind === 'ok') valid++
+      else invalid++
     }
     return { configReady: true, valid, invalid, total: parsed.rows.length }
   }, [parsed, dateMode, timeMode, mapping, dateFormat, datetimeFormat])
@@ -358,7 +377,8 @@ function ImportWizard({
       records
     }
 
-    onImportWarning(truncatedAnyDecimals ? IMPORT_DECIMAL_WARNING : null)
+    // Toast for truncation is fired by Weather's saga-completion effect after
+    // the import finalizes — don't surface it while the wizard is still open.
     onSubmit(dataset, truncatedAnyDecimals)
   }, [
     parsed,

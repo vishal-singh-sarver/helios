@@ -115,7 +115,7 @@ export function TextInput({
   ...rest
 }: TextInputProps): React.JSX.Element {
   const baseClass =
-    'w-full rounded border border-app-border bg-app-panel px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:ring-2 focus:ring-blue-500'
+    'w-full rounded border border-app-border bg-app-panel px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50'
   const merged = className ? `${baseClass} ${className}` : baseClass
   return <input {...rest} className={merged} />
 }

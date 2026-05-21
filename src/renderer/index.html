@@ -7,6 +7,11 @@
       content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://127.0.0.1:* http://localhost:* ws://127.0.0.1:* ws://localhost:*"
     />
     <title>Electron App</title>
+    <style>
+      /* Matches --color-bg in src/index.css. Inlined so the body isn't white
+         in the brief window before the bundled stylesheet loads. */
+      html, body { margin: 0; background: #121212; }
+    </style>
   </head>
   <body>
     <div id="root"></div>

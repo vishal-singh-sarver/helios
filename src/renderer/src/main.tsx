@@ -32,6 +32,10 @@ async function bootstrap() {
       </Provider>
     </React.StrictMode>
   )
+
+  // window.api.appReady() is fired by the initial screen (HomePage /
+  // ProjectScreen) from its own mount effect, so the splash holds until the
+  // screen has actually painted rather than guessing a timeout from here.
 }
 
 bootstrap()

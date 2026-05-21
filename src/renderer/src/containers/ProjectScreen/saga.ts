@@ -61,7 +61,8 @@ import {
   selectAllDataTypes,
   selectByScenario,
   selectCheckDataTypeId,
-  selectDataTypesLoadStatus
+  selectDataTypesLoadStatus,
+  selectDateTimeDataTypeId
 } from './selectors'
 import {
   CHECK_COL_NAME,
@@ -205,6 +206,16 @@ function* loadScenarioWorker(action: LoadScenarioRequestedAction): Generator {
     // rely on dataRes.labels alone — when rows[] is empty the backend may
     // return labels=["date","time"] only, which would drop the real columns
     // and break /addRow (it requires every column id as a row key).
+    // Block on the catalog if it's still loading so the merged date-time
+    // column can backfill its data type id from the `date_time` catalog
+    // entry. Older scenarios were seeded with helios_data_type_id=null and
+    // would otherwise render the dropdown without a known type id.
+    const dtStatus = (yield select(selectDataTypesLoadStatus)) as LoadStatus
+    if (dtStatus === 'idle' || dtStatus === 'loading') {
+      yield take([LOAD_DATA_TYPES_SUCCEEDED, LOAD_DATA_TYPES_FAILED])
+    }
+    const dateTimeDataTypeId = (yield select(selectDateTimeDataTypeId)) as number | null
+
     const sortedHeaders = [...headers].sort((a, b) => a.display_order - b.display_order)
     const seen = new Set<ColId>()
     const columns: ColumnDef[] = []
@@ -218,10 +229,18 @@ function* loadScenarioWorker(action: LoadScenarioRequestedAction): Generator {
     pushCol({ id: DATE_COL_ID, name: DATE_COL_ID, dataTypeId: null, unitId: null })
     pushCol({ id: TIME_COL_ID, name: TIME_COL_ID, dataTypeId: null, unitId: null })
     for (const h of sortedHeaders) {
+      // Backfill the date-time column's dataTypeId from the catalog when the
+      // backend row still has null (scenarios seeded before the date_time
+      // catalog entry existed). The unit picker uses this id to compose the
+      // PATCH that commits a user-picked format.
+      const dataTypeId =
+        h.name === DATE_TIME_COL_NAME && h.helios_data_type_id == null
+          ? dateTimeDataTypeId
+          : h.helios_data_type_id
       pushCol({
         id: String(h.id),
         name: h.name,
-        dataTypeId: h.helios_data_type_id,
+        dataTypeId,
         unitId: h.unit_id
       })
     }
@@ -249,6 +268,28 @@ function* loadScenarioWorker(action: LoadScenarioRequestedAction): Generator {
         precisionNormalized
       })
     )
+
+    // Backfill the persisted date-time header when the backend row still
+    // carries helios_data_type_id: null (scenarios seeded before this client
+    // started stamping the id). Fire a PATCH so the backend row catches up
+    // and subsequent loads don't need the client-side override. Skipped when
+    // the catalog hasn't loaded — without it we have nothing to write.
+    if (dateTimeDataTypeId != null) {
+      const staleDateTimeHeader = sortedHeaders.find(
+        (h) => h.name === DATE_TIME_COL_NAME && h.helios_data_type_id == null
+      )
+      if (staleDateTimeHeader) {
+        yield put(
+          actions.updateColumnRequested(
+            projectId,
+            scenarioId,
+            String(staleDateTimeHeader.id),
+            { dataTypeId: dateTimeDataTypeId },
+            { dataTypeId: null }
+          )
+        )
+      }
+    }
 
     // Re-hydrate per-cell validation errors for the freshly loaded table.
     // Validation state lives in-memory only (Redux), so on app restart the
@@ -320,6 +361,7 @@ function* seedDefaultColumnsWorker(action: SeedDefaultColumnsRequestedAction): G
       yield take([LOAD_DATA_TYPES_SUCCEEDED, LOAD_DATA_TYPES_FAILED])
     }
     const checkDataTypeId = (yield select(selectCheckDataTypeId)) as number | null
+    const dateTimeDataTypeId = (yield select(selectDateTimeDataTypeId)) as number | null
 
     yield call(addColumnsRequest, projectId, scenarioId, [
       {
@@ -328,7 +370,12 @@ function* seedDefaultColumnsWorker(action: SeedDefaultColumnsRequestedAction): G
         dataUnitId: null,
         values: []
       },
-      { name: DATE_TIME_COL_NAME, dataTypeId: null, dataUnitId: null, values: [] }
+      {
+        name: DATE_TIME_COL_NAME,
+        dataTypeId: dateTimeDataTypeId,
+        dataUnitId: null,
+        values: []
+      }
     ])
     // Re-enter LOAD so the table picks up the seeded headers, and only
     // dispatch _SUCCEEDED once the load completes — consumers waiting on the

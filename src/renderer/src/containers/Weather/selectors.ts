@@ -94,6 +94,7 @@ export {
   selectDataTypesById,
   selectDataTypesError,
   selectDataTypesLoadStatus,
+  selectDateTimeDataType,
   selectHeadersByScenario,
   selectRowOrder,
   selectRowSelection,

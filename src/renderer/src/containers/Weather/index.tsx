@@ -102,9 +102,9 @@ export function Weather(): React.JSX.Element {
 
   const handleSubmit = (ds: ImportedDataset, truncatedDecimals: boolean): void => {
     if (!activeProjectId || !activeScenarioId) return
-    if (truncatedDecimals) {
-      setImportToastMessage(VALIDATION_MESSAGES.IMPORT_WARNING)
-    }
+    // The truncation toast surfaces only after the import saga succeeds (see
+    // the importPrecisionWarningPending effect), so the user sees it once in
+    // the Weather view — not while the wizard is still open.
     dispatch(importFinalizeRequested(activeProjectId, activeScenarioId, ds, truncatedDecimals))
   }
 

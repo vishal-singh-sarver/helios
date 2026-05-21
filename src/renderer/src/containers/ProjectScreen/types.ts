@@ -106,6 +106,12 @@ export const CHECK_COL_NAME = 'check'
 // seeded check column.
 export const CHECK_DATA_TYPE_NAME = 'check'
 
+// Catalog name of the dedicated `date_time` data type. Its "units" are
+// format patterns (e.g. "MM/DD/YYYY HH:MM"), not numeric conversions. The
+// merged date-time column uses this type implicitly; picking a unit in the
+// header dropdown PATCHes both helios_data_type_id and unit_id together.
+export const DATE_TIME_DATA_TYPE_NAME = 'date_time'
+
 // True when the colId refers to a column whose cell is not user-editable as a
 // raw value: the date/time pseudo-columns and the merged date-time display
 // column. `check` is not reserved — its cell IS editable, just via a checkbox

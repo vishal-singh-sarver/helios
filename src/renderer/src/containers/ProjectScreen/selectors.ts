@@ -5,6 +5,7 @@ import {
   cellKey,
   CHECK_COL_NAME,
   CHECK_DATA_TYPE_NAME,
+  DATE_TIME_DATA_TYPE_NAME,
   type CellSyncStatus,
   type ColId,
   type ColumnDef,
@@ -32,13 +33,17 @@ export const selectAllDataTypes = createSelector(selectProjectScreenDomain, (s):
   s.catalog.dataTypes.allIds.map((id) => s.catalog.dataTypes.byId[id]).filter(Boolean)
 )
 
-// User-facing data-type list — excludes the dedicated `check` data type so
-// it never appears in the column header's data-type dropdown. The seed
-// worker still stamps it on the seeded check column, and `selectAllDataTypes`
-// keeps it for unit-symbol lookups and current-type display.
+// User-facing data-type list — excludes the dedicated `check` and `date_time`
+// data types so they never appear in the column header's data-type dropdown.
+// Both are bound to seeded columns (check / date-time) whose headers render
+// their own pickers; `selectAllDataTypes` still exposes them for unit-symbol
+// lookups and current-type display.
 export const selectSelectableDataTypes = createSelector(
   selectAllDataTypes,
-  (types): DataTypeDef[] => types.filter((dt) => dt.data_type !== CHECK_DATA_TYPE_NAME)
+  (types): DataTypeDef[] =>
+    types.filter(
+      (dt) => dt.data_type !== CHECK_DATA_TYPE_NAME && dt.data_type !== DATE_TIME_DATA_TYPE_NAME
+    )
 )
 
 // Single source of truth for the seeded `check` column's data-type id. Used
@@ -48,6 +53,24 @@ export const selectSelectableDataTypes = createSelector(
 export const selectCheckDataTypeId = createSelector(
   selectAllDataTypes,
   (types): number | null => types.find((dt) => dt.data_type === CHECK_DATA_TYPE_NAME)?.id ?? null
+)
+
+// The full `date_time` data type definition. Its `units[]` are the format
+// patterns the date-time header dropdown lists; the column header uses
+// `is_base` as the display fallback when the column has no unit picked.
+export const selectDateTimeDataType = createSelector(
+  selectAllDataTypes,
+  (types): DataTypeDef | undefined =>
+    types.find((dt) => dt.data_type === DATE_TIME_DATA_TYPE_NAME)
+)
+
+// Numeric id of the `date_time` data type. The seed worker uses this to
+// stamp the merged date-time column at creation; the load saga uses it as a
+// fallback when an existing date-time column's helios_data_type_id is null
+// (e.g. scenarios seeded before the date_time catalog entry existed).
+export const selectDateTimeDataTypeId = createSelector(
+  selectDateTimeDataType,
+  (dt): number | null => dt?.id ?? null
 )
 
 export const selectDataTypesLoadStatus = createSelector(

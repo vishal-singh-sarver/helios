@@ -20,6 +20,7 @@ declare global {
       windowIsFullScreen: () => Promise<boolean>
       onFullScreenChange: (cb: (isFullScreen: boolean) => void) => () => void
       getPlatform: () => Promise<NodeJS.Platform>
+      appReady: () => void
     }
     __APP_BASE_URL__?: string
   }
