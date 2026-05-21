@@ -1,4 +1,4 @@
-import deleteIcon from '@renderer/assets/delete.svg'
+import deleteIcon from '@renderer/assets/deleteIconRed.svg'
 import editIcon from '@renderer/assets/edit.svg'
 import kebabMenuIcon from '@renderer/assets/Kebab Menu.svg'
 import sortIcon from '@renderer/assets/Sort 3.svg'
@@ -188,19 +188,26 @@ function ProjectsTable({
                 return (
                   <tr
                     key={project.id}
-                    className="hover:bg-[#424242] focus-within:bg-[#424242] transition-colors"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Open project ${project.name}`}
+                    onClick={() => handleOpenProject(project)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        handleOpenProject(project)
+                      }
+                    }}
+                    className="hover:bg-[#424242] focus:outline-none focus-visible:bg-[#424242] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-blue-500 transition-colors"
                     style={{ height: ROW_HEIGHT }}
                   >
                     <td className="border-b border-app-border/80 px-4 overflow-hidden">
-                      <button
-                        type="button"
-                        aria-label={`Open project ${project.name}`}
-                        onClick={() => handleOpenProject(project)}
+                      <span
                         title={project.name}
-                        className="block w-full truncate text-left text-sm text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 rounded"
+                        className="block w-full truncate text-left text-sm text-white"
                       >
                         {project.name}
-                      </button>
+                      </span>
                     </td>
                     <td className="border-b border-app-border/80 px-4 text-sm text-neutral-400">
                       {formatRelativeDate(project.last_updated)}
@@ -219,7 +226,7 @@ function ProjectsTable({
                           setOpenMenuProjectId((id) => (id === project.id ? null : project.id))
                         }}
                         disabled={isDeleting}
-                        className="flex h-8 w-8 items-center justify-center rounded text-neutral-400 focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex h-8 w-8 cursor-pointer items-center justify-center rounded text-neutral-400 focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <img src={kebabMenuIcon} alt="" aria-hidden="true" className="h-5 w-5" />
                       </button>
@@ -237,7 +244,7 @@ function ProjectsTable({
                               setOpenMenuProjectId(null)
                               onRequestRename(project)
                             }}
-                            className="flex h-10 items-center gap-3 px-4 text-left text-sm text-neutral-200 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
+                            className="flex h-10 items-center gap-3 px-4 text-left text-sm font-medium text-[#D3D3D3] hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
                           >
                             <img src={editIcon} alt="" aria-hidden="true" className="h-4 w-4" />
                             Rename
@@ -251,7 +258,7 @@ function ProjectsTable({
                               onRequestDelete(project)
                             }}
                             disabled={isDeleting}
-                            className="flex h-10 items-center gap-3 px-4 text-left text-sm text-[#D92D20] hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                            className="flex h-10 items-center gap-3 px-4 text-left text-sm font-medium text-[#D92D20] hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             <img src={deleteIcon} alt="" aria-hidden="true" className="h-4 w-4" />
                             Delete
