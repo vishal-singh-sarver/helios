@@ -48,7 +48,11 @@ const api = {
     ipcRenderer.on('window:fullScreenChange', listener)
     return () => ipcRenderer.removeListener('window:fullScreenChange', listener)
   },
-  getPlatform: (): Promise<NodeJS.Platform> => ipcRenderer.invoke('window:getPlatform')
+  getPlatform: (): Promise<NodeJS.Platform> => ipcRenderer.invoke('window:getPlatform'),
+
+  // Renderer fires this once React has mounted. Main process holds the splash
+  // and keeps the main window hidden until this arrives — see src/main/index.ts.
+  appReady: (): void => ipcRenderer.send('app:ready')
 }
 
 if (process.contextIsolated) {

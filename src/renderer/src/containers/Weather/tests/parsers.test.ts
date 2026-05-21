@@ -50,6 +50,13 @@ describe('detectDelimiter', () => {
     const text = 'a\tb\tc\td\n1\t2,foo\t3\t4\n5\t6\t7\t8'
     expect(detectDelimiter(text)).toBe('\t')
   })
+
+  it('ignores commas inside quoted fields when scoring consistency', () => {
+    // Both data rows have 1 real comma between two columns; the in-quote
+    // commas vary in count and must not break the min===max consistency test.
+    const text = 'name,stations\n"davis, ca","a,b,c"\n"davis, ca","a,b"'
+    expect(detectDelimiter(text)).toBe(',')
+  })
 })
 
 // ── detectHeaderLinesToSkip ───────────────────────────────────────────────────
@@ -114,6 +121,33 @@ describe('parseDelimited', () => {
     const r = parseDelimited(' a , b \n 1 , 2 ', ',', 0)
     expect(r.headers).toEqual(['a', 'b'])
     expect(r.rows).toEqual([['1', '2']])
+  })
+
+  it('treats delimiters inside double-quoted fields as literal', () => {
+    const r = parseDelimited('name,stations\n"davis, ca","KSMF,KEDU,KSAC"', ',', 0)
+    expect(r.headers).toEqual(['name', 'stations'])
+    expect(r.rows).toEqual([['davis, ca', 'KSMF,KEDU,KSAC']])
+  })
+
+  it('decodes "" inside a quoted field as a single literal quote', () => {
+    const r = parseDelimited('a,b\n"he said ""hi""",2', ',', 0)
+    expect(r.rows).toEqual([['he said "hi"', '2']])
+  })
+
+  it('accepts rows whose quoted-list field has a different inner-comma count', () => {
+    // Reproduces the Visual Crossing CSV bug: every data row has a "stations"
+    // field with a variable number of comma-separated station codes. Naive
+    // splitting would report mismatched column counts row-to-row.
+    const text =
+      'name,stations\n' +
+      '"davis, ca","KSMF,KEDU,KSAC,KVCB,KSUU,F6859"\n' +
+      '"davis, ca","KSMF,KEDU,KSAC,KVCB,KSUU"'
+    const r = parseDelimited(text, ',', 0)
+    expect(r.headers).toEqual(['name', 'stations'])
+    expect(r.rows).toEqual([
+      ['davis, ca', 'KSMF,KEDU,KSAC,KVCB,KSUU,F6859'],
+      ['davis, ca', 'KSMF,KEDU,KSAC,KVCB,KSUU']
+    ])
   })
 })
 
@@ -380,6 +414,19 @@ describe('tryParseDateTime', () => {
     expect(d?.getHours()).toBe(2)
   })
 
+  it('parses ISO-8601 without a timezone suffix (YYYY-MM-DDTHH:MM:SS)', () => {
+    const d = tryParseDateTime('2026-05-12T13:00:00', 'YYYY-MM-DDTHH:MM:SS')
+    expect(d).not.toBeNull()
+    expect(d?.getFullYear()).toBe(2026)
+    expect(d?.getMonth()).toBe(4)
+    expect(d?.getDate()).toBe(12)
+    expect(d?.getHours()).toBe(13)
+  })
+
+  it('rejects a trailing Z under the no-timezone format', () => {
+    expect(tryParseDateTime('2026-05-12T13:00:00Z', 'YYYY-MM-DDTHH:MM:SS')).toBeNull()
+  })
+
   it('parses compact YYYYMMDDHH', () => {
     const d = tryParseDateTime('2026020310', 'YYYYMMDDHH')
     expect(d).not.toBeNull()
@@ -433,9 +480,12 @@ describe('parseRowDateTime', () => {
       }
     })
 
-    it('treats empty time as missing (defaults to 00:00, kind = ok)', () => {
+    it('flags an empty time as invalid_time when a time column is mapped', () => {
+      // Empty value for a mapped column means the user expected a time here
+      // but the row had none. Preview should mark it invalid rather than
+      // silently defaulting to 00:00.
       const r = parseRowDateTime(['26/02/2026', '', '22.5'], headers, 'group2', mapping, 'DD/MM/YYYY')
-      expect(r.kind).toBe('ok')
+      expect(r.kind).toBe('invalid_time')
     })
 
     it('rolls 24:00 into the next day', () => {
@@ -493,13 +543,9 @@ describe('parseRowDateTime', () => {
       expect(r.kind).toBe('invalid_time')
     })
 
-    it('treats empty hour as 0 (kind = ok)', () => {
+    it('flags empty hour/minute as invalid_time when those columns are mapped', () => {
       const r = parseRowDateTime(['2026', '2', '26', '', ''], headers, 'group1', mapping, 'YYYY-MM-DD')
-      expect(r.kind).toBe('ok')
-      if (r.kind === 'ok') {
-        expect(r.date.getHours()).toBe(0)
-        expect(r.date.getMinutes()).toBe(0)
-      }
+      expect(r.kind).toBe('invalid_time')
     })
   })
 

@@ -63,6 +63,7 @@ export type DateFormatKey =
 export type DateTimeFormatKey =
   | 'YYYY-MM-DDTHH:MM:SSZ'
   | 'YYYY-MM-DDTHH:MM:SS-HH:MM'
+  | 'YYYY-MM-DDTHH:MM:SS'
   | 'YYYYMMDDHH'
   | 'YYYYMMDDHHMM'
   | 'YYYY-MM-DD HH:MM'
@@ -96,6 +97,7 @@ export const DATETIME_FORMATS: ReadonlyArray<{
 }> = [
   { value: 'YYYY-MM-DDTHH:MM:SSZ', label: 'YYYY-MM-DDTHH:MM:SSZ' },
   { value: 'YYYY-MM-DDTHH:MM:SS-HH:MM', label: 'YYYY-MM-DDTHH:MM:SS-HH:MM' },
+  { value: 'YYYY-MM-DDTHH:MM:SS', label: 'YYYY-MM-DDTHH:MM:SS' },
   { value: 'YYYYMMDDHH', label: 'YYYYMMDDHH' },
   { value: 'YYYYMMDDHHMM', label: 'YYYYMMDDHHMM' },
   { value: 'YYYY-MM-DD HH:MM', label: 'YYYY-MM-DD HH:MM' },
@@ -137,10 +139,44 @@ export interface ImportedDataset {
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
-const escapeRe = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-
 const isCommentLine = (l: string): boolean =>
   l.startsWith('#') || l.startsWith('//') || l.startsWith(';;')
+
+// RFC 4180-aware single-line splitter: a delimiter inside a double-quoted field
+// is part of the value, not a column boundary. Two consecutive double quotes
+// inside a quoted field decode to a single literal quote. Quote-aware splitting
+// is critical for files where fields like "davis, ca" or station lists like
+// "KSMF,KEDU,KSAC" naturally contain the comma delimiter.
+function splitCsvLine(line: string, delimiter: string): string[] {
+  const cells: string[] = []
+  let cur = ''
+  let inQuotes = false
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i]
+    if (inQuotes) {
+      if (ch === '"') {
+        if (line[i + 1] === '"') {
+          cur += '"'
+          i++
+        } else {
+          inQuotes = false
+        }
+      } else {
+        cur += ch
+      }
+    } else if (ch === delimiter) {
+      cells.push(cur)
+      cur = ''
+    } else if (ch === '"' && cur.trim() === '') {
+      cur = ''
+      inQuotes = true
+    } else {
+      cur += ch
+    }
+  }
+  cells.push(cur)
+  return cells
+}
 
 function modeOf(arr: number[]): number {
   const m = new Map<number, number>()
@@ -173,7 +209,7 @@ export function detectDelimiter(text: string): string {
   let bestFallbackAvg = -1
 
   for (const { value: d } of DELIMITERS) {
-    const counts = lines.map((l) => (l.match(new RegExp(escapeRe(d), 'g')) ?? []).length)
+    const counts = lines.map((l) => splitCsvLine(l, d).length - 1)
     const min = Math.min(...counts)
     const max = Math.max(...counts)
     const avg = counts.reduce((a, b) => a + b, 0) / counts.length
@@ -199,7 +235,7 @@ export function detectHeaderLinesToSkip(text: string, delimiter: string): number
     .slice(0, 15)
   if (lines.length === 0) return 0
 
-  const counts = lines.map((l) => l.split(delimiter).length)
+  const counts = lines.map((l) => splitCsvLine(l, delimiter).length)
   const tail = counts.slice(-Math.min(8, counts.length))
   const modal = modeOf(tail)
 
@@ -229,10 +265,10 @@ export function parseDelimited(
   if (all.length <= headerLinesToSkip) {
     throw new Error('No data rows after skipping header lines.')
   }
-  const headers = all[headerLinesToSkip].split(delimiter).map((s) => s.trim())
+  const headers = splitCsvLine(all[headerLinesToSkip], delimiter).map((s) => s.trim())
   const rows: string[][] = []
   for (let i = headerLinesToSkip + 1; i < all.length; i++) {
-    const cells = all[i].split(delimiter).map((s) => s.trim())
+    const cells = splitCsvLine(all[i], delimiter).map((s) => s.trim())
     // Strict: column-count mismatch fails the parse rather than silently
     // padding/truncating, because for weather data a missing field is data loss.
     if (cells.length !== headers.length) {
@@ -532,6 +568,20 @@ export function tryParseDateTime(raw: unknown, formatKey: DateTimeFormatKey): Da
     return buildDate(date, time)
   }
 
+  if (formatKey === 'YYYY-MM-DDTHH:MM:SS') {
+    const match = s.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/)
+    if (!match) return null
+    const date = validateDateParts({
+      Y: parseInt(match[1], 10),
+      M: parseInt(match[2], 10),
+      D: parseInt(match[3], 10)
+    })
+    if (!date) return null
+    const time = tryParseTime(`${match[4]}:${match[5]}:${match[6]}`)
+    if (!time) return null
+    return buildDate(date, time)
+  }
+
   if (formatKey === 'YYYYMMDDHH' || formatKey === 'YYYYMMDDHHMM') {
     const compact =
       formatKey === 'YYYYMMDDHH'
@@ -558,6 +608,7 @@ export function tryParseDateTime(raw: unknown, formatKey: DateTimeFormatKey): Da
   const dateFormatsByDateTime: Record<DateTimeFormatKey, DateFormatKey | null> = {
     'YYYY-MM-DDTHH:MM:SSZ': null,
     'YYYY-MM-DDTHH:MM:SS-HH:MM': null,
+    'YYYY-MM-DDTHH:MM:SS': null,
     YYYYMMDDHH: null,
     YYYYMMDDHHMM: null,
     'YYYY-MM-DD HH:MM': 'YYYY-MM-DD',
@@ -683,7 +734,9 @@ export function parseRowDateTimeSelections(
   if (timeMode === 'parts') {
     if (mapping.hour) {
       const hRaw = get('hour')
-      if (hRaw !== undefined && hRaw !== '') {
+      if (hRaw === undefined || hRaw === '') {
+        timeInvalid = true
+      } else {
         const hv = parseInt(hRaw, 10)
         if (Number.isNaN(hv) || hv < 0 || hv > 23) timeInvalid = true
         else H = hv
@@ -691,7 +744,9 @@ export function parseRowDateTimeSelections(
     }
     if (mapping.minute) {
       const mRaw2 = get('minute')
-      if (mRaw2 !== undefined && mRaw2 !== '') {
+      if (mRaw2 === undefined || mRaw2 === '') {
+        timeInvalid = true
+      } else {
         const mv = parseInt(mRaw2, 10)
         if (Number.isNaN(mv) || mv < 0 || mv > 59) timeInvalid = true
         else Min = mv
@@ -700,7 +755,9 @@ export function parseRowDateTimeSelections(
   } else if (timeMode === 'string' || timeMode === 'compact') {
     if (mapping.time) {
       const timeRaw = get('time')
-      if (timeRaw !== undefined && timeRaw !== '') {
+      if (timeRaw === undefined || timeRaw === '') {
+        timeInvalid = true
+      } else {
         const t = tryParseTime(timeRaw)
         if (!t) {
           timeInvalid = true

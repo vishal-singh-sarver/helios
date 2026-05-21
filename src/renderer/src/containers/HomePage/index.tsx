@@ -72,6 +72,17 @@ export function HomePage(): React.JSX.Element {
     dispatch(fetchRecentProjects())
   }, [dispatch])
 
+  // Signal main process to reveal the window and dismiss the splash. Nested
+  // rAF defers past the browser's first paint — a single rAF fires before the
+  // paint commits, so the splash would lift on a blank frame.
+  React.useEffect(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.api?.appReady?.()
+      })
+    })
+  }, [])
+
   const [searchText, setSearchText] = React.useState('')
   const [showNewProjectDialog, setShowNewProjectDialog] = React.useState(false)
   const [pendingDelete, setPendingDelete] = React.useState<RecentProjectItem | null>(null)

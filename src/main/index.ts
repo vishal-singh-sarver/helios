@@ -45,7 +45,7 @@ function writeEarlyLog(message: string): void {
   }
 }
 
-function createWindow(onReadyToShow?: () => void): BrowserWindow {
+function createWindow(splash?: BrowserWindow): BrowserWindow {
   const isMac = process.platform === 'darwin'
   // macOS: titleBarStyle 'hidden' keeps the native traffic lights (so the OS
   // handles the fullscreen hover-reveal for free) while the rest of the title
@@ -62,7 +62,12 @@ function createWindow(onReadyToShow?: () => void): BrowserWindow {
   const mainWindow = new BrowserWindow({
     width: 1000,
     height: 600,
+    center: true,
     show: false,
+    // Matches --color-bg in renderer/src/index.css. Without this the native
+    // BrowserWindow flashes white between mainWindow.show() and the renderer's
+    // first paint, even after the splash is destroyed.
+    backgroundColor: '#121212',
     autoHideMenuBar: true,
     ...frameOptions,
     webPreferences: {
@@ -71,10 +76,33 @@ function createWindow(onReadyToShow?: () => void): BrowserWindow {
     }
   })
 
-  mainWindow.on('ready-to-show', () => {
+  // Skip 'ready-to-show' — it fires after HTML/CSS parse, but the renderer
+  // still has an async backend-URL IPC, two dynamic imports, and React mount
+  // ahead of it. Instead the initial screen (HomePage / ProjectScreen) sends
+  // 'app:ready' from its own mount effect, so the splash holds until the
+  // screen has actually painted.
+  mainWindow.webContents.ipc.once('app:ready', () => {
+    if (mainWindow.isDestroyed()) return
     mainWindow.show()
-    onReadyToShow?.()
+    // Short hold covers the macOS show() reveal animation. hide() before
+    // destroy() skips the splash's own fade-out, which otherwise reads as a
+    // white/flicker frame during the handoff.
+    setTimeout(() => {
+      if (splash && !splash.isDestroyed()) {
+        splash.hide()
+        splash.destroy()
+      }
+    })
   })
+
+  // Safety net: if the renderer crashes before sending 'app:ready', show the
+  // window anyway after a generous timeout so the user doesn't stare at the
+  // splash forever. The splash stays up — error dialogs in the renderer (if
+  // any) will surface.
+  const fallbackTimer = setTimeout(() => {
+    if (!mainWindow.isDestroyed() && !mainWindow.isVisible()) mainWindow.show()
+  }, 10_000)
+  mainWindow.once('closed', () => clearTimeout(fallbackTimer))
 
   // F11 toggles fullscreen. enter/leave-full-screen fire AFTER the OS animation
   // completes, so we also notify the renderer up front to keep the custom
@@ -115,11 +143,14 @@ function createWindow(onReadyToShow?: () => void): BrowserWindow {
  */
 function createSplashWindow(): BrowserWindow {
   const splash = new BrowserWindow({
-    width: 620,
-    height: 400,
+    width: 1000,
+    height: 600,
     show: true,
     frame: false,
     alwaysOnTop: true,
+    resizable: false,
+    center: true,
+    backgroundColor: '#121212',
     webPreferences: {
       nodeIntegration: false,
       sandbox: true
@@ -145,6 +176,7 @@ function createSplashWindow(): BrowserWindow {
           width: 100%;
           height: 100%;
           overflow: hidden;
+          background: #121212;
         }
         body {
           position: relative;
@@ -303,6 +335,15 @@ app.on('second-instance', () => {
   createWindow()
 })
 
+// Debug-only: log every activate event so we can see what's triggering reopens
+// after the user closes the window. Remove once the reopen-on-close cause is
+// confirmed.
+app.on('activate', () => {
+  writeEarlyLog(
+    `activate event fired (windows=${BrowserWindow.getAllWindows().length})`
+  )
+})
+
 // --- Window control IPC handlers ---
 // Frameless windows have no native controls, so the renderer paints its own
 // and asks the main process to perform the action.
@@ -412,14 +453,12 @@ app.whenReady().then(async () => {
     console.log('HELIOS_SKIP_BACKEND=1 set - skipping backend startup')
     buildAppMenu()
     configurePlatformShortcuts()
-    createWindow(() => {
-      if (!splash.isDestroyed()) {
-        splash.destroy()
-      }
-    })
+    createWindow(splash)
 
     app.on('activate', () => {
-      if (BrowserWindow.getAllWindows().length === 0) createWindow()
+      if (BrowserWindow.getAllWindows().length === 0) {
+        createWindow(createSplashWindow())
+      }
     })
     return
   }
@@ -462,11 +501,7 @@ app.whenReady().then(async () => {
     buildAppMenu()
     configurePlatformShortcuts()
 
-    createWindow(() => {
-      if (!splash.isDestroyed()) {
-        splash.destroy()
-      }
-    })
+    createWindow(splash)
   } catch (error) {
     splash?.destroy()
     const message = error instanceof Error ? error.message : String(error)
@@ -479,7 +514,9 @@ app.whenReady().then(async () => {
   }
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow(createSplashWindow())
+    }
   })
 })
 

@@ -94,6 +94,17 @@ export function ProjectScreen(): React.JSX.Element {
     dispatch(loadDataTypesRequested())
   }, [dispatch])
 
+  // Mirrors the appReady signal in HomePage — whichever screen mounts first
+  // dismisses the splash. ipcMain registers `app:ready` as a once-listener so
+  // a second send (e.g. after navigation) is a harmless no-op.
+  React.useEffect(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.api?.appReady?.()
+      })
+    })
+  }, [])
+
   React.useEffect(() => {
     if (activeProjectId == null) {
       const stored = localStorage.getItem(STORAGE_KEYS.activeProjectId)
