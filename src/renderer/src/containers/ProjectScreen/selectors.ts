@@ -5,6 +5,7 @@ import {
   cellKey,
   CHECK_COL_NAME,
   CHECK_DATA_TYPE_NAME,
+  DATE_TIME_COL_NAME,
   DATE_TIME_DATA_TYPE_NAME,
   type CellSyncStatus,
   type ColId,
@@ -71,6 +72,43 @@ export const selectDateTimeDataType = createSelector(
 export const selectDateTimeDataTypeId = createSelector(
   selectDateTimeDataType,
   (dt): number | null => dt?.id ?? null
+)
+
+// The `is_base` unit of the `date_time` data type. Acts as the default
+// format the seed worker stamps on a fresh date-time column (so the header
+// dropdown opens with a sensible pre-selected option) and the load-saga
+// backfill PATCHes onto legacy rows whose unit_id is still null.
+export const selectDateTimeBaseUnit = createSelector(
+  selectDateTimeDataType,
+  (dt): DataUnitDef | undefined => dt?.units.find((u) => u.is_base)
+)
+
+export const selectDateTimeBaseUnitId = createSelector(
+  selectDateTimeBaseUnit,
+  (u): number | null => u?.id ?? null
+)
+
+// Resolves the format string the merged date-time column should render
+// with. Reads the active scenario's date-time column unit_id, looks it up
+// in the catalog, and falls back to the data type's `is_base` unit so the
+// table renders something sensible even before the user picks a format.
+export const selectActiveDateTimeFormat = createSelector(
+  selectProjectScreenDomain,
+  selectDateTimeDataType,
+  selectDateTimeBaseUnit,
+  (s, dataType, baseUnit): string => {
+    if (!dataType) return ''
+    const scenarioId = s.activeScenarioId
+    const table = scenarioId == null ? undefined : s.byScenario[scenarioId]
+    const dateTimeCol = table
+      ? Object.values(table.columns).find((c) => c.name === DATE_TIME_COL_NAME)
+      : undefined
+    if (dateTimeCol?.unitId != null) {
+      const unit = dataType.units.find((u) => u.id === dateTimeCol.unitId)
+      if (unit) return unit.unit
+    }
+    return baseUnit?.unit ?? ''
+  }
 )
 
 export const selectDataTypesLoadStatus = createSelector(

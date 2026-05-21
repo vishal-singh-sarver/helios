@@ -62,6 +62,7 @@ import {
   selectByScenario,
   selectCheckDataTypeId,
   selectDataTypesLoadStatus,
+  selectDateTimeBaseUnitId,
   selectDateTimeDataTypeId
 } from './selectors'
 import {
@@ -270,24 +271,40 @@ function* loadScenarioWorker(action: LoadScenarioRequestedAction): Generator {
     )
 
     // Backfill the persisted date-time header when the backend row still
-    // carries helios_data_type_id: null (scenarios seeded before this client
-    // started stamping the id). Fire a PATCH so the backend row catches up
-    // and subsequent loads don't need the client-side override. Skipped when
-    // the catalog hasn't loaded — without it we have nothing to write.
+    // carries null for helios_data_type_id and/or unit_id (scenarios seeded
+    // before this client started stamping those fields). The patch sends
+    // only the fields actually missing on the wire, paired with `previous:
+    // null` so the saga's rollback path still knows the prior state. Skipped
+    // when the catalog hasn't loaded — without it we have nothing to write.
     if (dateTimeDataTypeId != null) {
+      const dateTimeBaseUnitId = (yield select(selectDateTimeBaseUnitId)) as number | null
       const staleDateTimeHeader = sortedHeaders.find(
-        (h) => h.name === DATE_TIME_COL_NAME && h.helios_data_type_id == null
+        (h) =>
+          h.name === DATE_TIME_COL_NAME &&
+          (h.helios_data_type_id == null || h.unit_id == null)
       )
       if (staleDateTimeHeader) {
-        yield put(
-          actions.updateColumnRequested(
-            projectId,
-            scenarioId,
-            String(staleDateTimeHeader.id),
-            { dataTypeId: dateTimeDataTypeId },
-            { dataTypeId: null }
+        const patch: { dataTypeId?: number | null; unitId?: number | null } = {}
+        const previous: { dataTypeId?: number | null; unitId?: number | null } = {}
+        if (staleDateTimeHeader.helios_data_type_id == null) {
+          patch.dataTypeId = dateTimeDataTypeId
+          previous.dataTypeId = null
+        }
+        if (staleDateTimeHeader.unit_id == null && dateTimeBaseUnitId != null) {
+          patch.unitId = dateTimeBaseUnitId
+          previous.unitId = null
+        }
+        if (patch.dataTypeId !== undefined || patch.unitId !== undefined) {
+          yield put(
+            actions.updateColumnRequested(
+              projectId,
+              scenarioId,
+              String(staleDateTimeHeader.id),
+              patch,
+              previous
+            )
           )
-        )
+        }
       }
     }
 
@@ -362,6 +379,7 @@ function* seedDefaultColumnsWorker(action: SeedDefaultColumnsRequestedAction): G
     }
     const checkDataTypeId = (yield select(selectCheckDataTypeId)) as number | null
     const dateTimeDataTypeId = (yield select(selectDateTimeDataTypeId)) as number | null
+    const dateTimeBaseUnitId = (yield select(selectDateTimeBaseUnitId)) as number | null
 
     yield call(addColumnsRequest, projectId, scenarioId, [
       {
@@ -373,7 +391,7 @@ function* seedDefaultColumnsWorker(action: SeedDefaultColumnsRequestedAction): G
       {
         name: DATE_TIME_COL_NAME,
         dataTypeId: dateTimeDataTypeId,
-        dataUnitId: null,
+        dataUnitId: dateTimeBaseUnitId,
         values: []
       }
     ])

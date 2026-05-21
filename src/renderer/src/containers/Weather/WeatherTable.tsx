@@ -29,6 +29,7 @@ import DateTimeHeader from './DateTimeHeader'
 import HeaderEditor from './HeaderEditor'
 import messages from './messages'
 import {
+  selectActiveDateTimeFormat,
   selectActiveProject,
   selectActiveProjectId,
   selectActiveScenarioId,
@@ -346,19 +347,12 @@ function WeatherTable(): React.JSX.Element {
     return null
   }, [columns])
 
-  // Display format: prefer the unit the column has committed; otherwise show
-  // the `date_time` data type's is_base unit. Returns '' until the catalog
-  // loads so a missing format string can't get switched on as if it were a
-  // real one (formatDateTime would fall back to the base layout anyway).
+  // Display format pulls from Redux: the selector reads the active
+  // scenario's date-time column unit_id, looks it up in the catalog, and
+  // falls back to the data type's is_base unit. Centralising the lookup
+  // means any other consumer (preview, export, etc.) sees the same string.
   const dateTimeCol = dateTimeColId != null ? columns[dateTimeColId] : undefined
-  const dateFormat = React.useMemo(() => {
-    if (!dateTimeDataType) return ''
-    if (dateTimeCol?.unitId != null) {
-      const u = dateTimeDataType.units.find((unit) => unit.id === dateTimeCol.unitId)
-      if (u) return u.unit
-    }
-    return dateTimeDataType.units.find((u) => u.is_base)?.unit ?? ''
-  }, [dateTimeDataType, dateTimeCol?.unitId])
+  const dateFormat = useSelector(selectActiveDateTimeFormat)
 
   const handleDateTimePatch = React.useCallback(
     (patch: UpdateColumnPatch): void => {
