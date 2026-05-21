@@ -198,7 +198,7 @@ function ProjectsTable({
                         handleOpenProject(project)
                       }
                     }}
-                    className="hover:bg-[#424242] focus:outline-none focus-visible:bg-[#424242] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-blue-500 transition-colors"
+                    className="hover:bg-[#424242] focus:outline-none focus-visible:bg-[#424242] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-blue-500 focus-visible:[&>td]:border-b-blue-500 transition-colors"
                     style={{ height: ROW_HEIGHT }}
                   >
                     <td className="border-b border-app-border/80 px-4 overflow-hidden">
