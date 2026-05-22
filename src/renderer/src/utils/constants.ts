@@ -34,8 +34,10 @@ export const API_ROUTES = {
       `/api/weather/project/${projectId}/scenario/${scenarioId}/getAllTimeSeriesData`,
     update: (projectId: string, scenarioId: string) =>
       `/api/weather/project/${projectId}/scenario/${scenarioId}/update`,
-    updateCol: (projectId: string, scenarioId: string) =>
-      `/api/weather/project/${projectId}/scenario/${scenarioId}/updateCol`,
+    // Per-column update — the target column is identified by `columnId` in
+    // the URL path, so it must not be repeated in the request body.
+    updateCol: (projectId: string, scenarioId: string, columnId: number) =>
+      `/api/weather/project/${projectId}/scenario/${scenarioId}/updateCol/${columnId}`,
     add: (projectId: string, scenarioId: string) =>
       `/api/weather/project/${projectId}/scenario/${scenarioId}/add`,
     addCol: (projectId: string, scenarioId: string) =>

@@ -53,6 +53,17 @@ if (typeof window !== 'undefined' && !(window as unknown as { api?: unknown }).a
     writeFile: noop,
     getBackendStatus: noop,
     startBackend: noop,
-    stopBackend: noop
+    stopBackend: noop,
+    // Window-control bridge — the renderer paints its own title bar, so any
+    // component mounting Header / WindowControls calls these on render.
+    // Promise-returning stubs so `.then(...)` chains resolve; onFullScreenChange
+    // hands back a no-op unsubscribe so effect cleanup doesn't throw.
+    windowMinimize: () => Promise.resolve(),
+    windowToggleMaximize: () => Promise.resolve(false),
+    windowClose: () => Promise.resolve(),
+    windowIsMaximized: () => Promise.resolve(false),
+    windowIsFullScreen: () => Promise.resolve(false),
+    onFullScreenChange: () => noop,
+    getPlatform: () => Promise.resolve('linux')
   }
 }

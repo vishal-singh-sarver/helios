@@ -11,7 +11,7 @@ import {
   patchHeaderRequest,
   updateProjectRequest,
   updateCellRequest,
-  updateColumnsRequest,
+  updateColumnRequest,
   type AddColumnResponse,
   type AddRowsResponse,
   type DataPage,
@@ -624,17 +624,12 @@ function* updateColumnWorker(action: UpdateColumnRequestedAction): Generator {
           valuesByRowId: converted.valuesByRowId
         })
       )
-      yield call(updateColumnsRequest, projectId, scenarioId, {
-        columns: [
-          {
-            id: headerId,
-            name: col.name,
-            dataTypeId: dataType.id,
-            dataUnitId: patch.unitId ?? col.unitId,
-            values: converted.values,
-            defaultValue: 'NAN'
-          }
-        ]
+      yield call(updateColumnRequest, projectId, scenarioId, headerId, {
+        name: col.name,
+        dataTypeId: dataType.id,
+        dataUnitId: patch.unitId ?? col.unitId,
+        values: converted.values,
+        defaultValue: 'NAN'
       })
     } else {
       yield call(patchHeaderRequest, projectId, scenarioId, headerId, wire)
@@ -770,14 +765,9 @@ function* updateAllCheckboxesWorker(action: UpdateAllCheckboxesRequestedAction):
       }
     }
 
-    yield call(updateColumnsRequest, projectId, scenarioId, {
-      columns: [
-        {
-          id: checkHeaderId,
-          name: CHECK_COL_NAME,
-          values
-        }
-      ]
+    yield call(updateColumnRequest, projectId, scenarioId, checkHeaderId, {
+      name: CHECK_COL_NAME,
+      values
     })
   } catch {
     // Local optimistic reducer state already reflects the checkbox toggle.

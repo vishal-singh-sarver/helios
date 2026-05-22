@@ -189,10 +189,10 @@ describe('<ProjectsTable />', () => {
     const header = screen.getByRole('columnheader', { name: /last updated/i })
     expect(header).toHaveAttribute('aria-sort', 'descending')
 
-    const rows = screen.getAllByRole('row')
-    expect(rows[1]).toHaveTextContent('Alpha Project') // 2026-03-29
-    expect(rows[2]).toHaveTextContent('Beta Project') // 2026-03-27
-    expect(rows[3]).toHaveTextContent('Gamma Project') // 2026-03-24
+    const rows = screen.getAllByRole('button', { name: /^Open project/i })
+    expect(rows[0]).toHaveTextContent('Alpha Project') // 2026-03-29
+    expect(rows[1]).toHaveTextContent('Beta Project') // 2026-03-27
+    expect(rows[2]).toHaveTextContent('Gamma Project') // 2026-03-24
   })
 
   // ── Sorting by name ───────────────────────────────────────────────────────
@@ -206,10 +206,10 @@ describe('<ProjectsTable />', () => {
       'ascending'
     )
 
-    const rows = screen.getAllByRole('row')
-    expect(rows[1]).toHaveTextContent('Alpha Project')
-    expect(rows[2]).toHaveTextContent('Beta Project')
-    expect(rows[3]).toHaveTextContent('Gamma Project')
+    const rows = screen.getAllByRole('button', { name: /^Open project/i })
+    expect(rows[0]).toHaveTextContent('Alpha Project')
+    expect(rows[1]).toHaveTextContent('Beta Project')
+    expect(rows[2]).toHaveTextContent('Gamma Project')
   })
 
   it('toggles name sort to descending on the second click', () => {
@@ -223,10 +223,10 @@ describe('<ProjectsTable />', () => {
       'descending'
     )
 
-    const rows = screen.getAllByRole('row')
-    expect(rows[1]).toHaveTextContent('Gamma Project')
-    expect(rows[2]).toHaveTextContent('Beta Project')
-    expect(rows[3]).toHaveTextContent('Alpha Project')
+    const rows = screen.getAllByRole('button', { name: /^Open project/i })
+    expect(rows[0]).toHaveTextContent('Gamma Project')
+    expect(rows[1]).toHaveTextContent('Beta Project')
+    expect(rows[2]).toHaveTextContent('Alpha Project')
   })
 
   // ── Sorting by date ──────────────────────────────────────────────────────
@@ -240,10 +240,10 @@ describe('<ProjectsTable />', () => {
       'ascending'
     )
 
-    const rows = screen.getAllByRole('row')
-    expect(rows[1]).toHaveTextContent('Gamma Project') // Mar 24
-    expect(rows[2]).toHaveTextContent('Beta Project') // Mar 27
-    expect(rows[3]).toHaveTextContent('Alpha Project') // Mar 29
+    const rows = screen.getAllByRole('button', { name: /^Open project/i })
+    expect(rows[0]).toHaveTextContent('Gamma Project') // Mar 24
+    expect(rows[1]).toHaveTextContent('Beta Project') // Mar 27
+    expect(rows[2]).toHaveTextContent('Alpha Project') // Mar 29
   })
 
   // ── Sorting by size — must be numeric, not lexicographic ──────────────────
@@ -257,10 +257,10 @@ describe('<ProjectsTable />', () => {
       'ascending'
     )
 
-    const rows = screen.getAllByRole('row')
-    expect(rows[1]).toHaveTextContent('Beta Project') // 86.1M
-    expect(rows[2]).toHaveTextContent('Alpha Project') // 128.4M
-    expect(rows[3]).toHaveTextContent('Gamma Project') // 214.9M
+    const rows = screen.getAllByRole('button', { name: /^Open project/i })
+    expect(rows[0]).toHaveTextContent('Beta Project') // 86.1M
+    expect(rows[1]).toHaveTextContent('Alpha Project') // 128.4M
+    expect(rows[2]).toHaveTextContent('Gamma Project') // 214.9M
   })
 
   it('sorts by Size numerically descending on the second click', () => {
@@ -269,10 +269,10 @@ describe('<ProjectsTable />', () => {
     fireEvent.click(sizeHeader)
     fireEvent.click(sizeHeader)
 
-    const rows = screen.getAllByRole('row')
-    expect(rows[1]).toHaveTextContent('Gamma Project') // 214.9M
-    expect(rows[2]).toHaveTextContent('Alpha Project') // 128.4M
-    expect(rows[3]).toHaveTextContent('Beta Project') // 86.1M
+    const rows = screen.getAllByRole('button', { name: /^Open project/i })
+    expect(rows[0]).toHaveTextContent('Gamma Project') // 214.9M
+    expect(rows[1]).toHaveTextContent('Alpha Project') // 128.4M
+    expect(rows[2]).toHaveTextContent('Beta Project') // 86.1M
   })
 
   // ── aria-sort on inactive columns ─────────────────────────────────────────
@@ -340,10 +340,10 @@ describe('<ProjectsTable />', () => {
 
     render(<ProjectsTable {...defaultProps} projects={projects} />)
 
-    const rows = screen.getAllByRole('row')
+    const rows = screen.getAllByRole('button', { name: /^Open project/i })
     // default sort: last_updated desc. Equal timestamps → insertion order retained.
-    expect(rows[1]).toHaveTextContent('A')
-    expect(rows[2]).toHaveTextContent('B')
+    expect(rows[0]).toHaveTextContent('A')
+    expect(rows[1]).toHaveTextContent('B')
   })
 
   it('does not throw when a size is NaN', () => {

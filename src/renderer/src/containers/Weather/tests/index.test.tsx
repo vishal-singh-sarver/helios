@@ -235,15 +235,21 @@ describe('<Weather />', () => {
     expect(screen.getByLabelText('Dismiss import notification')).toBeInTheDocument()
   })
 
-  it('renders the import toast when submit reports truncated decimals', () => {
+  it('dispatches importFinalizeRequested with truncatedDecimals=true on a truncated submit', () => {
+    // A truncated submit no longer shows the toast immediately — the wizard
+    // flags it through importFinalizeRequested, and the toast surfaces after
+    // the import saga succeeds (see the precision-warning test below).
     sel.wizardOpen = true
     render(<Weather />)
     fireEvent.click(screen.getByTestId('wizard-submit-truncated'))
-    expect(
-      screen.getByText(
-        'Only 7 decimal places have been taken for decimal values as more are not supported.'
+    expect(mockDispatch).toHaveBeenCalledWith(
+      weatherActions.importFinalizeRequested(
+        'proj-1',
+        'sce-1',
+        { filename: 'foo.csv', columns: [], records: [] },
+        true
       )
-    ).toBeInTheDocument()
+    )
   })
 
   it('renders the import toast when refreshed backend data was precision-normalized', () => {

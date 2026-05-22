@@ -10,7 +10,7 @@ import {
   normalizeWireCellValue,
   patchHeaderRequest,
   toCellValue,
-  updateColumnsRequest,
+  updateColumnRequest,
   updateCellRequest
 } from '../service'
 import { api, ApiError } from 'utils/api'
@@ -191,33 +191,23 @@ describe('deleteHeaderRequest', () => {
   })
 })
 
-describe('updateColumnsRequest', () => {
-  it('PATCHes updateCol with the bulk column wire shape', async () => {
+describe('updateColumnRequest', () => {
+  it('PATCHes updateCol/{columnId} with a body that carries no id', async () => {
     mockedApi.patch.mockResolvedValueOnce('ok')
-    await updateColumnsRequest('p1', 's1', {
-      columns: [
-        {
-          id: 15,
-          name: 'check',
-          values: [
-            { date: '2026-01-01', time: '00:00:00', value: '1' },
-            { date: '2026-01-01', time: '01:00:00', value: '1' }
-          ]
-        }
+    await updateColumnRequest('p1', 's1', 15, {
+      name: 'check',
+      values: [
+        { date: '2026-01-01', time: '00:00:00', value: '1' },
+        { date: '2026-01-01', time: '01:00:00', value: '1' }
       ]
     })
-    expect(mockedApi.patch).toHaveBeenCalledWith(API_ROUTES.weather.updateCol('p1', 's1'), {
-      column: [
-        {
-          id: 15,
-          name: 'check',
-          datatype: null,
-          data_unit: null,
-          values: [
-            { date: '2026-01-01', time: '00:00:00', value: '1' },
-            { date: '2026-01-01', time: '01:00:00', value: '1' }
-          ]
-        }
+    expect(mockedApi.patch).toHaveBeenCalledWith(API_ROUTES.weather.updateCol('p1', 's1', 15), {
+      name: 'check',
+      datatype: null,
+      data_unit: null,
+      values: [
+        { date: '2026-01-01', time: '00:00:00', value: '1' },
+        { date: '2026-01-01', time: '01:00:00', value: '1' }
       ]
     })
   })

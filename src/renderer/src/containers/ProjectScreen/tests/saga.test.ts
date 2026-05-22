@@ -10,7 +10,7 @@ import {
   loadDataTypesRequest,
   loadHeadersRequest,
   patchHeaderRequest,
-  updateColumnsRequest,
+  updateColumnRequest,
   updateCellRequest,
   updateProjectRequest
 } from 'containers/Weather/service'
@@ -698,7 +698,7 @@ describe('deleteColumnWorker', () => {
 // ── updateAllCheckboxesWorker ────────────────────────────────────────────────
 
 describe('updateAllCheckboxesWorker', () => {
-  it('builds one timestamped value per row and PATCHes updateCol for the check column', () => {
+  it('builds one timestamped value per row and PATCHes updateCol/{id} for the check column', () => {
     const action = actions.updateAllCheckboxesRequested(PROJ, SCN, '15', '1')
     const table: WeatherTable = {
       columns: {
@@ -730,23 +730,19 @@ describe('updateAllCheckboxesWorker', () => {
           values.push({ date, time, value: action.payload.value })
         }
       }
-      yield call(updateColumnsRequest, PROJ, SCN, {
-        columns: [{ id: Number(action.payload.checkColId), name: 'check', values }]
+      yield call(updateColumnRequest, PROJ, SCN, Number(action.payload.checkColId), {
+        name: 'check',
+        values
       })
     }
     const gen = worker()
     gen.next()
     expect(gen.next(table).value).toEqual(
-      call(updateColumnsRequest, PROJ, SCN, {
-        columns: [
-          {
-            id: 15,
-            name: 'check',
-            values: [
-              { date: '2026-04-27', time: '10:00:00', value: '1' },
-              { date: '2026-04-27', time: '11:00:00', value: '1' }
-            ]
-          }
+      call(updateColumnRequest, PROJ, SCN, 15, {
+        name: 'check',
+        values: [
+          { date: '2026-04-27', time: '10:00:00', value: '1' },
+          { date: '2026-04-27', time: '11:00:00', value: '1' }
         ]
       })
     )

@@ -212,42 +212,49 @@ export async function addColumnsRequest(
   }
 }
 
-// ── Update columns ───────────────────────────────────────────────────────────
+// ── Update column ────────────────────────────────────────────────────────────
 //
-// PATCH /api/weather/.../updateCol updates one or more existing columns by
-// name. For the bulk checkbox toggle we send a single `check` column with a
-// values[] entry for every existing row timestamp.
+// PATCH /api/weather/.../updateCol/{column_id} updates one existing column.
+// The target column is identified by `columnId` in the URL path — the body
+// carries no `id` (the backend schema rejects unknown fields). For the bulk
+// checkbox toggle we send a values[] entry for every existing row timestamp.
 
-export interface UpdateColumnsRequestBody {
-  columns: Array<{
-    id: number
-    name: string
-    dataTypeId?: number | null
-    dataUnitId?: number | null
-    values: AddColumnCellValue[]
-    defaultValue?: number | string | null
-  }>
+export interface UpdateColumnRequestBody {
+  name: string
+  dataTypeId?: number | null
+  dataUnitId?: number | null
+  values: AddColumnCellValue[]
+  defaultValue?: number | string | null
 }
 
-export type UpdateColumnsResponse = string
+interface UpdateColumnWireBody {
+  name: string
+  datatype: number | null
+  data_unit: number | null
+  values: AddColumnCellValue[]
+  default_value?: number | string | null
+}
 
-export function updateColumnsRequest(
+export type UpdateColumnResponse = string
+
+export function updateColumnRequest(
   projectId: string,
   scenarioId: string,
-  body: UpdateColumnsRequestBody
-): Promise<UpdateColumnsResponse> {
-  const wire: AddColumnWireBody = {
-    column: body.columns.map((col) => ({
-      id: col.id,
-      name: col.name,
-      datatype: col.dataTypeId ?? null,
-      data_unit: col.dataUnitId ?? null,
-      values: col.values,
-      ...(col.defaultValue !== undefined ? { default_value: col.defaultValue } : {})
-    }))
+  columnId: number,
+  body: UpdateColumnRequestBody
+): Promise<UpdateColumnResponse> {
+  const wire: UpdateColumnWireBody = {
+    name: body.name,
+    datatype: body.dataTypeId ?? null,
+    data_unit: body.dataUnitId ?? null,
+    values: body.values,
+    ...(body.defaultValue !== undefined ? { default_value: body.defaultValue } : {})
   }
 
-  return api.patch<UpdateColumnsResponse>(API_ROUTES.weather.updateCol(projectId, scenarioId), wire)
+  return api.patch<UpdateColumnResponse>(
+    API_ROUTES.weather.updateCol(projectId, scenarioId, columnId),
+    wire
+  )
 }
 
 // ── Patch header ─────────────────────────────────────────────────────────────

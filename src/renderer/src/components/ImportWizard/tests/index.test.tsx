@@ -134,13 +134,16 @@ describe('<ImportWizard />', () => {
     expect(screen.getByLabelText('Close')).toBeDisabled()
   })
 
-  it('shows "Importing…" on the Import button while importing', () => {
+  it('shows a spinner on the Import button and disables it while importing', () => {
     render(<ImportWizard {...baseProps} pickedFile={goodGroup1File} importing />)
     fireEvent.click(screen.getByText('Next'))
     fireEvent.click(screen.getByText('Next'))
     fireEvent.click(screen.getByText('Next'))
-    expect(screen.getByText('Importing…')).toBeInTheDocument()
-    expect(screen.getByText('Importing…')).toBeDisabled()
+    // While importing the button content is the <Spinner> (aria-label
+    // "Loading"), which becomes the button's accessible name.
+    const importBtn = screen.getByRole('button', { name: 'Loading' })
+    expect(importBtn).toBeInTheDocument()
+    expect(importBtn).toBeDisabled()
   })
 
   it('updates the file label and parses again when pickedFile changes', () => {
@@ -227,12 +230,12 @@ describe('<ImportWizard />', () => {
     const dataset = onSubmit.mock.calls[0][0] as ImportedDataset
     expect(dataset.records[0].values['3__temp']).toBe('12.1234567')
     expect(dataset.records[1].values['3__temp']).toBe('99.0000000')
-    expect(onImportWarning).toHaveBeenLastCalledWith(
-      'Only 7 decimal places have been taken for decimal values as more are not allowed.'
-    )
+    // The wizard no longer raises the warning itself — it flags truncation
+    // via onSubmit's second arg, and Weather surfaces the toast post-import.
+    expect(onSubmit.mock.calls[0][1]).toBe(true)
   })
 
-  it('truncates quoted decimal values and raises the import warning', () => {
+  it('truncates quoted decimal values and flags truncation on submit', () => {
     const quotedPrecisionFile = {
       filename: 'precision.csv',
       rawText: 'year,month,day,temp\n' + '2026,2,26,"12.123456789"\n' + '2026,2,27,.123456789'
@@ -256,8 +259,6 @@ describe('<ImportWizard />', () => {
     const dataset = onSubmit.mock.calls[0][0] as ImportedDataset
     expect(dataset.records[0].values['3__temp']).toBe('12.1234567')
     expect(dataset.records[1].values['3__temp']).toBe('0.1234567')
-    expect(onImportWarning).toHaveBeenLastCalledWith(
-      'Only 7 decimal places have been taken for decimal values as more are not allowed.'
-    )
+    expect(onSubmit.mock.calls[0][1]).toBe(true)
   })
 })
