@@ -84,3 +84,27 @@ body {
 .scrollbar-custom::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+/* Thin variant — same dark palette, sized for compact popovers (e.g. the
+   time picker columns) where 22px would dominate the container. */
+.scrollbar-custom-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollbar-custom-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-custom-thin::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-radius: 9999px;
+}
+
+.scrollbar-custom-thin::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.28);
+}
+
+.scrollbar-custom-thin::-webkit-scrollbar-corner {
+  background: transparent;
+}
