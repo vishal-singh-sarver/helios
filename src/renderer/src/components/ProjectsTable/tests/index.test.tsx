@@ -17,6 +17,8 @@ vi.mock('../../EmptyState', () => ({
 // The table imports two SVG assets; stub them so the bundler does not choke
 // and so we can assert className changes on them in render output.
 vi.mock('@renderer/assets/delete.svg', () => ({ default: 'delete.svg' }))
+vi.mock('@renderer/assets/edit.svg', () => ({ default: 'edit.svg' }))
+vi.mock('@renderer/assets/Kebab Menu.svg', () => ({ default: 'kebab.svg' }))
 vi.mock('@renderer/assets/Sort 3.svg', () => ({ default: 'sort.svg' }))
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
@@ -33,6 +35,7 @@ describe('<ProjectsTable />', () => {
     emptyIcon: 'search.svg',
     onCreateNew: vi.fn(),
     onRequestDelete: vi.fn(),
+    onRequestRename: vi.fn(),
     deletingIds: [] as string[]
   }
 
@@ -99,24 +102,42 @@ describe('<ProjectsTable />', () => {
     expect(screen.getByRole('button', { name: 'Open project Alpha Project' })).toBeInTheDocument()
   })
 
-  it('exposes a "Delete project" button for each row with an accessible label', () => {
+  it('exposes an actions button for each row with an accessible label', () => {
     render(<ProjectsTable {...defaultProps} />)
-    expect(screen.getByRole('button', { name: 'Delete project Alpha Project' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Open actions for Alpha Project' })
+    ).toBeInTheDocument()
+  })
+
+  it('opens a menu with Rename and Delete when the actions button is clicked', () => {
+    render(<ProjectsTable {...defaultProps} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Open actions for Alpha Project' }))
+    expect(screen.getByRole('menu', { name: 'Actions for Alpha Project' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Rename' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument()
   })
 
   it('calls onRequestDelete with the project when the delete button is clicked', () => {
     const onRequestDelete = vi.fn()
     render(<ProjectsTable {...defaultProps} onRequestDelete={onRequestDelete} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Delete project Beta Project' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open actions for Beta Project' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete' }))
     expect(onRequestDelete).toHaveBeenCalledTimes(1)
-    expect(onRequestDelete).toHaveBeenCalledWith(
-      MOCK_PROJECTS.find((p) => p.id === 'p-beta')
-    )
+    expect(onRequestDelete).toHaveBeenCalledWith(MOCK_PROJECTS.find((p) => p.id === 'p-beta'))
   })
 
-  it('disables the delete button for projects listed in deletingIds', () => {
+  it('calls onRequestRename with the project when the rename menu item is clicked', () => {
+    const onRequestRename = vi.fn()
+    render(<ProjectsTable {...defaultProps} onRequestRename={onRequestRename} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Open actions for Gamma Project' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Rename' }))
+    expect(onRequestRename).toHaveBeenCalledTimes(1)
+    expect(onRequestRename).toHaveBeenCalledWith(MOCK_PROJECTS.find((p) => p.id === 'p-gamma'))
+  })
+
+  it('disables the actions button for projects listed in deletingIds', () => {
     render(<ProjectsTable {...defaultProps} deletingIds={['p-alpha']} />)
-    const btn = screen.getByRole('button', { name: 'Delete project Alpha Project' })
+    const btn = screen.getByRole('button', { name: 'Open actions for Alpha Project' })
     expect(btn).toBeDisabled()
   })
 
@@ -129,8 +150,16 @@ describe('<ProjectsTable />', () => {
         onRequestDelete={onRequestDelete}
       />
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Delete project Alpha Project' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open actions for Alpha Project' }))
     expect(onRequestDelete).not.toHaveBeenCalled()
+  })
+
+  it('closes the menu on Escape', () => {
+    render(<ProjectsTable {...defaultProps} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Open actions for Alpha Project' }))
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
   // ── Empty state ──────────────────────────────────────────────────────────
@@ -160,10 +189,10 @@ describe('<ProjectsTable />', () => {
     const header = screen.getByRole('columnheader', { name: /last updated/i })
     expect(header).toHaveAttribute('aria-sort', 'descending')
 
-    const rows = screen.getAllByRole('row')
-    expect(rows[1]).toHaveTextContent('Alpha Project') // 2026-03-29
-    expect(rows[2]).toHaveTextContent('Beta Project') // 2026-03-27
-    expect(rows[3]).toHaveTextContent('Gamma Project') // 2026-03-24
+    const rows = screen.getAllByRole('button', { name: /^Open project/i })
+    expect(rows[0]).toHaveTextContent('Alpha Project') // 2026-03-29
+    expect(rows[1]).toHaveTextContent('Beta Project') // 2026-03-27
+    expect(rows[2]).toHaveTextContent('Gamma Project') // 2026-03-24
   })
 
   // ── Sorting by name ───────────────────────────────────────────────────────
@@ -177,10 +206,10 @@ describe('<ProjectsTable />', () => {
       'ascending'
     )
 
-    const rows = screen.getAllByRole('row')
-    expect(rows[1]).toHaveTextContent('Alpha Project')
-    expect(rows[2]).toHaveTextContent('Beta Project')
-    expect(rows[3]).toHaveTextContent('Gamma Project')
+    const rows = screen.getAllByRole('button', { name: /^Open project/i })
+    expect(rows[0]).toHaveTextContent('Alpha Project')
+    expect(rows[1]).toHaveTextContent('Beta Project')
+    expect(rows[2]).toHaveTextContent('Gamma Project')
   })
 
   it('toggles name sort to descending on the second click', () => {
@@ -194,10 +223,10 @@ describe('<ProjectsTable />', () => {
       'descending'
     )
 
-    const rows = screen.getAllByRole('row')
-    expect(rows[1]).toHaveTextContent('Gamma Project')
-    expect(rows[2]).toHaveTextContent('Beta Project')
-    expect(rows[3]).toHaveTextContent('Alpha Project')
+    const rows = screen.getAllByRole('button', { name: /^Open project/i })
+    expect(rows[0]).toHaveTextContent('Gamma Project')
+    expect(rows[1]).toHaveTextContent('Beta Project')
+    expect(rows[2]).toHaveTextContent('Alpha Project')
   })
 
   // ── Sorting by date ──────────────────────────────────────────────────────
@@ -211,10 +240,10 @@ describe('<ProjectsTable />', () => {
       'ascending'
     )
 
-    const rows = screen.getAllByRole('row')
-    expect(rows[1]).toHaveTextContent('Gamma Project') // Mar 24
-    expect(rows[2]).toHaveTextContent('Beta Project') // Mar 27
-    expect(rows[3]).toHaveTextContent('Alpha Project') // Mar 29
+    const rows = screen.getAllByRole('button', { name: /^Open project/i })
+    expect(rows[0]).toHaveTextContent('Gamma Project') // Mar 24
+    expect(rows[1]).toHaveTextContent('Beta Project') // Mar 27
+    expect(rows[2]).toHaveTextContent('Alpha Project') // Mar 29
   })
 
   // ── Sorting by size — must be numeric, not lexicographic ──────────────────
@@ -228,10 +257,10 @@ describe('<ProjectsTable />', () => {
       'ascending'
     )
 
-    const rows = screen.getAllByRole('row')
-    expect(rows[1]).toHaveTextContent('Beta Project') // 86.1M
-    expect(rows[2]).toHaveTextContent('Alpha Project') // 128.4M
-    expect(rows[3]).toHaveTextContent('Gamma Project') // 214.9M
+    const rows = screen.getAllByRole('button', { name: /^Open project/i })
+    expect(rows[0]).toHaveTextContent('Beta Project') // 86.1M
+    expect(rows[1]).toHaveTextContent('Alpha Project') // 128.4M
+    expect(rows[2]).toHaveTextContent('Gamma Project') // 214.9M
   })
 
   it('sorts by Size numerically descending on the second click', () => {
@@ -240,10 +269,10 @@ describe('<ProjectsTable />', () => {
     fireEvent.click(sizeHeader)
     fireEvent.click(sizeHeader)
 
-    const rows = screen.getAllByRole('row')
-    expect(rows[1]).toHaveTextContent('Gamma Project') // 214.9M
-    expect(rows[2]).toHaveTextContent('Alpha Project') // 128.4M
-    expect(rows[3]).toHaveTextContent('Beta Project') // 86.1M
+    const rows = screen.getAllByRole('button', { name: /^Open project/i })
+    expect(rows[0]).toHaveTextContent('Gamma Project') // 214.9M
+    expect(rows[1]).toHaveTextContent('Alpha Project') // 128.4M
+    expect(rows[2]).toHaveTextContent('Beta Project') // 86.1M
   })
 
   // ── aria-sort on inactive columns ─────────────────────────────────────────
@@ -311,10 +340,10 @@ describe('<ProjectsTable />', () => {
 
     render(<ProjectsTable {...defaultProps} projects={projects} />)
 
-    const rows = screen.getAllByRole('row')
+    const rows = screen.getAllByRole('button', { name: /^Open project/i })
     // default sort: last_updated desc. Equal timestamps → insertion order retained.
-    expect(rows[1]).toHaveTextContent('A')
-    expect(rows[2]).toHaveTextContent('B')
+    expect(rows[0]).toHaveTextContent('A')
+    expect(rows[1]).toHaveTextContent('B')
   })
 
   it('does not throw when a size is NaN', () => {

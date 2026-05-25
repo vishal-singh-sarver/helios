@@ -10,8 +10,18 @@ declare global {
       readFile: (filePath: string) => Promise<string>
       writeFile: (filePath: string, content: string) => Promise<void>
       getBackendStatus: () => Promise<BackendStatus>
+      getBackendUrl: () => Promise<string | null>
       startBackend: () => Promise<{ ok: boolean }>
       stopBackend: () => Promise<{ ok: boolean }>
+      windowMinimize: () => Promise<void>
+      windowToggleMaximize: () => Promise<boolean>
+      windowClose: () => Promise<void>
+      windowIsMaximized: () => Promise<boolean>
+      windowIsFullScreen: () => Promise<boolean>
+      onFullScreenChange: (cb: (isFullScreen: boolean) => void) => () => void
+      getPlatform: () => Promise<NodeJS.Platform>
+      appReady: () => void
     }
+    __APP_BASE_URL__?: string
   }
 }

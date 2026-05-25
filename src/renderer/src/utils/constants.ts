@@ -8,17 +8,52 @@ export const BASE_URL =
 // ── Backend routes ────────────────────────────────────────────────────────────
 //
 // Single source of truth for every backend path the renderer calls. Paths are
-// relative to BASE_URL and get prefixed inside utils/api.ts. Rename or reshape
-// an endpoint in one place and every caller picks it up at build time.
+// relative to BASE_URL and get prefixed inside utils/api.ts.
+//
+// Weather routes are scoped by (project_id, scenario_id) — exposed as
+// builder functions so callers can't forget either.
 
 export const API_ROUTES = {
   project: {
     create: '/api/project/create',
     recent: '/api/project/recent',
-    delete: (projectId: string) => `/api/project/${projectId}`
+    delete: (projectId: string) => `/api/project/${projectId}`,
+    update: (projectId: string) => `/api/project/${projectId}`,
+    // Returns the project + its scenarios (each with weather_data_headers).
+    // Used to bootstrap the active scenario id on project screen mount.
+    get: (projectId: string) => `/api/project/${projectId}`
   },
   weather: {
-    addColumn: '/api/weather/column/add',
-    addRows: '/api/weather/rows/add'
+    headers: (projectId: string, scenarioId: string) =>
+      `/api/weather/project/${projectId}/scenario/${scenarioId}/weather_data_header`,
+    headerPatch: (projectId: string, scenarioId: string, headerId: number) =>
+      `/api/weather/project/${projectId}/scenario/${scenarioId}/weather_data_header/${headerId}`,
+    headerDelete: (projectId: string, scenarioId: string, headerId: number) =>
+      `/api/weather/project/${projectId}/scenario/${scenarioId}/weather_data_header/${headerId}`,
+    data: (projectId: string, scenarioId: string) =>
+      `/api/weather/project/${projectId}/scenario/${scenarioId}/getAllTimeSeriesData`,
+    update: (projectId: string, scenarioId: string) =>
+      `/api/weather/project/${projectId}/scenario/${scenarioId}/update`,
+    // Per-column update — the target column is identified by `columnId` in
+    // the URL path, so it must not be repeated in the request body.
+    updateCol: (projectId: string, scenarioId: string, columnId: number) =>
+      `/api/weather/project/${projectId}/scenario/${scenarioId}/updateCol/${columnId}`,
+    add: (projectId: string, scenarioId: string) =>
+      `/api/weather/project/${projectId}/scenario/${scenarioId}/add`,
+    addCol: (projectId: string, scenarioId: string) =>
+      `/api/weather/project/${projectId}/scenario/${scenarioId}/addCol`,
+    addRow: (projectId: string, scenarioId: string) =>
+      `/api/weather/project/${projectId}/scenario/${scenarioId}/addRow`,
+    delete: (projectId: string, scenarioId: string) =>
+      `/api/weather/project/${projectId}/scenario/${scenarioId}/delete`,
+    uploadFile: (projectId: string, scenarioId: string) =>
+      `/api/weather/project/${projectId}/scenario/${scenarioId}/uploadfile`,
+    clearData: (projectId: string, scenarioId: string): string =>
+      `/api/weather/project/${projectId}/scenario/${scenarioId}/clear_data`
+  },
+  catalog: {
+    // Each data type carries its `units[]` inline, so a single round-trip on
+    // ProjectScreen mount populates the entire catalog slice.
+    dataTypes: '/api/data-types/'
   }
 } as const

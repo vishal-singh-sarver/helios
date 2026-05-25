@@ -128,21 +128,63 @@ exports[`<HomePage /> > matches the snapshot 1`] = `
         data-deleting=""
         data-testid="projects-table"
       >
-        <button
-          data-testid="row-p-coastal"
-        >
-          Coastal Survey Alpha
-        </button>
-        <button
-          data-testid="row-p-delta"
-        >
-          Delta Wind Farm
-        </button>
-        <button
-          data-testid="row-p-north"
-        >
-          Northern Grid Scan
-        </button>
+        <div>
+          <button
+            data-testid="delete-p-coastal"
+          >
+            Delete 
+            Coastal Survey Alpha
+          </button>
+          <button
+            data-testid="rename-p-coastal"
+          >
+            Rename 
+            Coastal Survey Alpha
+          </button>
+          <span
+            data-testid="row-p-coastal"
+          >
+            Coastal Survey Alpha
+          </span>
+        </div>
+        <div>
+          <button
+            data-testid="delete-p-delta"
+          >
+            Delete 
+            Delta Wind Farm
+          </button>
+          <button
+            data-testid="rename-p-delta"
+          >
+            Rename 
+            Delta Wind Farm
+          </button>
+          <span
+            data-testid="row-p-delta"
+          >
+            Delta Wind Farm
+          </span>
+        </div>
+        <div>
+          <button
+            data-testid="delete-p-north"
+          >
+            Delete 
+            Northern Grid Scan
+          </button>
+          <button
+            data-testid="rename-p-north"
+          >
+            Rename 
+            Northern Grid Scan
+          </button>
+          <span
+            data-testid="row-p-north"
+          >
+            Northern Grid Scan
+          </span>
+        </div>
         <button
           data-testid="table-create-new"
         >

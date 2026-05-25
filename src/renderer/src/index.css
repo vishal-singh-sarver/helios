@@ -3,9 +3,9 @@
 /* Global design tokens */
 :root {
   /* COLORS */
-  --color-bg: #0f1115;
+  --color-bg: #121212;
   --color-panel: #181a1f;
-  --color-border: #2a2d35;
+  --color-border: #424242;
   --color-text-primary: #ffffff;
   --color-text-secondary: #a1a1aa;
 
@@ -33,6 +33,20 @@ body {
   font-family: var(--font-main);
 }
 
+button:focus,
+input:focus,
+textarea:focus {
+  outline: none;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #245AC5;
+  outline-offset: 1px;
+  box-shadow: none;
+}
+
 .text-primary {
   color: var(--color-text-primary);
 }
@@ -42,7 +56,7 @@ body {
 }
 
 .input {
-  @apply h-9 w-full rounded border border-app-border bg-app-bg px-3 text-sm text-white outline-none focus:border-neutral-500;
+  @apply h-9 w-full rounded border border-app-border bg-app-bg px-3 text-sm text-white;
 }
 
 .button-primary {
@@ -54,13 +68,19 @@ body {
    thumb with transparent padding so it floats instead of touching the edges.
    Electron = Chromium, so ::-webkit-scrollbar is the right tool. Apply via
    the `scrollbar-custom` class on any scrollable container. */
+.scrollbar-custom {
+  /* Reserve the vertical-scrollbar gutter even when content fits without one,
+     so a sibling header strip can pad the same 22px and stay column-aligned. */
+  scrollbar-gutter: stable;
+}
+
 .scrollbar-custom::-webkit-scrollbar {
   width: 22px;
   height: 22px;
 }
 
 .scrollbar-custom::-webkit-scrollbar-track {
-  background: transparent;
+  background: #121212;
 }
 
 .scrollbar-custom::-webkit-scrollbar-thumb {
@@ -107,4 +127,17 @@ body {
 
 .scrollbar-custom-thin::-webkit-scrollbar-corner {
   background: transparent;
+}
+
+/* ── Frameless window drag regions ────────────────────────────────────────
+   The app uses frame: false on all platforms (custom title bar). Areas the
+   user can grab to move the window get .app-drag; interactive children
+   (buttons, inputs) inside that area must opt out with .app-no-drag, since
+   drag regions swallow pointer events otherwise. */
+.app-drag {
+  -webkit-app-region: drag;
+}
+
+.app-no-drag {
+  -webkit-app-region: no-drag;
 }

@@ -11,6 +11,7 @@ const selectDomain = (state: RootState): HomePageState => state.homePage ?? init
 export const selectCreateProject = createSelector(selectDomain, (s) => s.createProject)
 export const selectRecentProjects = createSelector(selectDomain, (s) => s.recentProjects)
 export const selectDeleteProject = createSelector(selectDomain, (s) => s.deleteProject)
+export const selectRenameProject = createSelector(selectDomain, (s) => s.renameProject)
 export const selectStreaming = createSelector(selectDomain, (s) => ({
   streaming: s.streaming,
   streamLog: s.streamLog

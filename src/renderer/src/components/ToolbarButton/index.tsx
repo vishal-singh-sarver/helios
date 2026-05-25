@@ -5,24 +5,47 @@ interface ToolbarButtonProps {
   icon: string
   iconPosition?: 'left' | 'right'
   onClick?: () => void
+  bgColor?: string
+  textColor?: string
+  iconColor?: 'light' | 'dark'
 }
 
 function ToolbarButton({
   label,
   icon,
   iconPosition = 'left',
-  onClick
+  onClick,
+  bgColor = '#000000',
+  textColor = '#ffffff',
+  iconColor = 'light'
 }: ToolbarButtonProps): React.JSX.Element {
-  const iconEl = <img src={icon} alt="" aria-hidden="true" className="h-4 w-4 object-contain" />
+  // 'light' → force icon white (good on dark bg).
+  // 'dark'  → force icon black (good on light bg).
+  const iconFilter =
+    iconColor === 'dark'
+      ? '[filter:brightness(0)]'
+      : '[filter:brightness(0)_invert(1)]'
+
+  const iconEl = (
+    <img
+      src={icon}
+      alt=""
+      aria-hidden="true"
+      className={`h-4 w-4 shrink-0 object-contain opacity-90 ${iconFilter}`}
+    />
+  )
+
+  const paddingX = iconPosition === 'right' ? 'pl-3 pr-4' : 'pl-3 pr-3'
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center gap-1.5 rounded-md border border-app-border bg-neutral-800 px-3 py-1.5 text-xs text-neutral-200 transition-colors hover:bg-neutral-700"
+      style={{ backgroundColor: bgColor, color: textColor }}
+      className={`flex items-center gap-1.5 rounded-md border border-app-border ${paddingX} py-1.5 text-xs transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-1 focus-visible:ring-neutral-400`}
     >
       {iconPosition === 'left' && iconEl}
-      {label}
+      <span>{label}</span>
       {iconPosition === 'right' && iconEl}
     </button>
   )

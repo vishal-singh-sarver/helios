@@ -1,20 +1,26 @@
+import { getProjectRequest } from '@renderer/containers/Weather/service'
+import { setActiveProject } from 'containers/ProjectScreen/actions'
 import { call, put, takeEvery, takeLatest, takeLeading } from 'redux-saga/effects'
-import homePageSaga, {
-  fetchStatusWorker,
-  createProjectWorker,
-  fetchRecentProjectsWorker,
-  deleteProjectWorker
-} from '../saga'
+import { navigate } from 'store/navigationReducer'
 import { api, ApiError } from 'utils/api'
 import { API_ROUTES } from 'utils/constants'
+import { STORAGE_KEYS } from 'utils/storageKeys'
 import * as actions from '../actions'
 import {
-  FETCH_STATUS,
-  SSE_CONNECT,
   CREATE_PROJECT,
+  DELETE_PROJECT,
   FETCH_RECENT_PROJECTS,
-  DELETE_PROJECT
+  FETCH_STATUS,
+  RENAME_PROJECT,
+  SSE_CONNECT
 } from '../constants'
+import homePageSaga, {
+  createProjectWorker,
+  deleteProjectWorker,
+  fetchRecentProjectsWorker,
+  fetchStatusWorker,
+  renameProjectWorker
+} from '../saga'
 import type { CreateProjectPayload, CreateProjectResponse } from '../types'
 
 // ── fetchStatusWorker ─────────────────────────────────────────────────────────
@@ -63,9 +69,21 @@ describe('createProjectWorker', () => {
     // 2) success put
     expect(gen.next(response).value).toEqual(put(actions.createProjectSuccess(response)))
 
-    // 3) and the saga pipelines a re-fetch so the table stays in sync
-    expect(gen.next().value).toEqual(put(actions.fetchRecentProjects()))
+    expect(gen.next().value).toEqual(call(getProjectRequest, 'uuid-1'))
 
+    const projectResponse = {
+      project: {
+        id: 'uuid-1',
+        scenarios: []
+      }
+    }
+    expect(gen.next(projectResponse).value).toEqual(
+      call([localStorage, 'setItem'], STORAGE_KEYS.activeProjectId, 'uuid-1')
+    )
+
+    expect(gen.next().value).toEqual(put(setActiveProject('uuid-1')))
+    expect(gen.next().value).toEqual(put(navigate('project')))
+    expect(gen.next().value).toEqual(put(actions.fetchRecentProjects()))
     expect(gen.next().done).toBe(true)
   })
 
@@ -166,6 +184,69 @@ describe('deleteProjectWorker', () => {
   })
 })
 
+// ── renameProjectWorker ─────────────────────────────────────────────────────
+
+describe('renameProjectWorker', () => {
+  it('GETs project details, PATCHes full required body, then refreshes recent projects', () => {
+    const gen = renameProjectWorker(actions.renameProject({ projectId: 'uuid-1', name: 'Beta' }))
+
+    expect(gen.next().value).toEqual(call(api.get, API_ROUTES.project.get('uuid-1')))
+
+    expect(
+      gen.next({
+        project: {
+          id: 'uuid-1',
+          name: 'Alpha',
+          latitude: 10,
+          longitude: 20,
+          utc_offset: '+00:00',
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z',
+          scenarios: []
+        }
+      }).value
+    ).toEqual(
+      call(api.patch, API_ROUTES.project.update('uuid-1'), {
+        name: 'Beta',
+        latitude: 10,
+        longitude: 20
+      })
+    )
+
+    expect(gen.next().value).toEqual(put(actions.renameProjectSuccess('uuid-1', 'Beta')))
+    expect(gen.next().value).toEqual(put(actions.fetchRecentProjects()))
+    expect(gen.next().done).toBe(true)
+  })
+
+  it('puts renameProjectFailure when the patch fails', () => {
+    const gen = renameProjectWorker(actions.renameProject({ projectId: 'uuid-1', name: 'Beta' }))
+    gen.next()
+    gen.next({
+      project: {
+        id: 'uuid-1',
+        name: 'Alpha',
+        latitude: 10,
+        longitude: 20,
+        utc_offset: '+00:00',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+        scenarios: []
+      }
+    })
+
+    const apiErr = new ApiError(409, 'duplicate')
+    expect(gen.throw(apiErr).value).toEqual(
+      put(
+        actions.renameProjectFailure('uuid-1', {
+          status: 409,
+          message: 'duplicate',
+          fieldErrors: {}
+        })
+      )
+    )
+  })
+})
+
 // ── Root watcher ─────────────────────────────────────────────────────────────
 
 describe('homePageSaga (root watcher)', () => {
@@ -208,8 +289,19 @@ describe('homePageSaga (root watcher)', () => {
     expect(gen.next().value).toEqual(takeEvery(DELETE_PROJECT, deleteProjectWorker))
   })
 
-  it('has no more effects after the five watchers', () => {
+  it('watches RENAME_PROJECT with takeLatest', () => {
     const gen = homePageSaga()
+    gen.next()
+    gen.next()
+    gen.next()
+    gen.next()
+    gen.next()
+    expect(gen.next().value).toEqual(takeLatest(RENAME_PROJECT, renameProjectWorker))
+  })
+
+  it('has no more effects after the six watchers', () => {
+    const gen = homePageSaga()
+    gen.next()
     gen.next()
     gen.next()
     gen.next()

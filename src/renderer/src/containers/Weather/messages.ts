@@ -1,11 +1,23 @@
 const messages = {
   header: 'This is the Weather container!',
+  importTriggerButton: 'Import Weather Data',
 
   addColumn: {
     dialogTitle: 'Add Column',
     submitButton: 'Add',
     submitButtonBusy: 'Adding…',
     cancelButton: 'Cancel',
+    fields: {
+      name: 'Column Name',
+      dataType: 'Data Type',
+      unit: 'Unit Type',
+      value: 'Enter Value'
+    },
+    placeholders: {
+      dataType: 'Select a data type',
+      unit: 'Select a unit',
+      unitDisabled: 'Pick a data type first'
+    },
     errors: {
       duplicateName: 'A column with this name already exists',
       serverError: 'Failed to add column'
@@ -20,6 +32,22 @@ const messages = {
     errors: {
       serverError: 'Failed to add rows'
     }
+  },
+
+  deleteImport: {
+    dialogTitle: 'Delete',
+    heading: 'Delete Data',
+    body: 'Are you sure you want to delete this? This action cannot be undone.',
+    confirmButton: 'Delete',
+    cancelButton: 'Cancel'
+  },
+
+  deleteColumn: {
+    dialogTitle: 'Delete',
+    heading: (name: string) => `Delete ${name}`,
+    body: 'Are you sure you want to delete this column? This action cannot be undone.',
+    confirmButton: 'Delete',
+    cancelButton: 'Cancel'
   }
 } as const
 

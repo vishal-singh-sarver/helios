@@ -819,6 +819,10 @@ helios   # or: /opt/helios/Helios</code></pre>
           <div class="step-num num-gen">1</div>
           <div class="step-body">
             <div class="step-title">Backend resource structure</div>
+            <div>sudo apt install -y build-essential cmake \ gcc g++ make pkg-config \
+libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev \
+mesa-common-dev libx11-dev libxrandr-dev libxi-dev \
+libxinerama-dev libxcursor-dev libomp-dev</div>
             <div class="step-desc">Binaries must be placed in platform-specific subdirectories before packaging:</div>
             <pre><code>resources/backend/
 ├── mac/   heliosgui_backend       (no extension)

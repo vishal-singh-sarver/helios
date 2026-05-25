@@ -1,23 +1,42 @@
+import { setActiveProject, setActiveScenario } from 'containers/ProjectScreen/actions'
+import type { GetProjectResponse } from 'containers/Weather/service'
+import { getProjectRequest } from 'containers/Weather/service'
 import { call, put, race, take, takeEvery, takeLatest, takeLeading } from 'redux-saga/effects'
+import { navigate } from 'store/navigationReducer'
 import { api, ApiError } from 'utils/api'
 import { API_ROUTES } from 'utils/constants'
-import { createSseChannel } from 'utils/sse'
 import type { SseMessage } from 'utils/sse'
+import { createSseChannel } from 'utils/sse'
+import { STORAGE_KEYS } from 'utils/storageKeys'
 import * as actions from './actions'
 import {
   CREATE_PROJECT,
   DELETE_PROJECT,
   FETCH_RECENT_PROJECTS,
   FETCH_STATUS,
+  RENAME_PROJECT,
   SSE_CONNECT,
   SSE_DISCONNECT
 } from './constants'
 import type {
+  ApiErrorPayload,
   AppStatus,
   CreateProjectResponse,
-  RecentProjectsResponse,
-  ApiErrorPayload
+  RecentProjectsResponse
 } from './types'
+
+interface ProjectDetailsResponse {
+  project: {
+    id: string
+    name: string
+    latitude: number
+    longitude: number
+    utc_offset: string
+    created_at: string
+    updated_at: string
+    scenarios: unknown[]
+  }
+}
 
 function toErrorPayload(err: unknown): ApiErrorPayload {
   if (err instanceof ApiError) {
@@ -48,6 +67,22 @@ export function* createProjectWorker(action: ReturnType<typeof actions.createPro
       action.payload
     )) as CreateProjectResponse
     yield put(actions.createProjectSuccess(response))
+    const projectResponse = (yield call(
+      getProjectRequest,
+      response.project_id
+    )) as GetProjectResponse
+
+    const firstScenarioId = projectResponse.project.scenarios[0]?.id ?? null
+
+    yield call([localStorage, 'setItem'], STORAGE_KEYS.activeProjectId, response.project_id)
+    yield put(setActiveProject(response.project_id))
+
+    if (firstScenarioId) {
+      yield call([localStorage, 'setItem'], STORAGE_KEYS.activeScenarioId, firstScenarioId)
+      yield put(setActiveScenario(firstScenarioId))
+    }
+
+    yield put(navigate('project'))
     // Refresh the Recent Projects list so the table reflects the new row
     // without the component having to orchestrate a follow-up dispatch.
     yield put(actions.fetchRecentProjects())
@@ -65,6 +100,29 @@ export function* deleteProjectWorker(action: ReturnType<typeof actions.deletePro
     yield put(actions.deleteProjectSuccess(projectId))
   } catch (err) {
     yield put(actions.deleteProjectFailure(projectId, toErrorPayload(err)))
+  }
+}
+
+// ── Rename project worker ────────────────────────────────────────────────────
+
+export function* renameProjectWorker(action: ReturnType<typeof actions.renameProject>): Generator {
+  const { projectId, name } = action.payload
+  try {
+    const response = (yield call(
+      api.get<ProjectDetailsResponse>,
+      API_ROUTES.project.get(projectId)
+    )) as ProjectDetailsResponse
+
+    yield call(api.patch<string>, API_ROUTES.project.update(projectId), {
+      name,
+      latitude: response.project.latitude,
+      longitude: response.project.longitude
+    })
+
+    yield put(actions.renameProjectSuccess(projectId, name))
+    yield put(actions.fetchRecentProjects())
+  } catch (err) {
+    yield put(actions.renameProjectFailure(projectId, toErrorPayload(err)))
   }
 }
 
@@ -129,4 +187,5 @@ export default function* homePageSaga(): Generator {
   // takeEvery: each row's delete runs independently so multiple rows can be
   // deleted concurrently without queueing.
   yield takeEvery(DELETE_PROJECT, deleteProjectWorker)
+  yield takeLatest(RENAME_PROJECT, renameProjectWorker)
 }

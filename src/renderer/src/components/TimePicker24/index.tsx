@@ -3,12 +3,17 @@ import React from 'react'
 interface TimePicker24Props {
   value: string
   onChange: (value: string) => void
+  listClassName?: string
 }
 
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
 const VALID = /^([01]\d|2[0-3]):[0-5]\d$/
 
-function TimePicker24({ value, onChange }: TimePicker24Props): React.JSX.Element {
+function TimePicker24({
+  value,
+  onChange,
+  listClassName = 'h-48'
+}: TimePicker24Props): React.JSX.Element {
   const selectedHour = VALID.test(value) ? value.split(':')[0] : ''
 
   const selectedHourRef = React.useRef<HTMLButtonElement>(null)
@@ -30,7 +35,7 @@ function TimePicker24({ value, onChange }: TimePicker24Props): React.JSX.Element
       <ul
         role="listbox"
         aria-label="Hours"
-        className="scrollbar-custom-thin h-48 w-16 overflow-y-auto py-1"
+        className={`scrollbar-custom-thin w-16 overflow-y-auto py-1 ${listClassName}`}
       >
         {HOURS.map((hh) => {
           const isSel = hh === selectedHour

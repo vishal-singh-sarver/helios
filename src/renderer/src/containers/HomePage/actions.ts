@@ -14,7 +14,11 @@ import {
   FETCH_RECENT_PROJECTS_FAILURE,
   DELETE_PROJECT,
   DELETE_PROJECT_SUCCESS,
-  DELETE_PROJECT_FAILURE
+  DELETE_PROJECT_FAILURE,
+  RENAME_PROJECT,
+  RENAME_PROJECT_SUCCESS,
+  RENAME_PROJECT_FAILURE,
+  RESET_RENAME_PROJECT
 } from './constants'
 import type {
   AppStatus,
@@ -23,7 +27,8 @@ import type {
   CreateProjectResponse,
   RecentProjectItem,
   ApiErrorPayload,
-  DeleteProjectPayload
+  DeleteProjectPayload,
+  RenameProjectPayload
 } from './types'
 
 // ── REST actions ──────────────────────────────────────────────────────────────
@@ -92,6 +97,25 @@ export const deleteProjectFailure = (projectId: string, error: ApiErrorPayload) 
   payload: { projectId, error }
 })
 
+// ── Rename project actions ───────────────────────────────────────────────────
+
+export const renameProject = (payload: RenameProjectPayload) => ({
+  type: RENAME_PROJECT,
+  payload
+})
+
+export const renameProjectSuccess = (projectId: string, name: string) => ({
+  type: RENAME_PROJECT_SUCCESS,
+  payload: { projectId, name }
+})
+
+export const renameProjectFailure = (projectId: string, error: ApiErrorPayload) => ({
+  type: RENAME_PROJECT_FAILURE,
+  payload: { projectId, error }
+})
+
+export const resetRenameProject = () => ({ type: RESET_RENAME_PROJECT })
+
 // ── Union type ────────────────────────────────────────────────────────────────
 
 export type HomePageAction =
@@ -111,3 +135,7 @@ export type HomePageAction =
   | ReturnType<typeof deleteProject>
   | ReturnType<typeof deleteProjectSuccess>
   | ReturnType<typeof deleteProjectFailure>
+  | ReturnType<typeof renameProject>
+  | ReturnType<typeof renameProjectSuccess>
+  | ReturnType<typeof renameProjectFailure>
+  | ReturnType<typeof resetRenameProject>

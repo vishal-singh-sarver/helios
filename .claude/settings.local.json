@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(git -C /home/navyug/shikhar/helios_gui log --oneline -5 src/renderer/src/components/Header/index.tsx)"
     ]
   }
 }

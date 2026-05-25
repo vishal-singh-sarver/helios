@@ -51,8 +51,9 @@ function FormField({ labelProps, inputProps }: FormFieldProps): React.JSX.Elemen
   } = inputProps
   const errorId = useId()
 
-  const baseClassName =
-    'mt-1 h-9 w-full rounded border border-app-border bg-dark text-sm text-white outline-none focus:border-neutral-500'
+  const outlineClasses = error ? 'outline outline-1 -outline-offset-1 outline-red-500' : 'outline-none'
+  const focusBorderClassName = error ? 'focus:border-red-500' : 'focus:border-neutral-500'
+  const baseClassName = `mt-1 h-9 w-full rounded border border-app-border bg-dark text-sm text-white ${focusBorderClassName} ${outlineClasses}`
   const paddedClassName = iconLeft ? `${baseClassName} pl-9 pr-3` : `${baseClassName} px-3`
 
   return (
@@ -74,9 +75,19 @@ function FormField({ labelProps, inputProps }: FormFieldProps): React.JSX.Elemen
           aria-invalid={!!error}
           className={`${baseClassName} px-3`}
         >
-          <option value="">{placeholder}</option>
+          {/* Inline style on each <option> because Chromium's native
+              dropdown popup ignores most CSS but DOES honor an option's
+              own background-color / color — without this the popup
+              renders with the OS (GTK) light theme on Linux. */}
+          <option value="" style={{ backgroundColor: '#181a1f', color: '#ffffff' }}>
+            {placeholder}
+          </option>
           {options.map((opt) => (
-            <option key={opt.value} value={opt.value}>
+            <option
+              key={opt.value}
+              value={opt.value}
+              style={{ backgroundColor: '#181a1f', color: '#ffffff' }}
+            >
               {opt.label}
             </option>
           ))}

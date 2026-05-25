@@ -10,19 +10,44 @@ import MenuBar from '@renderer/components/MenuBar'
 import ProjectsTable from '@renderer/components/ProjectsTable'
 import SearchBar from '@renderer/components/SearchBar'
 import Sidebar from '@renderer/components/Sidebar'
+import { setActiveProject } from 'containers/ProjectScreen/actions'
 import { useFormik } from 'formik'
 import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { navigate } from 'store/navigationReducer'
 import { useInjectReducer } from 'utils/injectReducer'
 import { useInjectSaga } from 'utils/injectSaga'
+import { STORAGE_KEYS } from 'utils/storageKeys'
 import { FormValues, INITIAL_VALUES, SidebarItem, TOOLBAR_ITEMS } from '../../types/project'
-import { createProject, deleteProject, fetchRecentProjects, resetCreateProject } from './actions'
+import {
+  createProject,
+  deleteProject,
+  fetchRecentProjects,
+  renameProject,
+  resetCreateProject,
+  resetRenameProject
+} from './actions'
 import messages from './messages'
 import homePageReducer from './reducer'
 import homePageSaga from './saga'
-import { selectCreateProject, selectDeleteProject, selectRecentProjects } from './selectors'
+import {
+  selectCreateProject,
+  selectDeleteProject,
+  selectRecentProjects,
+  selectRenameProject
+} from './selectors'
 import type { RecentProjectItem } from './types'
+
+function validateProjectName(projectName: string): string | undefined {
+  const trimmedName = projectName.trim()
+  if (!trimmedName) {
+    return 'Project name is required.'
+  }
+  if (trimmedName.length > 30) {
+    return 'Project name must be 30 characters or fewer.'
+  }
+  return undefined
+}
 
 export function HomePage(): React.JSX.Element {
   useInjectReducer({ key: 'homePage', reducer: homePageReducer })
@@ -32,18 +57,36 @@ export function HomePage(): React.JSX.Element {
   const {
     loading: createLoading,
     error: createError,
-    success: createSuccess
+    success: createSuccess,
+    data: createProjectData
   } = useSelector(selectCreateProject)
   const { data: recentProjects } = useSelector(selectRecentProjects)
   const { inFlightIds: deletingIds } = useSelector(selectDeleteProject)
+  const {
+    loading: renameLoading,
+    error: renameError,
+    success: renameSuccess
+  } = useSelector(selectRenameProject)
 
   React.useEffect(() => {
     dispatch(fetchRecentProjects())
   }, [dispatch])
 
+  // Signal main process to reveal the window and dismiss the splash. Nested
+  // rAF defers past the browser's first paint — a single rAF fires before the
+  // paint commits, so the splash would lift on a blank frame.
+  React.useEffect(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.api?.appReady?.()
+      })
+    })
+  }, [])
+
   const [searchText, setSearchText] = React.useState('')
   const [showNewProjectDialog, setShowNewProjectDialog] = React.useState(false)
   const [pendingDelete, setPendingDelete] = React.useState<RecentProjectItem | null>(null)
+  const [pendingRename, setPendingRename] = React.useState<RecentProjectItem | null>(null)
   const [activeSidebar, setActiveSidebar] = React.useState('Home')
 
   const pendingDeleteInFlight = pendingDelete ? deletingIds.includes(pendingDelete.id) : false
@@ -60,6 +103,11 @@ export function HomePage(): React.JSX.Element {
     setPendingDelete(project)
   }
 
+  const handleRequestRename = (project: RecentProjectItem): void => {
+    dispatch(resetRenameProject())
+    setPendingRename(project)
+  }
+
   const handleConfirmDelete = (): void => {
     if (!pendingDelete || pendingDeleteInFlight) return
     dispatch(deleteProject({ projectId: pendingDelete.id }))
@@ -70,6 +118,44 @@ export function HomePage(): React.JSX.Element {
     setPendingDelete(null)
   }
 
+  const renameFormik = useFormik<{ projectName: string }>({
+    initialValues: { projectName: pendingRename?.name ?? '' },
+    enableReinitialize: true,
+    validateOnChange: true,
+    validateOnBlur: true,
+    validate: (values) => {
+      const errors: Partial<Record<'projectName', string>> = {}
+      const projectNameError = validateProjectName(values.projectName)
+      if (projectNameError) errors.projectName = projectNameError
+      return errors
+    },
+    onSubmit: (values) => {
+      if (!pendingRename || renameLoading) return
+      const name = values.projectName.trim()
+      if (name === pendingRename.name) {
+        setPendingRename(null)
+        dispatch(resetRenameProject())
+        return
+      }
+      dispatch(renameProject({ projectId: pendingRename.id, name }))
+    }
+  })
+
+  const handleCancelRename = (): void => {
+    if (renameLoading) return
+    setPendingRename(null)
+    dispatch(resetRenameProject())
+  }
+
+  const prevRenameLoadingRef = React.useRef(false)
+  React.useEffect(() => {
+    if (prevRenameLoadingRef.current && !renameLoading && renameSuccess) {
+      setPendingRename(null)
+      dispatch(resetRenameProject())
+    }
+    prevRenameLoadingRef.current = renameLoading
+  }, [renameLoading, renameSuccess, dispatch])
+
   const formik = useFormik<FormValues>({
     initialValues: INITIAL_VALUES,
     validateOnChange: true,
@@ -77,30 +163,40 @@ export function HomePage(): React.JSX.Element {
     validate: (values) => {
       const errors: Partial<Record<keyof FormValues, string>> = {}
 
-      const trimmedName = values.projectName.trim()
-      if (!trimmedName) {
-        errors.projectName = 'Project name is required.'
-      } else if (trimmedName.length > 30) {
-        errors.projectName = 'Project name must be 30 characters or fewer.'
-      }
+      const projectNameError = validateProjectName(values.projectName)
+      if (projectNameError) errors.projectName = projectNameError
 
-      if (values.latitude === '') {
+      const latitudeValue = values.latitude.trim()
+
+      if (latitudeValue === '') {
         errors.latitude = 'Latitude is required.'
+      } else if (!/^[-+]?(\d+\.?\d*|\.\d+)$/.test(latitudeValue)) {
+        errors.latitude = 'Invalid latitude'
       } else {
-        const lat = Number.parseFloat(values.latitude)
-        if (Number.isNaN(lat) || lat < -90 || lat > 90) {
+        const lat = Number(latitudeValue)
+
+        if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
           errors.latitude =
-            'Invalid latitude. Enter latitude in decimal degrees. Valid range: -90 <= latitude <= 90. Negative for South, positive for North.'
+            'Invalid latitude. Enter latitude in decimal degrees. Valid range: -90 <= latitude <= 90.'
+        } else if ((latitudeValue.split('.')[1]?.length ?? 0) > 7) {
+          errors.latitude = 'Latitude can have at most 7 decimal places.'
         }
       }
 
-      if (values.longitude === '') {
+      const longitudeValue = values.longitude.trim()
+
+      if (longitudeValue === '') {
         errors.longitude = 'Longitude is required.'
+      } else if (!/^[-+]?(\d+\.?\d*|\.\d+)$/.test(longitudeValue)) {
+        errors.longitude = 'Invalid longitude'
       } else {
-        const lon = Number.parseFloat(values.longitude)
-        if (Number.isNaN(lon) || lon < -180 || lon > 180) {
+        const lon = Number(longitudeValue)
+
+        if (!Number.isFinite(lon) || lon < -180 || lon > 180) {
           errors.longitude =
-            'Invalid longitude. Enter longitude in decimal degrees. Valid range: -180 <= longitude <= 180. Negative for West, positive for East.'
+            'Invalid longitude. Enter longitude in decimal degrees. Valid range: -180 <= longitude <= 180.'
+        } else if ((longitudeValue.split('.')[1]?.length ?? 0) > 7) {
+          errors.longitude = 'Longitude can have at most 7 decimal places.'
         }
       }
 
@@ -125,12 +221,12 @@ export function HomePage(): React.JSX.Element {
 
   // Close the dialog and clear the slice once the backend confirms success.
   React.useEffect(() => {
-    if (createSuccess) {
-      resetFormRef.current()
-      setShowNewProjectDialog(false)
-      dispatch(resetCreateProject())
-    }
-  }, [createSuccess, dispatch])
+    if (!createSuccess || !createProjectData?.project_id) return
+
+    resetFormRef.current()
+    setShowNewProjectDialog(false)
+    dispatch(resetCreateProject())
+  }, [createSuccess, createProjectData, dispatch])
 
   const openNewProjectDialog = (): void => {
     formik.resetForm()
@@ -203,13 +299,15 @@ export function HomePage(): React.JSX.Element {
             onCreateNew={openNewProjectDialog}
             onRowClick={(projectId) => {
               try {
-                localStorage.setItem('helios:activeProjectId', projectId)
+                localStorage.setItem(STORAGE_KEYS.activeProjectId, projectId)
               } catch {
                 /* storage disabled — navigation still proceeds */
               }
+              dispatch(setActiveProject(projectId))
               dispatch(navigate('project'))
             }}
             onRequestDelete={handleRequestDelete}
+            onRequestRename={handleRequestRename}
             deletingIds={deletingIds}
           />
         </main>
@@ -250,7 +348,7 @@ export function HomePage(): React.JSX.Element {
               formik.touched.latitude || formik.values.latitude !== ''
                 ? (formik.errors.latitude as string | undefined)
                 : undefined,
-            type: 'number'
+            type: 'text'
           }}
         />
         <FormField
@@ -267,7 +365,7 @@ export function HomePage(): React.JSX.Element {
               formik.touched.longitude || formik.values.longitude !== ''
                 ? (formik.errors.longitude as string | undefined)
                 : undefined,
-            type: 'number'
+            type: 'text'
           }}
         />
 
@@ -332,6 +430,57 @@ export function HomePage(): React.JSX.Element {
               </span>
             ) : (
               messages.deleteProject.confirmButton
+            )}
+          </button>
+        </div>
+      </Dialog>
+
+      <Dialog
+        isOpen={pendingRename !== null}
+        title={messages.renameProject.dialogTitle}
+        onClose={handleCancelRename}
+        className="h-[224px] w-[352px] rounded-[3px] border-[#424242] bg-[#202020] shadow-[0px_4px_6px_-2px_rgba(0,0,0,0.18),0px_12px_16px_-4px_rgba(0,0,0,0.32)]"
+        headerClassName="h-[56px] bg-neutral-100 px-4"
+        bodyClassName="space-y-5 p-4"
+      >
+        <FormField
+          key="renameProjectName"
+          labelProps={{ label: messages.renameProject.fields.name }}
+          inputProps={{
+            ...renameFormik.getFieldProps('projectName'),
+            error:
+              renameFormik.touched.projectName || renameFormik.values.projectName !== ''
+                ? (renameFormik.errors.projectName as string | undefined)
+                : undefined
+          }}
+        />
+
+        {renameError && (
+          <p role="alert" className="pt-2 text-sm text-red-600">
+            {renameError.message}
+          </p>
+        )}
+
+        <div className="flex justify-end gap-2 pt-2">
+          <button
+            onClick={handleCancelRename}
+            disabled={renameLoading}
+            className="rounded bg-neutral-200 px-3 py-1 text-sm text-black hover:bg-neutral-100 disabled:opacity-50"
+          >
+            {messages.renameProject.cancelButton}
+          </button>
+          <button
+            onClick={() => renameFormik.submitForm()}
+            disabled={renameLoading}
+            className="rounded bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-500 disabled:opacity-50"
+          >
+            {renameLoading ? (
+              <span className="flex items-center gap-2">
+                <Spinner />
+                {messages.renameProject.submitButtonBusy}
+              </span>
+            ) : (
+              messages.renameProject.submitButton
             )}
           </button>
         </div>

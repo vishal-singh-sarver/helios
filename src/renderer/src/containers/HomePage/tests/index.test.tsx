@@ -1,9 +1,9 @@
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import React from 'react'
-import { render, screen, fireEvent, waitFor, within, cleanup } from '@testing-library/react'
-import HomePage from '../index'
 import * as actions from '../actions'
-import type { RecentProjectItem } from '../types'
+import HomePage from '../index'
 import { initialState, type HomePageState } from '../reducer'
+import type { RecentProjectItem } from '../types'
 
 // ── Redux & injection hooks — mocked so the container runs without a real store ─
 //
@@ -22,7 +22,8 @@ function setHomePageState(partial: Partial<HomePageState> = {}): void {
       // Spread nested slices to keep overrides composable without losing defaults.
       createProject: { ...initialState.createProject, ...(partial.createProject ?? {}) },
       recentProjects: { ...initialState.recentProjects, ...(partial.recentProjects ?? {}) },
-      deleteProject: { ...initialState.deleteProject, ...(partial.deleteProject ?? {}) }
+      deleteProject: { ...initialState.deleteProject, ...(partial.deleteProject ?? {}) },
+      renameProject: { ...initialState.renameProject, ...(partial.renameProject ?? {}) }
     }
   }
 }
@@ -121,18 +122,26 @@ vi.mock('@renderer/components/ProjectsTable', () => ({
     projects,
     onCreateNew,
     onRequestDelete,
+    onRequestRename,
     deletingIds
   }: {
     projects: RecentProjectItem[]
     onCreateNew: () => void
     onRequestDelete: (project: RecentProjectItem) => void
+    onRequestRename: (project: RecentProjectItem) => void
     deletingIds: string[]
   }) => (
     <div data-testid="projects-table" data-deleting={deletingIds.join(',')}>
       {projects.map((p) => (
-        <button key={p.id} data-testid={`row-${p.id}`} onClick={() => onRequestDelete(p)}>
-          {p.name}
-        </button>
+        <div key={p.id}>
+          <button data-testid={`delete-${p.id}`} onClick={() => onRequestDelete(p)}>
+            Delete {p.name}
+          </button>
+          <button data-testid={`rename-${p.id}`} onClick={() => onRequestRename(p)}>
+            Rename {p.name}
+          </button>
+          <span data-testid={`row-${p.id}`}>{p.name}</span>
+        </div>
       ))}
       <button data-testid="table-create-new" onClick={onCreateNew}>
         Create
@@ -346,7 +355,7 @@ describe('<HomePage />', () => {
     fireEvent.click(screen.getByTestId('menu-New Project'))
     const input = screen.getByTestId('input-latitude')
     fireEvent.change(input, { target: { value: '45.5' } })
-    expect(input).toHaveValue(45.5)
+    expect(input).toHaveValue('45.5')
   })
 
   it('updates longitude on input', () => {
@@ -354,7 +363,7 @@ describe('<HomePage />', () => {
     fireEvent.click(screen.getByTestId('menu-New Project'))
     const input = screen.getByTestId('input-longitude')
     fireEvent.change(input, { target: { value: '-122.6' } })
-    expect(input).toHaveValue(-122.6)
+    expect(input).toHaveValue('-122.6')
   })
 
   // ── Form validation — required ──
@@ -423,6 +432,32 @@ describe('<HomePage />', () => {
     )
   })
 
+  it('shows an error when latitude has more than 7 decimal places', async () => {
+    render(<HomePage />)
+    fireEvent.click(screen.getByTestId('menu-New Project'))
+    const input = screen.getByTestId('input-latitude')
+    fireEvent.change(input, { target: { value: '12.123456789' } })
+    fireEvent.blur(input)
+    await waitFor(() =>
+      expect(screen.getByTestId('error-latitude')).toHaveTextContent(
+        'Latitude can have at most 7 decimal places.'
+      )
+    )
+  })
+
+  it('shows an error when longitude has more than 7 decimal places', async () => {
+    render(<HomePage />)
+    fireEvent.click(screen.getByTestId('menu-New Project'))
+    const input = screen.getByTestId('input-longitude')
+    fireEvent.change(input, { target: { value: '-45.12345678' } })
+    fireEvent.blur(input)
+    await waitFor(() =>
+      expect(screen.getByTestId('error-longitude')).toHaveTextContent(
+        'Longitude can have at most 7 decimal places.'
+      )
+    )
+  })
+
   // NOTE: The latitude / longitude inputs are type="number". jsdom (like real
   // browsers) rejects non-numeric text, so the "Invalid latitude" branch cannot
   // be reached through the DOM. Cover that branch via a direct unit test on
@@ -446,6 +481,24 @@ describe('<HomePage />', () => {
     fireEvent.change(input, { target: { value: '180' } })
     fireEvent.blur(input)
     await waitFor(() => expect(screen.queryByTestId('error-longitude')).not.toBeInTheDocument())
+  })
+
+  it('accepts latitude with exactly 7 decimal places', async () => {
+    render(<HomePage />)
+    fireEvent.click(screen.getByTestId('menu-New Project'))
+    const input = screen.getByTestId('input-latitude')
+    fireEvent.change(input, { target: { value: '12.1234567' } })
+    fireEvent.blur(input)
+    await waitFor(() => expect(screen.queryByTestId('error-latitude')).not.toBeInTheDocument())
+  })
+
+  it('accepts a trailing-dot latitude like "7." as valid mid-typing', async () => {
+    render(<HomePage />)
+    fireEvent.click(screen.getByTestId('menu-New Project'))
+    const input = screen.getByTestId('input-latitude')
+    fireEvent.change(input, { target: { value: '7.' } })
+    fireEvent.blur(input)
+    await waitFor(() => expect(screen.queryByTestId('error-latitude')).not.toBeInTheDocument())
   })
 
   // ── Form submission ──
@@ -550,20 +603,18 @@ describe('<HomePage />', () => {
   it('opens the confirm dialog when a row requests delete (no dispatch yet)', () => {
     render(<HomePage />)
     mockDispatch.mockClear()
-    fireEvent.click(screen.getByTestId('row-p-coastal'))
+    fireEvent.click(screen.getByTestId('delete-p-coastal'))
 
     const dialog = screen.getByTestId('dialog')
     expect(dialog).toBeInTheDocument()
     expect(dialog).toHaveAttribute('aria-label', 'Delete')
     expect(within(dialog).getByText('Delete Coastal Survey Alpha')).toBeInTheDocument()
-    expect(mockDispatch).not.toHaveBeenCalledWith(
-      actions.deleteProject({ projectId: 'p-coastal' })
-    )
+    expect(mockDispatch).not.toHaveBeenCalledWith(actions.deleteProject({ projectId: 'p-coastal' }))
   })
 
   it('dispatches deleteProject when the confirm dialog Delete button is clicked', () => {
     render(<HomePage />)
-    fireEvent.click(screen.getByTestId('row-p-coastal'))
+    fireEvent.click(screen.getByTestId('delete-p-coastal'))
     mockDispatch.mockClear()
 
     fireEvent.click(within(screen.getByTestId('dialog')).getByText('Delete'))
@@ -573,20 +624,18 @@ describe('<HomePage />', () => {
 
   it('closes the confirm dialog without dispatching when Cancel is clicked', () => {
     render(<HomePage />)
-    fireEvent.click(screen.getByTestId('row-p-coastal'))
+    fireEvent.click(screen.getByTestId('delete-p-coastal'))
     mockDispatch.mockClear()
 
     fireEvent.click(within(screen.getByTestId('dialog')).getByText('Cancel'))
 
     expect(screen.queryByTestId('dialog')).not.toBeInTheDocument()
-    expect(mockDispatch).not.toHaveBeenCalledWith(
-      actions.deleteProject({ projectId: 'p-coastal' })
-    )
+    expect(mockDispatch).not.toHaveBeenCalledWith(actions.deleteProject({ projectId: 'p-coastal' }))
   })
 
   it('closes the confirm dialog once the delete settles (inFlight clears)', () => {
     const { rerender } = render(<HomePage />)
-    fireEvent.click(screen.getByTestId('row-p-coastal'))
+    fireEvent.click(screen.getByTestId('delete-p-coastal'))
 
     // Simulate the saga accepting the delete — inFlightIds now contains the id.
     setHomePageState({
@@ -613,6 +662,86 @@ describe('<HomePage />', () => {
     })
     render(<HomePage />)
     expect(screen.getByTestId('projects-table')).toHaveAttribute('data-deleting', 'p-delta')
+  })
+
+  // ── Rename wiring ──
+
+  it('opens the rename dialog when a row requests rename', () => {
+    render(<HomePage />)
+    mockDispatch.mockClear()
+    fireEvent.click(screen.getByTestId('rename-p-coastal'))
+
+    const dialog = screen.getByTestId('dialog')
+    expect(dialog).toBeInTheDocument()
+    expect(dialog).toHaveAttribute('aria-label', 'Rename Project')
+    expect(screen.getByTestId('input-projectName')).toHaveValue('Coastal Survey Alpha')
+    expect(mockDispatch).toHaveBeenCalledWith(actions.resetRenameProject())
+  })
+
+  it('dispatches renameProject with the trimmed name on valid submit', async () => {
+    render(<HomePage />)
+    fireEvent.click(screen.getByTestId('rename-p-coastal'))
+    mockDispatch.mockClear()
+
+    fireEvent.change(screen.getByTestId('input-projectName'), {
+      target: { value: '  Coastal Survey Beta  ' }
+    })
+    fireEvent.click(within(screen.getByTestId('dialog')).getByText('Save'))
+
+    await waitFor(() =>
+      expect(mockDispatch).toHaveBeenCalledWith(
+        actions.renameProject({ projectId: 'p-coastal', name: 'Coastal Survey Beta' })
+      )
+    )
+  })
+
+  it('shows rename validation error for an empty name', async () => {
+    render(<HomePage />)
+    fireEvent.click(screen.getByTestId('rename-p-coastal'))
+    const input = screen.getByTestId('input-projectName')
+    fireEvent.change(input, { target: { value: '' } })
+    fireEvent.blur(input)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('error-projectName')).toHaveTextContent('Project name is required.')
+    )
+  })
+
+  it('renders the rename server error when renameProject fails', () => {
+    setHomePageState({
+      recentProjects: { loading: false, error: null, data: MOCK_PROJECTS },
+      renameProject: {
+        loading: false,
+        projectId: 'p-coastal',
+        error: { status: 409, message: 'A project with this name already exists', fieldErrors: {} },
+        success: false
+      }
+    })
+    render(<HomePage />)
+    fireEvent.click(screen.getByTestId('rename-p-coastal'))
+    expect(screen.getByText('A project with this name already exists')).toBeInTheDocument()
+  })
+
+  it('closes the rename dialog once rename succeeds', () => {
+    const { rerender } = render(<HomePage />)
+    fireEvent.click(screen.getByTestId('rename-p-coastal'))
+    expect(screen.getByTestId('dialog')).toHaveAttribute('aria-label', 'Rename Project')
+
+    setHomePageState({
+      recentProjects: { loading: false, error: null, data: MOCK_PROJECTS },
+      renameProject: { loading: true, projectId: 'p-coastal', error: null, success: false }
+    })
+    rerender(<HomePage />)
+
+    setHomePageState({
+      recentProjects: { loading: false, error: null, data: MOCK_PROJECTS },
+      renameProject: { loading: false, projectId: null, error: null, success: true }
+    })
+    mockDispatch.mockClear()
+    rerender(<HomePage />)
+
+    expect(screen.queryByTestId('dialog')).not.toBeInTheDocument()
+    expect(mockDispatch).toHaveBeenCalledWith(actions.resetRenameProject())
   })
 
   // ── Form reset on reopen ──

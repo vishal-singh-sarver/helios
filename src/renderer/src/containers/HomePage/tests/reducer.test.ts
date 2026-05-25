@@ -2,7 +2,8 @@ import homePageReducer, {
   initialState,
   initialCreateProjectState,
   initialRecentProjectsState,
-  initialDeleteProjectState
+  initialDeleteProjectState,
+  initialRenameProjectState
 } from '../reducer'
 import * as actions from '../actions'
 import type { ApiErrorPayload, CreateProjectResponse, RecentProjectItem } from '../types'
@@ -243,12 +244,70 @@ describe('homePageReducer', () => {
     })
   })
 
+  // ── Rename project ─────────────────────────────────────────────────────────
+
+  describe('rename project', () => {
+    const apiErr: ApiErrorPayload = { status: 409, message: 'duplicate', fieldErrors: {} }
+    const seeded: RecentProjectItem[] = [
+      { id: 'a', name: 'Alpha', last_updated: '2026-03-29T00:00:00Z', size: 1 },
+      { id: 'b', name: 'Beta', last_updated: '2026-03-28T00:00:00Z', size: 2 }
+    ]
+
+    it('RENAME_PROJECT sets loading, stores projectId and clears error', () => {
+      const prev = {
+        ...initialState,
+        renameProject: { loading: false, projectId: null, error: apiErr, success: true }
+      }
+      const result = homePageReducer(prev, actions.renameProject({ projectId: 'a', name: 'A2' }))
+      expect(result.renameProject.loading).toBe(true)
+      expect(result.renameProject.projectId).toBe('a')
+      expect(result.renameProject.error).toBeNull()
+      expect(result.renameProject.success).toBe(false)
+    })
+
+    it('RENAME_PROJECT_SUCCESS updates recent project name and marks success', () => {
+      const prev = {
+        ...initialState,
+        recentProjects: { ...initialRecentProjectsState, data: seeded },
+        renameProject: { loading: true, projectId: 'a', error: null, success: false }
+      }
+      const result = homePageReducer(prev, actions.renameProjectSuccess('a', 'Alpha Two'))
+      expect(result.renameProject.loading).toBe(false)
+      expect(result.renameProject.projectId).toBeNull()
+      expect(result.renameProject.success).toBe(true)
+      expect(result.recentProjects.data.find((p) => p.id === 'a')?.name).toBe('Alpha Two')
+    })
+
+    it('RENAME_PROJECT_FAILURE stores the error and clears loading', () => {
+      const prev = {
+        ...initialState,
+        renameProject: { loading: true, projectId: 'a', error: null, success: false }
+      }
+      const result = homePageReducer(prev, actions.renameProjectFailure('a', apiErr))
+      expect(result.renameProject.loading).toBe(false)
+      expect(result.renameProject.projectId).toBe('a')
+      expect(result.renameProject.error).toEqual(apiErr)
+      expect(result.renameProject.success).toBe(false)
+    })
+
+    it('RESET_RENAME_PROJECT returns rename slice to initial state', () => {
+      const prev = {
+        ...initialState,
+        renameProject: { loading: true, projectId: 'a', error: apiErr, success: true }
+      }
+      const result = homePageReducer(prev, actions.resetRenameProject())
+      expect(result.renameProject).toEqual(initialRenameProjectState)
+    })
+  })
+
   // ── Immutability guard (immer) ──────────────────────────────────────────────
 
   it('does not mutate the initial state when reducing several actions', () => {
     homePageReducer(initialState, actions.createProject({ name: 'x', latitude: 0, longitude: 0 }))
     homePageReducer(initialState, actions.deleteProject({ projectId: 'y' }))
+    homePageReducer(initialState, actions.renameProject({ projectId: 'y', name: 'Y' }))
     expect(initialState.createProject).toEqual(initialCreateProjectState)
     expect(initialState.deleteProject).toEqual(initialDeleteProjectState)
+    expect(initialState.renameProject).toEqual(initialRenameProjectState)
   })
 })

@@ -45,21 +45,82 @@ function writeEarlyLog(message: string): void {
   }
 }
 
-function createWindow(onReadyToShow?: () => void): BrowserWindow {
+function createWindow(splash?: BrowserWindow): BrowserWindow {
+  const isMac = process.platform === 'darwin'
+  // macOS: titleBarStyle 'hidden' keeps the native traffic lights (so the OS
+  // handles the fullscreen hover-reveal for free) while the rest of the title
+  // bar is painted by the renderer. trafficLightPosition centers the lights
+  // vertically in our 45px header row.
+  // Linux/Windows: fully frameless — the renderer paints all window controls.
+  const frameOptions = isMac
+    ? {
+        titleBarStyle: 'hidden' as const,
+        trafficLightPosition: { x: 15, y: 16 }
+      }
+    : { frame: false }
+
   const mainWindow = new BrowserWindow({
     width: 1000,
     height: 600,
+    center: true,
     show: false,
+    // Matches --color-bg in renderer/src/index.css. Without this the native
+    // BrowserWindow flashes white between mainWindow.show() and the renderer's
+    // first paint, even after the splash is destroyed.
+    backgroundColor: '#121212',
     autoHideMenuBar: true,
+    ...frameOptions,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
     }
   })
 
-  mainWindow.on('ready-to-show', () => {
+  // Skip 'ready-to-show' — it fires after HTML/CSS parse, but the renderer
+  // still has an async backend-URL IPC, two dynamic imports, and React mount
+  // ahead of it. Instead the initial screen (HomePage / ProjectScreen) sends
+  // 'app:ready' from its own mount effect, so the splash holds until the
+  // screen has actually painted.
+  mainWindow.webContents.ipc.once('app:ready', () => {
+    if (mainWindow.isDestroyed()) return
     mainWindow.show()
-    onReadyToShow?.()
+    // Short hold covers the macOS show() reveal animation. hide() before
+    // destroy() skips the splash's own fade-out, which otherwise reads as a
+    // white/flicker frame during the handoff.
+    setTimeout(() => {
+      if (splash && !splash.isDestroyed()) {
+        splash.hide()
+        splash.destroy()
+      }
+    })
+  })
+
+  // Safety net: if the renderer crashes before sending 'app:ready', show the
+  // window anyway after a generous timeout so the user doesn't stare at the
+  // splash forever. The splash stays up — error dialogs in the renderer (if
+  // any) will surface.
+  const fallbackTimer = setTimeout(() => {
+    if (!mainWindow.isDestroyed() && !mainWindow.isVisible()) mainWindow.show()
+  }, 10_000)
+  mainWindow.once('closed', () => clearTimeout(fallbackTimer))
+
+  // F11 toggles fullscreen. enter/leave-full-screen fire AFTER the OS animation
+  // completes, so we also notify the renderer up front to keep the custom
+  // title bar collapse in sync with the transition start.
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.type === 'keyDown' && input.key === 'F11') {
+      const next = !mainWindow.isFullScreen()
+      mainWindow.webContents.send('window:fullScreenChange', next)
+      mainWindow.setFullScreen(next)
+      event.preventDefault()
+    }
+  })
+
+  mainWindow.on('enter-full-screen', () => {
+    mainWindow.webContents.send('window:fullScreenChange', true)
+  })
+  mainWindow.on('leave-full-screen', () => {
+    mainWindow.webContents.send('window:fullScreenChange', false)
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -82,11 +143,14 @@ function createWindow(onReadyToShow?: () => void): BrowserWindow {
  */
 function createSplashWindow(): BrowserWindow {
   const splash = new BrowserWindow({
-    width: 650,
-    height: 400,
+    width: 1000,
+    height: 600,
     show: true,
     frame: false,
     alwaysOnTop: true,
+    resizable: false,
+    center: true,
+    backgroundColor: '#121212',
     webPreferences: {
       nodeIntegration: false,
       sandbox: true
@@ -112,6 +176,7 @@ function createSplashWindow(): BrowserWindow {
           width: 100%;
           height: 100%;
           overflow: hidden;
+          background: #121212;
         }
         body {
           position: relative;
@@ -147,20 +212,22 @@ function buildAppMenu(): void {
   const isMac = process.platform === 'darwin'
   const template: Electron.MenuItemConstructorOptions[] = [
     ...(isMac
-      ? [{
-          label: app.name,
-          submenu: [
-            { role: 'about' as const },
-            { type: 'separator' as const },
-            { role: 'services' as const },
-            { type: 'separator' as const },
-            { role: 'hide' as const },
-            { role: 'hideOthers' as const },
-            { role: 'unhide' as const },
-            { type: 'separator' as const },
-            { role: 'quit' as const }
-          ]
-        }]
+      ? [
+          {
+            label: app.name,
+            submenu: [
+              { role: 'about' as const },
+              { type: 'separator' as const },
+              { role: 'services' as const },
+              { type: 'separator' as const },
+              { role: 'hide' as const },
+              { role: 'hideOthers' as const },
+              { role: 'unhide' as const },
+              { type: 'separator' as const },
+              { role: 'quit' as const }
+            ]
+          }
+        ]
       : []),
     {
       label: 'File',
@@ -268,23 +335,69 @@ app.on('second-instance', () => {
   createWindow()
 })
 
+// Debug-only: log every activate event so we can see what's triggering reopens
+// after the user closes the window. Remove once the reopen-on-close cause is
+// confirmed.
+app.on('activate', () => {
+  writeEarlyLog(
+    `activate event fired (windows=${BrowserWindow.getAllWindows().length})`
+  )
+})
+
+// --- Window control IPC handlers ---
+// Frameless windows have no native controls, so the renderer paints its own
+// and asks the main process to perform the action.
+
+ipcMain.handle('window:minimize', (event) => {
+  BrowserWindow.fromWebContents(event.sender)?.minimize()
+})
+
+ipcMain.handle('window:toggleMaximize', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender)
+  if (!win) return false
+  if (win.isMaximized()) {
+    win.unmaximize()
+    return false
+  }
+  win.maximize()
+  return true
+})
+
+ipcMain.handle('window:close', (event) => {
+  BrowserWindow.fromWebContents(event.sender)?.close()
+})
+
+ipcMain.handle('window:isMaximized', (event) => {
+  return BrowserWindow.fromWebContents(event.sender)?.isMaximized() ?? false
+})
+
+ipcMain.handle('window:isFullScreen', (event) => {
+  return BrowserWindow.fromWebContents(event.sender)?.isFullScreen() ?? false
+})
+
+ipcMain.handle('window:getPlatform', () => process.platform)
+
 // --- File dialog IPC handlers ---
 
-ipcMain.handle('dialog:openFile', async (_event, filters: Electron.FileFilter[]) => {
-  const result = await dialog.showOpenDialog({
-    properties: ['openFile'],
-    filters
-  })
+ipcMain.handle('dialog:openFile', async (event, filters: Electron.FileFilter[]) => {
+  // Attach the dialog to the calling window so it becomes a modal sheet on
+  // macOS (and stays on top on other platforms). Without this the dialog
+  // floats free — the user can click back to the app while it's still open
+  // behind the scenes, leaving the renderer's "Opening…" state stuck.
+  const win = BrowserWindow.fromWebContents(event.sender)
+  const result = win
+    ? await dialog.showOpenDialog(win, { properties: ['openFile'], filters })
+    : await dialog.showOpenDialog({ properties: ['openFile'], filters })
   return result.canceled ? null : result.filePaths[0]
 })
 
 ipcMain.handle(
   'dialog:saveFile',
-  async (_event, filters: Electron.FileFilter[], defaultPath?: string) => {
-    const result = await dialog.showSaveDialog({
-      filters,
-      defaultPath
-    })
+  async (event, filters: Electron.FileFilter[], defaultPath?: string) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    const result = win
+      ? await dialog.showSaveDialog(win, { filters, defaultPath })
+      : await dialog.showSaveDialog({ filters, defaultPath })
     return result.canceled ? null : result.filePath
   }
 )
@@ -301,6 +414,11 @@ ipcMain.handle('fs:writeFile', async (_event, filePath: string, content: string)
 
 ipcMain.handle('backend:getStatus', async () => {
   return backendManager.getBackendStatus()
+})
+
+ipcMain.handle('backend:getUrl', async () => {
+  const status = backendManager.getBackendStatus()
+  return status.port ? `http://127.0.0.1:${status.port}` : null
 })
 
 ipcMain.handle('backend:start', async () => {
@@ -335,14 +453,12 @@ app.whenReady().then(async () => {
     console.log('HELIOS_SKIP_BACKEND=1 set - skipping backend startup')
     buildAppMenu()
     configurePlatformShortcuts()
-    createWindow(() => {
-      if (!splash.isDestroyed()) {
-        splash.destroy()
-      }
-    })
+    createWindow(splash)
 
     app.on('activate', () => {
-      if (BrowserWindow.getAllWindows().length === 0) createWindow()
+      if (BrowserWindow.getAllWindows().length === 0) {
+        createWindow(createSplashWindow())
+      }
     })
     return
   }
@@ -385,11 +501,7 @@ app.whenReady().then(async () => {
     buildAppMenu()
     configurePlatformShortcuts()
 
-    createWindow(() => {
-      if (!splash.isDestroyed()) {
-        splash.destroy()
-      }
-    })
+    createWindow(splash)
   } catch (error) {
     splash?.destroy()
     const message = error instanceof Error ? error.message : String(error)
@@ -402,7 +514,9 @@ app.whenReady().then(async () => {
   }
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow(createSplashWindow())
+    }
   })
 })
 
