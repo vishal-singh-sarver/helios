@@ -84,3 +84,5 @@ test-results/
 .playwright/
 
 package-lock.json
+linux-installer/payload/Helios/helios
+linux-installer/payload/Helios/resources/app.asar
