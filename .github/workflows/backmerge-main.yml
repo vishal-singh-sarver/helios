@@ -1,0 +1,27 @@
+name: Back-merge main
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  backmerge-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Open PR main to release
+        run: |
+          gh pr create --base release --head main --title "Back-merge main -> release" --body "Auto-generated after push to main. Review and merge ASAP to prevent drift." || echo "PR already exists"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  backmerge-develop:
+    runs-on: ubuntu-latest
+    needs: [backmerge-release]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Open PR release to develop
+        run: |
+          gh pr create --base develop --head release --title "Back-merge release -> develop" --body "Auto-generated after cascading main catch up. Review and merge ASAP to prevent drift." || echo "PR already exists"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

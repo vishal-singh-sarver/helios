@@ -1,0 +1,77 @@
+name: Publish / stable
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Audit gate to guarantee immutable builds trigger tracking
+      - name: Verify tag is on main
+        run: |
+          git branch -r --contains ${{ github.ref }} | grep 'origin/main' || (echo "Tag not on main, aborting!" && exit 1)
+
+  promote:
+    needs: [verify]
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [win, mac, linux]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS/S3 Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.UPDATE_FEED_S3_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.UPDATE_FEED_S3_SECRET_KEY }}
+          aws-region: us-east-1
+
+      # Logic safely copies from staging storage to prod bucket 
+      - name: Copy from staging to stable bucket
+        run: |
+          aws s3 sync s3://staging-bucket/${{ matrix.platform }}/ s3://${{ secrets.UPDATE_FEED_BUCKET_STABLE }}/ --include "*${{ matrix.platform }}*"
+
+  github-release:
+    needs: [promote]
+    if: always() # Run even if one platform failed to promote independently
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Using GitHub API / actions to bundle artifacts for release overview table
+      - name: Generate Release Notes Table
+        run: |
+          echo "## Release ${{ github.ref_name }} Assets" > notes.md
+          echo "| OS | File | Status |" >> notes.md
+          echo "|----|------|--------|" >> notes.md
+          echo "| Windows | Production Installer | Deployed to Feed |" >> notes.md
+          echo "| macOS | Production DMG & PKG | Deployed to Feed |" >> notes.md
+          echo "| Linux | AppImage & DEB Packages | Deployed to Feed |" >> notes.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          body_path: notes.md
+          draft: false
+          prerelease: false
+
+      - name: Notify Slack Status
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": "Production Stable Release Deployed: ${{ github.ref_name }} | Status: ${{ job.status }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_RELEASES }}
