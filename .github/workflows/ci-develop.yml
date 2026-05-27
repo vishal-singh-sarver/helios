@@ -41,7 +41,7 @@ jobs:
       
       # Mapped directly to your package.json "test" script ("vitest run")
       - name: Run Unit Tests
-        run: npm test
+        run: npm run test
 
   build:
     name: Build Check (${{ matrix.os }})
