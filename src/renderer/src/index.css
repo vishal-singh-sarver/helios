@@ -33,15 +33,11 @@ body {
   font-family: var(--font-main);
 }
 
-button:focus,
-input:focus,
-textarea:focus {
+:focus:not(:focus-visible) {
   outline: none;
 }
 
-button:focus-visible,
-input:focus-visible,
-textarea:focus-visible {
+:focus-visible {
   outline: 2px solid #245AC5;
   outline-offset: 1px;
   box-shadow: none;
@@ -61,6 +57,39 @@ textarea:focus-visible {
 
 .button-primary {
   @apply rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-500;
+}
+
+/* ── Recent Projects table row focus indicator ────────────────────────────
+   <tr> outlines clip under the scroll container's rounded corners and box-
+   shadow on <tr> is unreliable in border-separate tables, so we paint inset
+   shadows on the cells. The :has() rules neutralize the gray bottom border
+   of whatever sits directly above the focused row (the preceding project
+   row, or the header when no row is above) so the focused row's blue top
+   line doesn't stack against a gray one. */
+.projects-row:focus-visible {
+  outline: none;
+  background-color: #424242;
+}
+
+.projects-row:focus-visible > td {
+  border-bottom-color: #3b82f6;
+  box-shadow: inset 0 1px 0 0 #3b82f6;
+}
+
+.projects-row:focus-visible > td:first-child {
+  box-shadow: inset 0 1px 0 0 #3b82f6, inset 1px 0 0 0 #3b82f6;
+}
+
+.projects-row:focus-visible > td:last-child {
+  box-shadow: inset 0 1px 0 0 #3b82f6, inset -1px 0 0 0 #3b82f6;
+}
+
+.projects-row:has(+ .projects-row:focus-visible) > td {
+  border-bottom-color: transparent;
+}
+
+table:has(> tbody > .projects-row:first-of-type:focus-visible) > thead > tr > th {
+  border-bottom-color: transparent;
 }
 
 /* ── Custom scrollbar ───────────────────────────────────────────────────────
