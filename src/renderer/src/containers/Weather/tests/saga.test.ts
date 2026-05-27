@@ -9,7 +9,9 @@ import { api } from 'utils/api'
 import { loadScenarioRequested } from 'containers/ProjectScreen/actions'
 import {
   selectCheckDataTypeId,
-  selectDataTypesLoadStatus
+  selectDataTypesLoadStatus,
+  selectDateTimeBaseUnitId,
+  selectDateTimeDataTypeId
 } from 'containers/ProjectScreen/selectors'
 import {
   LOAD_DATA_TYPES_FAILED,
@@ -124,12 +126,14 @@ describe('finalizeImportWorker', () => {
     // take() is yielded; saga proceeds straight to selecting the check id.
     expect(gen.next().value).toEqual(select(selectDataTypesLoadStatus))
     expect(gen.next('loaded').value).toEqual(select(selectCheckDataTypeId))
+    expect(gen.next(99).value).toEqual(select(selectDateTimeDataTypeId))
+    expect(gen.next(7).value).toEqual(select(selectDateTimeBaseUnitId))
 
     // Step 2 — addCol with seeded check (carrying checkDataTypeId from
     // the catalog), seeded date-time, then every CSV column whose label
     // doesn't collide with a reserved name. The CSV's "check" column is
     // dropped — the seeded version owns that name.
-    const addColCall = gen.next(99).value as ReturnType<typeof call>
+    const addColCall = gen.next(3).value as ReturnType<typeof call>
     expect(addColCall.payload.args[0]).toBe(
       '/api/weather/project/proj-1/scenario/sce-1/addCol'
     )
@@ -145,8 +149,8 @@ describe('finalizeImportWorker', () => {
         },
         {
           name: 'date-time',
-          datatype: null,
-          data_unit: null,
+          datatype: 7,
+          data_unit: 3,
           values: [{ date: dateMatcher, time: timeMatcher, value: '0' }]
         },
         {
@@ -213,7 +217,9 @@ describe('finalizeImportWorker', () => {
     gen.next() // clear_data
     gen.next() // select selectDataTypesLoadStatus
     gen.next('loaded') // select selectCheckDataTypeId
-    gen.next(99) // addCol
+    gen.next(99) // select selectDateTimeDataTypeId
+    gen.next(7) // select selectDateTimeBaseUnitId
+    gen.next(3) // addCol
     gen.next() // put loadScenarioRequested
     gen.next() // race(...)
     const failure = gen.next({
@@ -241,7 +247,9 @@ describe('finalizeImportWorker', () => {
     gen.next() // clear_data
     gen.next() // select selectDataTypesLoadStatus
     gen.next('loaded') // select selectCheckDataTypeId
-    gen.next(99) // addCol
+    gen.next(99) // select selectDateTimeDataTypeId
+    gen.next(7) // select selectDateTimeBaseUnitId
+    gen.next(3) // addCol
     const err = new Error('column conflict')
     expect(gen.throw(err).value).toEqual(put(actions.importFinalizeFailed('column conflict')))
   })
@@ -267,7 +275,9 @@ describe('finalizeImportWorker', () => {
     gen.next() // clear_data
     gen.next() // select selectDataTypesLoadStatus
     gen.next('loaded') // select selectCheckDataTypeId
-    const addColCall = gen.next(99).value as ReturnType<typeof call>
+    gen.next(99) // select selectDateTimeDataTypeId
+    gen.next(7) // select selectDateTimeBaseUnitId
+    const addColCall = gen.next(3).value as ReturnType<typeof call>
     expect(addColCall.payload.args[1]).toEqual({
       column: [
         {
@@ -278,8 +288,8 @@ describe('finalizeImportWorker', () => {
         },
         {
           name: 'date-time',
-          datatype: null,
-          data_unit: null,
+          datatype: 7,
+          data_unit: 3,
           values: [{ date: expect.any(String), time: expect.any(String), value: '0' }]
         },
         {
@@ -313,7 +323,9 @@ describe('finalizeImportWorker', () => {
     gen.next() // clear_data
     gen.next() // select selectDataTypesLoadStatus
     gen.next('loaded') // select selectCheckDataTypeId
-    gen.next(99) // addCol
+    gen.next(99) // select selectDateTimeDataTypeId
+    gen.next(7) // select selectDateTimeBaseUnitId
+    gen.next(3) // addCol
     gen.next() // put loadScenarioRequested
     gen.next() // race(...)
     expect(

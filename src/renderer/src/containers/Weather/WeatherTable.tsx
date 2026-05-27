@@ -99,9 +99,22 @@ function formatDateTime(
       return `${y}-${mo}-${d}T${hhmm}:${ss}${utcOffset || '+00:00'}`
     case 'YYYY-MM-DDTHH:MM:SSZ':
       return `${y}-${mo}-${d}T${hhmm}:${ss}`
+    case 'YYYY DOY HH:MM':
+      return `${y} ${dayOfYear(+y, +mo, +d)} ${hhmm}`
+    case 'DOY YYYY HH:MM':
+      return `${dayOfYear(+y, +mo, +d)} ${y} ${hhmm}`
     default:
       return `${mo}/${d}/${y} ${hhmm}`
   }
+}
+
+// 1-based day-of-year, zero-padded to 3 digits ("001"–"366") to match the
+// canonical DOY shape the importer accepts on the way in.
+function dayOfYear(y: number, mo: number, d: number): string {
+  const start = Date.UTC(y, 0, 1)
+  const cur = Date.UTC(y, mo - 1, d)
+  const doy = Math.round((cur - start) / 86_400_000) + 1
+  return String(doy).padStart(3, '0')
 }
 
 // One <tr> in the body. Extracted so React.memo can skip rows whose inputs
