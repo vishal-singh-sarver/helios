@@ -71,6 +71,8 @@ export type DateTimeFormatKey =
   | 'MM/DD/YYYY HH:MM'
   | 'DD-MM-YYYY HH:MM'
   | 'MM-DD-YYYY HH:MM'
+  | 'YYYY DOY HH:MM'
+  | 'DOY YYYY HH:MM'
 
 interface DateFormatSpec {
   value: DateFormatKey
@@ -104,7 +106,9 @@ export const DATETIME_FORMATS: ReadonlyArray<{
   { value: 'DD/MM/YYYY HH:MM', label: 'DD/MM/YYYY HH:MM' },
   { value: 'MM/DD/YYYY HH:MM', label: 'MM/DD/YYYY HH:MM' },
   { value: 'DD-MM-YYYY HH:MM', label: 'DD-MM-YYYY HH:MM' },
-  { value: 'MM-DD-YYYY HH:MM', label: 'MM-DD-YYYY HH:MM' }
+  { value: 'MM-DD-YYYY HH:MM', label: 'MM-DD-YYYY HH:MM' },
+  { value: 'YYYY DOY HH:MM', label: 'YYYY DOY HH:MM' },
+  { value: 'DOY YYYY HH:MM', label: 'DOY YYYY HH:MM' }
 ]
 
 export interface DelimiterSpec {
@@ -602,6 +606,16 @@ export function tryParseDateTime(raw: unknown, formatKey: DateTimeFormatKey): Da
     return buildDate(date, time)
   }
 
+  if (formatKey === 'YYYY DOY HH:MM' || formatKey === 'DOY YYYY HH:MM') {
+    const tokens = s.split(/\s+/).filter(Boolean)
+    if (tokens.length !== 3) return null
+    const dateFormat: DateFormatKey = formatKey === 'YYYY DOY HH:MM' ? 'YYYY DOY' : 'DOY YYYY'
+    const date = tryParseDate(`${tokens[0]} ${tokens[1]}`, dateFormat)
+    const time = tryParseTime(tokens[2])
+    if (!date || !time) return null
+    return buildDate(date, time)
+  }
+
   const split = s.match(/^(.+?)\s+(.+)$/)
   if (!split) return null
 
@@ -615,7 +629,9 @@ export function tryParseDateTime(raw: unknown, formatKey: DateTimeFormatKey): Da
     'DD/MM/YYYY HH:MM': 'DD/MM/YYYY',
     'MM/DD/YYYY HH:MM': 'MM/DD/YYYY',
     'DD-MM-YYYY HH:MM': 'DD-MM-YYYY',
-    'MM-DD-YYYY HH:MM': 'MM-DD-YYYY'
+    'MM-DD-YYYY HH:MM': 'MM-DD-YYYY',
+    'YYYY DOY HH:MM': null,
+    'DOY YYYY HH:MM': null
   }
 
   const dateFormat = dateFormatsByDateTime[formatKey]
