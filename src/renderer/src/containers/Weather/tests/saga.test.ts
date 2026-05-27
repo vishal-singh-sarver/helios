@@ -352,7 +352,7 @@ describe('finalizeImportWorker', () => {
               }
             ]
           },
-          true
+          false
         )
       )
     )
