@@ -12,7 +12,9 @@ import {
 } from 'containers/ProjectScreen/constants'
 import {
   selectCheckDataTypeId,
-  selectDataTypesLoadStatus
+  selectDataTypesLoadStatus,
+  selectDateTimeBaseUnitId,
+  selectDateTimeDataTypeId
 } from 'containers/ProjectScreen/selectors'
 import {
   CHECK_COL_NAME,
@@ -250,6 +252,8 @@ export function* finalizeImportWorker(action: ImportFinalizeRequestedAction): Ge
       yield take([LOAD_DATA_TYPES_SUCCEEDED, LOAD_DATA_TYPES_FAILED])
     }
     const checkDataTypeId = (yield select(selectCheckDataTypeId)) as number | null
+    const dateTimeDataTypeId = (yield select(selectDateTimeDataTypeId)) as number | null
+    const dateTimeBaseUnitId = (yield select(selectDateTimeBaseUnitId)) as number | null
 
     // One column entry per dataset column, each carrying every row's cell
     // for that column. Backend stores columns + cells atomically. The seeded
@@ -276,8 +280,8 @@ export function* finalizeImportWorker(action: ImportFinalizeRequestedAction): Ge
         },
         {
           name: DATE_TIME_COL_NAME,
-          datatype: null,
-          data_unit: null,
+          datatype: dateTimeDataTypeId,
+          data_unit: dateTimeBaseUnitId,
           values: rowKeys.map(({ date, time }) => ({ date, time, value: '0' }))
         },
         ...csvColumns.map((c) => ({

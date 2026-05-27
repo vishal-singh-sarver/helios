@@ -86,6 +86,11 @@ function ImportWizard({
   // state from props (https://react.dev/reference/react/useState).
   const [lastSeenPickedFile, setLastSeenPickedFile] = useState<typeof pickedFile>(null)
 
+  // Ref on the modal panel so the focus-trap effect can scope its DOM queries
+  // and so we can fall back to focusing the panel itself when no interactive
+  // child exists yet.
+  const panelRef = React.useRef<HTMLDivElement>(null)
+
   // Reset of wizard-local state happens automatically: the parent unmounts
   // <ImportWizard /> via its `{showWizard && …}` guard, so closing the modal
   // discards all hooks. No effect needed.
@@ -157,6 +162,65 @@ function ImportWizard({
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isOpen, importing, onClose])
+
+  // Focus trap — the wizard is a <div> overlay, not <dialog>, so Tab would
+  // otherwise walk out into the page behind the backdrop. We focus the
+  // first interactive child on open, wrap Tab/Shift+Tab around the panel,
+  // catch any stray focus that lands outside, and restore focus to the
+  // element that opened the wizard when it closes.
+  React.useEffect(() => {
+    if (!isOpen) return
+    const panel = panelRef.current
+    if (!panel) return
+
+    const previouslyFocused = document.activeElement as HTMLElement | null
+
+    const getFocusable = (): HTMLElement[] =>
+      Array.from(
+        panel.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((el) => el.offsetParent !== null || el === panel)
+
+    const initial = getFocusable()
+    if (initial.length > 0) initial[0].focus()
+    else panel.focus()
+
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if (e.key !== 'Tab') return
+      const focusables = getFocusable()
+      if (focusables.length === 0) {
+        e.preventDefault()
+        panel.focus()
+        return
+      }
+      const first = focusables[0]
+      const last = focusables[focusables.length - 1]
+      const active = document.activeElement as HTMLElement | null
+      if (e.shiftKey && (active === first || !panel.contains(active))) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && (active === last || !panel.contains(active))) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+
+    const handleFocusIn = (e: FocusEvent): void => {
+      if (panel.contains(e.target as Node)) return
+      const focusables = getFocusable()
+      ;(focusables[0] ?? panel).focus()
+    }
+
+    panel.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('focusin', handleFocusIn)
+
+    return () => {
+      panel.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('focusin', handleFocusIn)
+      previouslyFocused?.focus?.()
+    }
+  }, [isOpen])
 
   // Re-parse delimited input when delimiter changes (step 2).
   const handleChangeDelimiter = useCallback(
@@ -411,7 +475,12 @@ function ImportWizard({
 
       <div className="relative flex h-full items-center justify-center p-4">
         <div
-          className="flex flex-col rounded-[3px] border border-app-border bg-app-bg shadow-2xl"
+          ref={panelRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Import Weather Data"
+          tabIndex={-1}
+          className="flex flex-col rounded-[3px] border border-app-border bg-app-bg shadow-2xl focus:outline-none"
           style={{ width: 580, maxHeight: '92vh' }}
         >
           {/* Header */}

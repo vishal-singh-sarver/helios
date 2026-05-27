@@ -1,0 +1,164 @@
+name: CI / release
+
+on:
+  pull_request:
+    branches: [release]
+  push:
+    branches: [release]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    name: Lint & Typecheck
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Create .env file
+        run: echo "VITE_BACKEND_URL=http://localhost:8000" > .env
+
+      - run: npm run lint
+      - run: npm run typecheck
+
+  test-unit:
+    runs-on: ubuntu-latest
+    name: Unit Tests
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Create .env file
+        run: echo "VITE_BACKEND_URL=http://localhost:8000" > .env
+
+      - run: npm run test:unit
+
+  test-integration:
+    name: Integration Tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Linux system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential libgtk-3-dev libnss3 libxss1 libasound2 \
+            libxtst6 libxrandr2 libatk1.0-0 libatk-bridge2.0-0 libdrm2 \
+            libgbm1 libxkbcommon0 fonts-liberation xdg-utils \
+            libglu1-mesa-dev freeglut3-dev mesa-common-dev
+
+      - run: npm ci
+
+      - name: Create .env file
+        shell: bash
+        run: echo "VITE_BACKEND_URL=http://localhost:8000" > .env
+
+      - run: npm run test:integration
+
+  package:
+    name: Package & Sign (${{ matrix.os }})
+    needs: [lint, test-unit, test-integration]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # ── Windows signing ────────────────────────────────────────────────────
+      - name: Import Windows signing cert
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $cert = [Convert]::FromBase64String("${{ secrets.WIN_CERT_BASE64 }}")
+          $certPath = "$env:RUNNER_TEMP\codesign.pfx"
+          [IO.File]::WriteAllBytes($certPath, $cert)
+          echo "CSC_LINK=$certPath" >> $env:GITHUB_ENV
+          echo "CSC_KEY_PASSWORD=${{ secrets.WIN_CERT_PASSWORD }}" >> $env:GITHUB_ENV
+
+      # ── macOS signing & notarization ───────────────────────────────────────
+      - name: Import macOS signing cert
+        if: runner.os == 'macOS'
+        run: |
+          CERT_PATH="$RUNNER_TEMP/apple_dev.p12"
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+          echo "${{ secrets.APPLE_CERT_BASE64 }}" | base64 --decode > "$CERT_PATH"
+          security create-keychain -p "temp-keychain-password" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "temp-keychain-password" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -P "${{ secrets.APPLE_CERT_PASSWORD }}" \
+            -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+          echo "CSC_LINK=$CERT_PATH" >> $GITHUB_ENV
+          echo "CSC_KEY_PASSWORD=${{ secrets.APPLE_CERT_PASSWORD }}" >> $GITHUB_ENV
+          echo "APPLE_ID=${{ secrets.APPLE_ID }}" >> $GITHUB_ENV
+          echo "APPLE_APP_SPECIFIC_PASSWORD=${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}" >> $GITHUB_ENV
+          echo "APPLE_TEAM_ID=${{ secrets.APPLE_TEAM_ID }}" >> $GITHUB_ENV
+
+      - name: Install Linux system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential libgtk-3-dev libnss3 libxss1 libasound2 \
+            libxtst6 libxrandr2 libatk1.0-0 libatk-bridge2.0-0 libdrm2 \
+            libgbm1 libxkbcommon0 fonts-liberation xdg-utils \
+            libglu1-mesa-dev freeglut3-dev mesa-common-dev
+
+      - run: npm ci
+
+      - name: Create .env file
+        shell: bash
+        run: echo "VITE_BACKEND_URL=http://localhost:8000" > .env
+
+      - name: Package (signed + notarized)
+        run: npm run package
+        timeout-minutes: 60   # macOS notarization can take 5–30 min
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.os }}
+          path: dist/
+          retention-days: 30
+
+      # ── macOS cleanup ──────────────────────────────────────────────────────
+      - name: Remove temporary keychain
+        if: runner.os == 'macOS' && always()
+        run: security delete-keychain "$RUNNER_TEMP/app-signing.keychain-db" || true
