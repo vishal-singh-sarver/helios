@@ -142,13 +142,13 @@ describe('validateCellValue', () => {
 
   it('flags value below min with the two-sided range message', () => {
     expect(validateCellValue('-100', { col: baseCol, dataTypes: makeDataTypes() })).toBe(
-      '°C must be in -50–50'
+      'Values should be between -50–50'
     )
   })
 
   it('flags value above max with the two-sided range message', () => {
     expect(validateCellValue('100', { col: baseCol, dataTypes: makeDataTypes() })).toBe(
-      '°C must be in -50–50'
+      'Values should be between -50–50'
     )
   })
 
@@ -156,7 +156,7 @@ describe('validateCellValue', () => {
 
   it('uses ≥ format when only min is set', () => {
     const col = { ...baseCol, unitId: 11 }
-    expect(validateCellValue('-1', { col, dataTypes: makeDataTypes() })).toBe('K must be ≥ 0')
+    expect(validateCellValue('-1', { col, dataTypes: makeDataTypes() })).toBe('Values should be ≥ 0')
   })
 
   it('returns null when value is at or above min and there is no max', () => {
@@ -166,7 +166,9 @@ describe('validateCellValue', () => {
 
   it('uses ≤ format when only max is set', () => {
     const col = { ...baseCol, unitId: 12 }
-    expect(validateCellValue('150', { col, dataTypes: makeDataTypes() })).toBe('% must be ≤ 100')
+    expect(validateCellValue('150', { col, dataTypes: makeDataTypes() })).toBe(
+      'Values should be ≤ 100'
+    )
   })
 
   it('returns null when value is at or below max and there is no min', () => {
