@@ -137,14 +137,14 @@ jobs:
           echo "CSC_KEY_PASSWORD=${{ secrets.WIN_CERT_PASSWORD }}" >> $env:GITHUB_ENV
 
       # ── macOS signing & notarization ──
-      - name: Import macOS signing cert
-        if: runner.os == 'macOS'
+      # - name: Import macOS signing cert
+      #   if: runner.os == 'macOS'
         # run: |
         #   CERT_PATH="$RUNNER_TEMP/apple_dev.p12"
         #   KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
 
         #   cat << 'EOF' > "$RUNNER_TEMP/cert_b64.txt"
-        #   ${{ secrets.APPLE_CERT_BASE64 }}
+        # ${{ secrets.APPLE_CERT_BASE64 }}
         #   EOF
 
         #   base64 --decode -i "$RUNNER_TEMP/cert_b64.txt" -o "$CERT_PATH" || \
