@@ -139,33 +139,33 @@ jobs:
       # ── macOS signing & notarization ──
       - name: Import macOS signing cert
         if: runner.os == 'macOS'
-        run: |
-          CERT_PATH="$RUNNER_TEMP/apple_dev.p12"
-          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+        # run: |
+        #   CERT_PATH="$RUNNER_TEMP/apple_dev.p12"
+        #   KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
 
-          cat << 'EOF' > "$RUNNER_TEMP/cert_b64.txt"
-          ${{ secrets.APPLE_CERT_BASE64 }}
-          EOF
+        #   cat << 'EOF' > "$RUNNER_TEMP/cert_b64.txt"
+        #   ${{ secrets.APPLE_CERT_BASE64 }}
+        #   EOF
 
-          base64 --decode -i "$RUNNER_TEMP/cert_b64.txt" -o "$CERT_PATH" || \
-          base64 -D -i "$RUNNER_TEMP/cert_b64.txt" -o "$CERT_PATH"
+        #   base64 --decode -i "$RUNNER_TEMP/cert_b64.txt" -o "$CERT_PATH" || \
+        #   base64 -D -i "$RUNNER_TEMP/cert_b64.txt" -o "$CERT_PATH"
 
-          security create-keychain -p "temp-keychain-password" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "temp-keychain-password" "$KEYCHAIN_PATH"
+        #   security create-keychain -p "temp-keychain-password" "$KEYCHAIN_PATH"
+        #   security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+        #   security unlock-keychain -p "temp-keychain-password" "$KEYCHAIN_PATH"
 
-          security import "$CERT_PATH" \
-            -P "${{ secrets.APPLE_CERT_PASSWORD }}" \
-            -A -t cert -f pkcs12 \
-            -k "$KEYCHAIN_PATH"
+        #   security import "$CERT_PATH" \
+        #     -P "${{ secrets.APPLE_CERT_PASSWORD }}" \
+        #     -A -t cert -f pkcs12 \
+        #     -k "$KEYCHAIN_PATH"
 
-          security list-keychain -d user -s "$KEYCHAIN_PATH"
+        #   security list-keychain -d user -s "$KEYCHAIN_PATH"
 
-          echo "CSC_LINK=$CERT_PATH" >> $GITHUB_ENV
-          echo "CSC_KEY_PASSWORD=${{ secrets.APPLE_CERT_PASSWORD }}" >> $GITHUB_ENV
-          echo "APPLE_ID=${{ secrets.APPLE_ID }}" >> $GITHUB_ENV
-          echo "APPLE_APP_SPECIFIC_PASSWORD=${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}" >> $GITHUB_ENV
-          echo "APPLE_TEAM_ID=${{ secrets.APPLE_TEAM_ID }}" >> $GITHUB_ENV
+        #   echo "CSC_LINK=$CERT_PATH" >> $GITHUB_ENV
+        #   echo "CSC_KEY_PASSWORD=${{ secrets.APPLE_CERT_PASSWORD }}" >> $GITHUB_ENV
+        #   echo "APPLE_ID=${{ secrets.APPLE_ID }}" >> $GITHUB_ENV
+        #   echo "APPLE_APP_SPECIFIC_PASSWORD=${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}" >> $GITHUB_ENV
+        #   echo "APPLE_TEAM_ID=${{ secrets.APPLE_TEAM_ID }}" >> $GITHUB_ENV
 
       # ── Linux system dependencies ──
       - name: Install Linux system dependencies
