@@ -303,7 +303,9 @@ describe('<AddColumnDialog />', () => {
     fireEvent.change(screen.getByTestId('input-defaultValue'), { target: { value: '0' } })
 
     await waitFor(() =>
-      expect(screen.getByTestId('error-defaultValue')).toHaveTextContent('Pa must be in 10–20')
+      expect(screen.getByTestId('error-defaultValue')).toHaveTextContent(
+        'Values should be between 10–20'
+      )
     )
     expect(within(screen.getByTestId('dialog')).getByText('Add')).toBeDisabled()
   })
