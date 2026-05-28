@@ -535,3 +535,17 @@ app.on('before-quit', async () => {
   await backendManager.cleanup()
   writeEarlyLog('App shutdown complete')
 })
+
+// Electron does NOT await the async 'before-quit' handler above, so it can be
+// cut off mid-cleanup. These synchronous handlers are the guaranteed reaper:
+// they force-kill the backend tree before the process exits, so it can't be
+// orphaned (which on Windows locks files and blocks reinstall/repackage).
+app.on('will-quit', () => {
+  if (SKIP_BACKEND) return
+  backendManager.killSync()
+})
+
+process.on('exit', () => {
+  if (SKIP_BACKEND) return
+  backendManager.killSync()
+})
