@@ -16,7 +16,7 @@ permissions:
 jobs:
 
   ci-checks:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     name: CI Checks (lint, typecheck, tests)
     if: github.event_name == 'pull_request'
     steps:
@@ -47,7 +47,7 @@ jobs:
 
 
   build-windows:
-    runs-on: windows-latest
+    runs-on: windows-2019
     name: Build Windows Installer
     if: github.event_name != 'pull_request'
     steps:
