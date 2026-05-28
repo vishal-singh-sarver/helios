@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build-windows:
-    runs-on: windows-2019
+    runs-on: windows-2022
     name: Build Windows Installer
     steps:
       - name: Checkout code
@@ -49,44 +49,44 @@ jobs:
             release/*.exe
           if-no-files-found: warn
 
-  # build-macos:
-  #   runs-on: macos-latest
-  #   name: Build macOS Installer
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
-  #       with:
-  #         submodules: recursive
+  build-macos:
+    runs-on: macos-latest
+    name: Build macOS Installer
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-  #     - name: Setup Node.js
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: 22
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
-  #     - name: Install dependencies
-  #       run: |
-  #         npm ci || npm install
+      - name: Install dependencies
+        run: |
+          npm ci || npm install
 
-  #     - name: Create .env file
-  #       run: |
-  #         echo "VITE_BACKEND_URL=http://localhost:8000" > .env
+      - name: Create .env file
+        run: |
+          echo "VITE_BACKEND_URL=http://localhost:8000" > .env
 
-  #     - name: Build application
-  #       run: npm run build
+      - name: Build application
+        run: npm run build
 
-  #     - name: Package macOS Installer
-  #       run: npm run package:mac
+      - name: Package macOS Installer
+        run: npm run package:mac
 
-  #     - name: Upload macOS installers
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: macos-installers
-  #         path: |
-  #           dist/*.dmg
-  #           dist/*.pkg
-  #           release/*.dmg
-  #           release/*.pkg
-  #         if-no-files-found: warn
+      - name: Upload macOS installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-installers
+          path: |
+            dist/*.dmg
+            dist/*.pkg
+            release/*.dmg
+            release/*.pkg
+          if-no-files-found: warn
 
   build-linux:
     runs-on: ubuntu-22.04
