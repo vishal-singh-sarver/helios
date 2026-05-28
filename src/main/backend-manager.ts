@@ -1,4 +1,4 @@
-import { ChildProcess, spawn } from 'child_process'
+import { ChildProcess, spawn, spawnSync } from 'child_process'
 import { app } from 'electron'
 import * as fs from 'fs'
 import * as net from 'net'
@@ -334,11 +334,12 @@ export class BackendManager {
     }
 
     const currentProcess = this.process
+    const pid = currentProcess.pid
 
     return new Promise((resolve) => {
       const timeout = setTimeout(() => {
         if (currentProcess && !currentProcess.killed) {
-          currentProcess.kill('SIGKILL')
+          this.forceKillTree(pid, currentProcess)
         }
       }, 5000)
 
@@ -354,8 +355,41 @@ export class BackendManager {
         })
       })
 
-      currentProcess.kill('SIGTERM')
+      // On Windows, child.kill() only targets the direct PID. A PyInstaller
+      // --onedir backend spawns a bootloader child (uvicorn), so killing just
+      // the parent orphans the real backend — it keeps file/port locks alive
+      // and blocks reinstall. taskkill /T reaps the whole tree.
+      if (process.platform === 'win32') {
+        this.forceKillTree(pid, currentProcess)
+      } else {
+        currentProcess.kill('SIGTERM')
+      }
     })
+  }
+
+  // Forcefully terminate the backend process tree. On Windows there is no
+  // graceful signal for console children, so taskkill /F /T is the only
+  // reliable reaper; elsewhere fall back to SIGKILL.
+  private forceKillTree(pid: number | undefined, proc: ChildProcess): void {
+    if (process.platform === 'win32' && pid) {
+      spawnSync('taskkill', ['/pid', String(pid), '/T', '/F'])
+    } else {
+      proc.kill('SIGKILL')
+    }
+  }
+
+  // Synchronous best-effort kill for app 'will-quit'/'exit' handlers, where
+  // Electron does NOT await async cleanup. Without this the backend is orphaned
+  // on quit and holds its files open, which blocks reinstall on Windows.
+  killSync(): void {
+    const proc = this.process
+    if (!proc || proc.killed) return
+    try {
+      this.forceKillTree(proc.pid, proc)
+    } catch {
+      // best-effort during shutdown — nothing useful to do on failure
+    }
+    this.process = null
   }
 
   getBackendStatus(): BackendStatus {
