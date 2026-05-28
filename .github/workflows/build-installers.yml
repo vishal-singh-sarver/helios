@@ -10,9 +10,13 @@ permissions:
   contents: write
 
 jobs:
+  # ============================================================================
+  # WINDOWS - ek hi .exe banta hai jo Windows 10 AUR 11 dono par chalta hai.
+  # Per-version (sirf 10 / sirf 11) build banane ka option hota hi nahi.
+  # ============================================================================
   build-windows:
     runs-on: windows-2022
-    name: Build Windows Installer
+    name: Build Windows Installer (10 + 11)
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -47,11 +51,19 @@ jobs:
           path: |
             dist/*.exe
             release/*.exe
+          compression-level: 0
+          retention-days: 5
           if-no-files-found: warn
 
+  # ============================================================================
+  # macOS - ek hi build jo macOS 15 se 26 (Tahoe) tak chalti hai.
+  # NOTE: macOS 15 + Intel support ke liye package.json ke "mac" block mein
+  #       "minimumSystemVersion": "15.0" aur arch ["x64","arm64"] zaroori hai.
+  # Per-version (sirf 15 / sirf 26) build ka concept hi nahi hota.
+  # ============================================================================
   build-macos:
     runs-on: macos-latest
-    name: Build macOS Installer
+    name: Build macOS Installer (15 + 26)
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -84,38 +96,77 @@ jobs:
           path: |
             dist/*.dmg
             dist/*.pkg
+            release/*.dmg
+            release/*.pkg
+          compression-level: 0
+          retention-days: 5
           if-no-files-found: warn
 
+  # ============================================================================
+  # LINUX - HAR VERSION KI ALAG BUILD (matrix).
+  # Ye job 3 baar chalega: ubuntu 20.04, 22.04, 24.04 container ke andar.
+  # Har ek apni alag .deb + .AppImage banayega, naam mein version laga hoga.
+  #
+  # YAAD RAKHO: sirf 20.04 wali file akele teeno par chal jaati hai. Ye matrix
+  # tabhi rakho agar tumhe sach mein har version ki alag file chahiye.
+  # ============================================================================
   build-linux:
-    runs-on: ubuntu-20.04
-    name: Build Linux Packages
+    runs-on: ubuntu-22.04
+    name: Build Linux (${{ matrix.ubuntu }})
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu: ['20.04', '22.04', '24.04']
+    container:
+      image: ubuntu:${{ matrix.ubuntu }}
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      TZ: Etc/UTC
     steps:
+      # Container bare hota hai - git/curl/python/build tools khud install karo.
+      # git checkout se PEHLE chahiye warna submodules recursive fail hoga.
+      - name: Install base tools
+        run: |
+          apt-get update
+          apt-get install -y \
+            curl \
+            git \
+            ca-certificates \
+            gnupg \
+            python3 \
+            build-essential
+
+      - name: Setup Node.js 22
+        run: |
+          curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+          apt-get install -y nodejs
+          node --version
+          npm --version
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Install Linux dependencies
+      # Electron + Linux packaging system libraries.
+      # 24.04 mein kuch packages ke naam badle hain (t64 suffix), isliye
+      # un par fallback install lagaya hai taaki teeno versions mein chale.
+      - name: Install Linux build dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
+          install_one() {
+            apt-get install -y "$1" 2>/dev/null || apt-get install -y "$2" 2>/dev/null || true
+          }
+
+          apt-get install -y \
             libgtk-3-dev \
             libnss3 \
             libxss1 \
-            libasound2 \
             libxtst6 \
             libxrandr2 \
-            libatk1.0-0 \
-            libatk-bridge2.0-0 \
             libdrm2 \
             libgbm1 \
             libxkbcommon0 \
+            libfuse2 \
             fonts-liberation \
             xdg-utils \
             libglu1-mesa-dev \
@@ -124,6 +175,11 @@ jobs:
             fakeroot \
             dpkg \
             rpm
+
+          # ye packages 24.04 mein t64 ban gaye - dono naam try karo
+          install_one libasound2 libasound2t64
+          install_one libatk1.0-0 libatk1.0-0t64
+          install_one libatk-bridge2.0-0 libatk-bridge2.0-0t64
 
       - name: Install dependencies
         run: |
@@ -139,13 +195,28 @@ jobs:
       - name: Package Linux Installer
         run: npm run package:linux
 
+      # Har version ki file ka naam alag karo, warna release mein ek doosre ko
+      # overwrite kar denge (sabka naam helios-x.y.z-setup.deb hota hai).
+      - name: Tag outputs with ubuntu version
+        run: |
+          cd dist
+          for f in *.deb *.AppImage; do
+            [ -e "$f" ] || continue
+            base="${f%.*}"
+            ext="${f##*.}"
+            mv "$f" "${base}-ubuntu${{ matrix.ubuntu }}.${ext}"
+          done
+          ls -la
+
       - name: Upload Linux packages
         uses: actions/upload-artifact@v4
         with:
-          name: linux-packages
+          name: linux-packages-${{ matrix.ubuntu }}
           path: |
             dist/*.AppImage
             dist/*.deb
+          compression-level: 0
+          retention-days: 5
           if-no-files-found: warn
 
   release:
