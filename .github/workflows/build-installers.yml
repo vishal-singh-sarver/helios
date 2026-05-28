@@ -1,14 +1,14 @@
 name: Build Installers
- 
+
 on:
   push:
     tags:
       - 'v*'
   workflow_dispatch:
- 
+
 permissions:
   contents: write
- 
+
 jobs:
   build-windows:
     runs-on: windows-2019
@@ -18,28 +18,28 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
- 
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
- 
+
       - name: Install dependencies
         shell: bash
         run: |
           npm ci || npm install
- 
+
       - name: Create .env file
         shell: bash
         run: |
           echo "VITE_BACKEND_URL=http://localhost:8000" > .env
- 
+
       - name: Build application
         run: npm run build
- 
+
       - name: Package Windows Installer
         run: npm run package:win
- 
+
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
@@ -48,7 +48,7 @@ jobs:
             dist/*.exe
             release/*.exe
           if-no-files-found: warn
- 
+
   build-macos:
     runs-on: macos-latest
     name: Build macOS Installer
@@ -57,26 +57,26 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
- 
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
- 
+
       - name: Install dependencies
         run: |
           npm ci || npm install
- 
+
       - name: Create .env file
         run: |
           echo "VITE_BACKEND_URL=http://localhost:8000" > .env
- 
+
       - name: Build application
         run: npm run build
- 
+
       - name: Package macOS Installer
         run: npm run package:mac
- 
+
       - name: Upload macOS installers
         uses: actions/upload-artifact@v4
         with:
@@ -87,21 +87,21 @@ jobs:
             release/*.dmg
             release/*.pkg
           if-no-files-found: warn
- 
+
   build-linux:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     name: Build Linux Packages
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           submodules: recursive
- 
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
- 
+
       - name: Install Linux dependencies
         run: |
           sudo apt-get update
@@ -126,21 +126,21 @@ jobs:
             fakeroot \
             dpkg \
             rpm
- 
+
       - name: Install dependencies
         run: |
           npm ci || npm install
- 
+
       - name: Create .env file
         run: |
           echo "VITE_BACKEND_URL=http://localhost:8000" > .env
- 
+
       - name: Build application
         run: npm run build
- 
+
       - name: Package Linux Installer
         run: npm run package:linux
- 
+
       - name: Upload Linux packages
         uses: actions/upload-artifact@v4
         with:
@@ -151,7 +151,7 @@ jobs:
             release/*.AppImage
             release/*.deb
           if-no-files-found: warn
- 
+
   release:
     name: Create GitHub Release
     needs: [build-windows, build-macos, build-linux]
@@ -162,38 +162,38 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
- 
+
       - name: Generate Release Notes
         shell: bash
         run: |
           set -e
- 
+
           TAG="${GITHUB_REF#refs/tags/}"
           REPO="${{ github.repository }}"
- 
+
           echo "## Helios ${TAG} Assets" > notes.md
           echo "" >> notes.md
           echo "| OS | File | Size | SHA256 |" >> notes.md
           echo "|----|------|------|--------|" >> notes.md
- 
+
           find artifacts -type f | while read file; do
             name=$(basename "$file")
             size=$(du -h "$file" | cut -f1)
             checksum=$(sha256sum "$file" | awk '{print $1}')
             url="https://github.com/$REPO/releases/download/$TAG/$name"
- 
+
             os="Unknown"
             [[ "$name" == *.exe ]] && os="Windows"
             [[ "$name" == *.dmg ]] && os="macOS"
             [[ "$name" == *.pkg ]] && os="macOS"
             [[ "$name" == *.AppImage ]] && os="Linux"
             [[ "$name" == *.deb ]] && os="Linux"
- 
+
             echo "| $os | [$name]($url) | $size | \`$checksum\` |" >> notes.md
           done
- 
+
           cat notes.md
- 
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
