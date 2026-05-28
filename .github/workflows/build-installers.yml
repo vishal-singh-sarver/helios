@@ -23,19 +23,25 @@ jobs:
     name: Build Windows Installer
     if: github.event_name != 'pull_request'
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - run: npm install
+      - name: Install dependencies
+        run: npm install
 
       - name: Create .env file
         run: echo "VITE_BACKEND_URL=http://localhost:8000" > .env
 
-      - run: npm run build
-      - run: npm run package:win
+      - name: Build application
+        run: npm run build
+
+      - name: Package Windows Installer
+        run: npm run package:win
 
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
@@ -49,19 +55,25 @@ jobs:
     name: Build macOS Installer
     if: github.event_name != 'pull_request'
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - run: npm install
+      - name: Install dependencies
+        run: npm install
 
       - name: Create .env file
         run: echo "VITE_BACKEND_URL=http://localhost:8000" > .env
 
-      - run: npm run build
-      - run: npm run package:mac
+      - name: Build application
+        run: npm run build
+
+      - name: Package macOS Installer
+        run: npm run package:mac
 
       - name: Upload macOS installers
         uses: actions/upload-artifact@v4
@@ -77,9 +89,11 @@ jobs:
     name: Build Linux Packages
     if: github.event_name != 'pull_request'
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
 
@@ -105,13 +119,17 @@ jobs:
             freeglut3-dev \
             mesa-common-dev
 
-      - run: npm install
+      - name: Install dependencies
+        run: npm install
 
       - name: Create .env file
         run: echo "VITE_BACKEND_URL=http://localhost:8000" > .env
 
-      - run: npm run build
-      - run: npm run package:linux
+      - name: Build application
+        run: npm run build
+
+      - name: Package Linux Installer
+        run: npm run package:linux
 
       - name: Upload Linux packages
         uses: actions/upload-artifact@v4
@@ -133,6 +151,7 @@ jobs:
           path: artifacts
 
       - name: Generate Release Notes Table
+        shell: bash
         run: |
           echo "## Helios ${GITHUB_REF_NAME} Assets" > notes.md
           echo "" >> notes.md
@@ -142,20 +161,17 @@ jobs:
           TAG=${GITHUB_REF#refs/tags/}
           REPO="${{ github.repository }}"
 
-          for file in $(find artifacts -type f); do
+          find artifacts -type f | while read file; do
             name=$(basename "$file")
             size=$(du -h "$file" | cut -f1)
             checksum=$(sha256sum "$file" | cut -d ' ' -f1)
             url="https://github.com/$REPO/releases/download/$TAG/$name"
-
             os="Unknown"
-
-            if [[ $name == *.exe ]]; then os="Windows"; fi
-            if [[ $name == *.dmg ]]; then os="macOS"; fi
-            if [[ $name == *.pkg ]]; then os="macOS"; fi
-            if [[ $name == *.AppImage ]]; then os="Linux"; fi
-            if [[ $name == *.deb ]]; then os="Linux"; fi
-
+            [[ $name == *.exe ]] && os="Windows"
+            [[ $name == *.dmg ]] && os="macOS"
+            [[ $name == *.pkg ]] && os="macOS"
+            [[ $name == *.AppImage ]] && os="Linux"
+            [[ $name == *.deb ]] && os="Linux"
             echo "| $os | [$name]($url) | $size | \`$checksum\` |" >> notes.md
           done
 
@@ -165,6 +181,5 @@ jobs:
           tag_name: ${{ github.ref_name }}
           files: artifacts/**/*
           body_path: notes.md
-          generate_release_notes: false
           draft: false
           prerelease: false
