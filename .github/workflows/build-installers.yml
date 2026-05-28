@@ -47,8 +47,6 @@ jobs:
           path: |
             dist/*.exe
             release/*.exe
-          compression-level: 0
-          retention-days: 5
           if-no-files-found: warn
 
   build-macos:
@@ -86,14 +84,10 @@ jobs:
           path: |
             dist/*.dmg
             dist/*.pkg
-            release/*.dmg
-            release/*.pkg
-          compression-level: 0
-          retention-days: 5
           if-no-files-found: warn
 
   build-linux:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     name: Build Linux Packages
     steps:
       - name: Checkout code
@@ -152,10 +146,6 @@ jobs:
           path: |
             dist/*.AppImage
             dist/*.deb
-            release/*.AppImage
-            release/*.deb
-          compression-level: 0
-          retention-days: 5
           if-no-files-found: warn
 
   release:
