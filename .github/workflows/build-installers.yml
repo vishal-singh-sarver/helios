@@ -149,10 +149,12 @@ jobs:
           NEED=$(python3 -c 'import sys; print(1 if sys.version_info < (3,10) else 0)' 2>/dev/null || echo 1)
           if [ "$NEED" = "1" ]; then
             echo "Default Python too old - installing 3.10 via deadsnakes..."
-            apt-get install -y software-properties-common
+            # dirmngr ZAROORI hai - iske bina add-apt-repository PPA ki GPG key
+            # import nahi kar paata, repo unverified reh jaata hai, aur python3.10-*
+            # packages "locate nahi hote" (exit code 100). gnupg+dirmngr dono chahiye.
+            apt-get install -y software-properties-common dirmngr gnupg ca-certificates
             add-apt-repository -y ppa:deadsnakes/ppa
-            # PPA add hone ke baad index refresh ZAROORI hai, warna apt naye
-            # python3.10-* packages dhoondh nahi paata (exit code 100 wali error).
+            # PPA add hone ke baad index refresh ZAROORI hai.
             apt-get update
             # core packages alag - inka milna pakka hai
             apt-get install -y python3.10 python3.10-venv python3.10-dev
