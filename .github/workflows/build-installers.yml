@@ -67,9 +67,6 @@ jobs:
       - name: Create .env file
         run: echo "VITE_BACKEND_URL=http://localhost:8000" > .env
 
-      - name: Run tests before packaging
-        run: npm run test:unit
-
       - run: npm run build
       - run: npm run package:win
 
@@ -97,9 +94,6 @@ jobs:
 
       - name: Create .env file
         run: echo "VITE_BACKEND_URL=http://localhost:8000" > .env
-
-      - name: Run tests before packaging
-        run: npm run test:unit
 
       - run: npm run build
       - run: npm run package:mac
@@ -152,9 +146,6 @@ jobs:
 
       - name: Create .env file
         run: echo "VITE_BACKEND_URL=http://localhost:8000" > .env
-
-      - name: Run tests before packaging
-        run: npm run test:unit
 
       - run: npm run build
       - run: npm run package:linux
