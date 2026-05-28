@@ -84,8 +84,6 @@ jobs:
           path: |
             dist/*.dmg
             dist/*.pkg
-            release/*.dmg
-            release/*.pkg
           if-no-files-found: warn
 
   build-linux:
@@ -148,8 +146,6 @@ jobs:
           path: |
             dist/*.AppImage
             dist/*.deb
-            release/*.AppImage
-            release/*.deb
           if-no-files-found: warn
 
   release:
