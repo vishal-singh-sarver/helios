@@ -4,9 +4,6 @@ on:
   push:
     tags:
       - 'v*'
-      - 'qa-*'
-    branches:
-      - develop
   pull_request:
     branches:
       - develop
@@ -19,7 +16,7 @@ permissions:
 jobs:
 
   ci-checks:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     name: CI Checks (lint, typecheck, tests)
     if: github.event_name == 'pull_request'
     steps:
@@ -67,6 +64,9 @@ jobs:
       - name: Create .env file
         run: echo "VITE_BACKEND_URL=http://localhost:8000" > .env
 
+      - name: Run tests before packaging
+        run: npm run test:unit
+
       - run: npm run build
       - run: npm run package:win
 
@@ -95,6 +95,9 @@ jobs:
       - name: Create .env file
         run: echo "VITE_BACKEND_URL=http://localhost:8000" > .env
 
+      - name: Run tests before packaging
+        run: npm run test:unit
+
       - run: npm run build
       - run: npm run package:mac
 
@@ -108,7 +111,7 @@ jobs:
 
 
   build-linux:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     name: Build Linux Packages
     if: github.event_name != 'pull_request'
     steps:
@@ -146,6 +149,9 @@ jobs:
 
       - name: Create .env file
         run: echo "VITE_BACKEND_URL=http://localhost:8000" > .env
+
+      - name: Run tests before packaging
+        run: npm run test:unit
 
       - run: npm run build
       - run: npm run package:linux
