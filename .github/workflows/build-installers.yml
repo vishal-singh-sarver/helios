@@ -151,11 +151,14 @@ jobs:
             echo "Default Python too old - installing 3.10 via deadsnakes..."
             apt-get install -y software-properties-common
             add-apt-repository -y ppa:deadsnakes/ppa
+            # PPA add hone ke baad index refresh ZAROORI hai, warna apt naye
+            # python3.10-* packages dhoondh nahi paata (exit code 100 wali error).
             apt-get update
-            apt-get install -y python3.10 python3.10-venv python3.10-dev python3.10-distutils
+            # core packages alag - inka milna pakka hai
+            apt-get install -y python3.10 python3.10-venv python3.10-dev
+            # distutils optional hai (kuch setups mein nahi hota) - fail na kare
+            apt-get install -y python3.10-distutils || echo "distutils skip (optional)"
             # python3 ko system-wide 3.10 par point karo (sabse pakka tareeka).
-            # update-alternatives /usr/bin/python3 ko hi badal deta hai, isliye
-            # backend script chahe kaise bhi python3 bulaaye, use 3.10 hi milega.
             update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 100
             update-alternatives --set python3 /usr/bin/python3.10
             ln -sf /usr/bin/python3.10 /usr/local/bin/python3
