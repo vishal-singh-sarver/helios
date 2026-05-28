@@ -1,15 +1,16 @@
-##############develop
 name: Build Installers
 
 on:
   push:
     tags:
       - 'v*'
+      - 'qa-*'
+    branches:
+      - develop
   pull_request:
     branches:
       - develop
       - main
-      - release
   workflow_dispatch:
 
 permissions:
