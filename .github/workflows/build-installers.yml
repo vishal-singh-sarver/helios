@@ -55,13 +55,18 @@ jobs:
           if-no-files-found: warn
 
   # ============================================================================
-  # macOS - ek hi build jo macOS 15 se 26 (Tahoe) tak chalti hai.
-  # NOTE: macOS 15 + Intel support ke liye package.json ke "mac" block mein
-  #       "minimumSystemVersion": "15.0" aur arch ["x64","arm64"] zaroori hai.
+  # macOS - HAR CHIP ki ALAG file (Intel x64 + Apple Silicon arm64).
+  # Har arch apne ALAG run mein banti hai - isse pkg ka multi-arch ENOENT
+  # bug (com.navyug.helios.pkg temp file collision) nahi aata.
+  # Dono build macOS 12 (Monterey) se 26 (Tahoe) tak chalti hain.
   # ============================================================================
   build-macos:
     runs-on: macos-latest
-    name: Build macOS Installer (15 + 26)
+    name: Build macOS (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, arm64]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -84,13 +89,15 @@ jobs:
       - name: Build application
         run: npm run build
 
+      # Sirf is run wali arch build karo (--x64 ya --arm64). Isse ek run mein
+      # ek hi pkg banta hai, collision nahi hoti.
       - name: Package macOS Installer
-        run: npm run package:mac
+        run: npm run package:mac -- --${{ matrix.arch }}
 
       - name: Upload macOS installers
         uses: actions/upload-artifact@v4
         with:
-          name: macos-installers
+          name: macos-installers-${{ matrix.arch }}
           path: |
             dist/*.dmg
             dist/*.pkg

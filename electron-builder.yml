@@ -35,6 +35,7 @@ win:
   - nsis
   icon: build/icon.ico
   signAndEditExecutable: false
+  publisherName: "Navyug Designs"
 
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
@@ -73,14 +74,8 @@ mac:
   icon: build/icon.icns
   minimumSystemVersion: "12.0"
   target:
-  - target: dmg
-    arch:
-    - x64
-    - arm64
-  - target: pkg
-    arch:
-    - x64
-    - arm64
+  - dmg
+  - pkg
 
 dmg:
   artifactName: ${name}-${version}-${arch}-setup.${ext}
