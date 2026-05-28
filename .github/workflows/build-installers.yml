@@ -12,7 +12,6 @@ permissions:
 jobs:
   # ============================================================================
   # WINDOWS - ek hi .exe banta hai jo Windows 10 AUR 11 dono par chalta hai.
-  # Per-version (sirf 10 / sirf 11) build banane ka option hota hi nahi.
   # ============================================================================
   build-windows:
     runs-on: windows-2022
@@ -59,7 +58,6 @@ jobs:
   # macOS - ek hi build jo macOS 15 se 26 (Tahoe) tak chalti hai.
   # NOTE: macOS 15 + Intel support ke liye package.json ke "mac" block mein
   #       "minimumSystemVersion": "15.0" aur arch ["x64","arm64"] zaroori hai.
-  # Per-version (sirf 15 / sirf 26) build ka concept hi nahi hota.
   # ============================================================================
   build-macos:
     runs-on: macos-latest
@@ -103,28 +101,37 @@ jobs:
           if-no-files-found: warn
 
   # ============================================================================
-  # LINUX - HAR VERSION KI ALAG BUILD (matrix).
-  # Ye job 3 baar chalega: ubuntu 20.04, 22.04, 24.04 container ke andar.
-  # Har ek apni alag .deb + .AppImage banayega, naam mein version laga hoga.
+  # LINUX - HAR VERSION KI ALAG BUILD (3 alag files).
   #
-  # YAAD RAKHO: sirf 20.04 wali file akele teeno par chal jaati hai. Ye matrix
-  # tabhi rakho agar tumhe sach mein har version ki alag file chahiye.
+  # Har version apne container ke andar banti hai:
+  #   20.04 -> python:3.10-bullseye  (glibc 2.31 = ubuntu 20.04 jaisa, +Python 3.10
+  #            pehle se. KOI deadsnakes/PPA nahi - isliye reliable. Ye file
+  #            20.04, 22.04, 24.04 SAB par chalti hai.)
+  #   22.04 -> ubuntu:22.04          (Python 3.10 by default) -> 22.04 + 24.04
+  #   24.04 -> ubuntu:24.04          (Python 3.12 by default) -> 24.04
   # ============================================================================
   build-linux:
     runs-on: ubuntu-22.04
-    name: Build Linux (${{ matrix.ubuntu }})
+    name: Build Linux (${{ matrix.label }})
     strategy:
       fail-fast: false
       matrix:
-        ubuntu: ['20.04', '22.04', '24.04']
+        include:
+          - label: '20.04'
+            image: 'python:3.10-bullseye'
+          - label: '22.04'
+            image: 'ubuntu:22.04'
+          - label: '24.04'
+            image: 'ubuntu:24.04'
     container:
-      image: ubuntu:${{ matrix.ubuntu }}
+      image: ${{ matrix.image }}
     env:
       DEBIAN_FRONTEND: noninteractive
       TZ: Etc/UTC
     steps:
-      # Container bare hota hai - git/curl/python/build tools khud install karo.
+      # Container bare ho sakta hai - git/curl/python/build tools install karo.
       # git checkout se PEHLE chahiye warna submodules recursive fail hoga.
+      # (bullseye image mein inme se kai pehle se hote hain - to install no-op rahega.)
       - name: Install base tools
         run: |
           apt-get update
@@ -138,40 +145,18 @@ jobs:
             python3-pip \
             build-essential
 
-      # Backend ko Python 3.10+ chahiye. Ubuntu 20.04 mein default 3.8 hai,
-      # isliye wahan deadsnakes PPA se 3.10 install karke python3 use uspe
-      # point kar dete hain. 22.04 (3.10) / 24.04 (3.12) mein ye step khud
-      # skip ho jaata hai - kyonki Python pehle se naya hai.
-      - name: Ensure Python 3.10+
+      # Saare 3 images mein Python 3.10+ pehle se hota hai. Yahan sirf verify
+      # karte hain - agar kisi wajah se purana mila to saaf error de.
+      - name: Verify Python 3.10+
         run: |
           set -e
-          python3 --version || true
-          NEED=$(python3 -c 'import sys; print(1 if sys.version_info < (3,10) else 0)' 2>/dev/null || echo 1)
-          if [ "$NEED" = "1" ]; then
-            echo "Default Python too old - installing 3.10 via deadsnakes..."
-            # dirmngr ZAROORI hai - iske bina add-apt-repository PPA ki GPG key
-            # import nahi kar paata, repo unverified reh jaata hai, aur python3.10-*
-            # packages "locate nahi hote" (exit code 100). gnupg+dirmngr dono chahiye.
-            apt-get install -y software-properties-common dirmngr gnupg ca-certificates
-            add-apt-repository -y ppa:deadsnakes/ppa
-            # PPA add hone ke baad index refresh ZAROORI hai.
-            apt-get update
-            # core packages alag - inka milna pakka hai
-            apt-get install -y python3.10 python3.10-venv python3.10-dev
-            # distutils optional hai (kuch setups mein nahi hota) - fail na kare
-            apt-get install -y python3.10-distutils || echo "distutils skip (optional)"
-            # python3 ko system-wide 3.10 par point karo (sabse pakka tareeka).
-            update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 100
-            update-alternatives --set python3 /usr/bin/python3.10
-            ln -sf /usr/bin/python3.10 /usr/local/bin/python3
-            ln -sf /usr/bin/python3.10 /usr/local/bin/python
-            # pip 3.10 ke liye
-            curl -fsSL https://bootstrap.pypa.io/get-pip.py | python3.10
-            hash -r
-          fi
-          echo "Final python3 in use:"
-          which python3
+          echo "python3 path:"; which python3
           python3 --version
+          OK=$(python3 -c 'import sys; print(1 if sys.version_info >= (3,10) else 0)')
+          if [ "$OK" != "1" ]; then
+            echo "ERROR: Python 3.10+ chahiye par purana mila. Container image galat hai."
+            exit 1
+          fi
 
       - name: Setup Node.js 22
         run: |
@@ -185,9 +170,9 @@ jobs:
         with:
           submodules: recursive
 
-      # Electron + Linux packaging system libraries.
-      # 24.04 mein kuch packages ke naam badle hain (t64 suffix), isliye
-      # un par fallback install lagaya hai taaki teeno versions mein chale.
+      # Electron + Linux packaging + native C++ backend ke liye system libraries.
+      # 24.04 mein kuch packages ke naam badle hain (t64 suffix), isliye un par
+      # fallback install lagaya hai taaki sab images mein chale.
       - name: Install Linux build dependencies
         run: |
           install_one() {
@@ -252,14 +237,14 @@ jobs:
             [ -e "$f" ] || continue
             base="${f%.*}"
             ext="${f##*.}"
-            mv "$f" "${base}-ubuntu${{ matrix.ubuntu }}.${ext}"
+            mv "$f" "${base}-ubuntu${{ matrix.label }}.${ext}"
           done
           ls -la
 
       - name: Upload Linux packages
         uses: actions/upload-artifact@v4
         with:
-          name: linux-packages-${{ matrix.ubuntu }}
+          name: linux-packages-${{ matrix.label }}
           path: |
             dist/*.AppImage
             dist/*.deb
