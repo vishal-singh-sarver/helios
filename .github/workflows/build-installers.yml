@@ -2,15 +2,11 @@ name: Build Installers
 
 on:
   push:
+    # branches:
+    #   - main
+    #   - release
     tags:
       - 'v*'
-      - 'qa-*'
-    branches:
-      - develop
-  pull_request:
-    branches:
-      - develop
-      - main
   workflow_dispatch:
 
 permissions:
@@ -18,55 +14,19 @@ permissions:
 
 jobs:
 
-  ci-checks:
-    runs-on: ubuntu-latest
-    name: CI Checks (lint, typecheck, tests)
-    if: github.event_name == 'pull_request'
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - run: npm install
-
-      - name: Create .env file
-        run: echo "VITE_BACKEND_URL=http://localhost:8000" > .env
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Unit tests
-        run: npm run test:unit
-
-      - name: Build check
-        run: npm run build
-
-
   build-windows:
     runs-on: windows-2019
     name: Build Windows Installer
-    if: github.event_name != 'pull_request'
+
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
 
-      - run: npm install
-
-      - name: Create .env file
-        run: echo "VITE_BACKEND_URL=http://localhost:8000" > .env
-
+      - run: npm ci
       - run: npm run build
       - run: npm run package:win
 
@@ -76,25 +36,19 @@ jobs:
           name: windows-installer
           path: dist/*.exe
 
-
   build-macos:
     runs-on: macos-latest
     name: Build macOS Installer
-    if: github.event_name != 'pull_request'
+
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
 
-      - run: npm install
-
-      - name: Create .env file
-        run: echo "VITE_BACKEND_URL=http://localhost:8000" > .env
-
+      - run: npm ci
       - run: npm run build
       - run: npm run package:mac
 
@@ -106,19 +60,17 @@ jobs:
             dist/*.dmg
             dist/*.pkg
 
-
   build-linux:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     name: Build Linux Packages
-    if: github.event_name != 'pull_request'
+
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
 
       - name: Install system dependencies
         run: |
@@ -137,16 +89,9 @@ jobs:
             libgbm1 \
             libxkbcommon0 \
             fonts-liberation \
-            xdg-utils \
-            libglu1-mesa-dev \
-            freeglut3-dev \
-            mesa-common-dev
+            xdg-utils
 
-      - run: npm install
-
-      - name: Create .env file
-        run: echo "VITE_BACKEND_URL=http://localhost:8000" > .env
-
+      - run: npm ci
       - run: npm run build
       - run: npm run package:linux
 
@@ -158,34 +103,29 @@ jobs:
             dist/*.AppImage
             dist/*.deb
 
-
   release:
     needs: [build-windows, build-macos, build-linux]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
+    # if: github.ref == 'refs/heads/main'
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-
+        
       - name: Generate Release Notes Table
+        id: notes
         run: |
-          echo "## Helios ${GITHUB_REF_NAME} Assets" > notes.md
+          echo "## Helios Assets" > notes.md
           echo "" >> notes.md
           echo "| OS | File | Size | Checksum (sha256) |" >> notes.md
-          echo "|----|------|------|-------------------|" >> notes.md
-
-          TAG=${GITHUB_REF#refs/tags/}
-          REPO="${{ github.repository }}"
+          echo "|----|----------|------|-------------------|" >> notes.md
 
           for file in $(find artifacts -type f); do
             name=$(basename "$file")
             size=$(du -h "$file" | cut -f1)
             checksum=$(sha256sum "$file" | cut -d ' ' -f1)
-            url="https://github.com/$REPO/releases/download/$TAG/$name"
-
-            os="Unknown"
 
             if [[ $name == *.exe ]]; then os="Windows"; fi
             if [[ $name == *.dmg ]]; then os="macOS"; fi
@@ -193,15 +133,14 @@ jobs:
             if [[ $name == *.AppImage ]]; then os="Linux"; fi
             if [[ $name == *.deb ]]; then os="Linux"; fi
 
-            echo "| $os | [$name]($url) | $size | \`$checksum\` |" >> notes.md
+            echo "| $os | $name | $size | $checksum |" >> notes.md
           done
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
           files: artifacts/**/*
-          body_path: notes.md
-          generate_release_notes: false
+          #body_path: notes.md
+          #generate_release_notes: false
           draft: false
           prerelease: false
