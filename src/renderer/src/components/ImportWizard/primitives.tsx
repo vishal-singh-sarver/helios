@@ -24,7 +24,7 @@ export function PrimaryBtn({
       className={[
         // Spec: 74×34, 4px radius, 1px border, 5/10 padding, 4px gap.
         'inline-flex h-[34px] w-[74px] shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-[4px] border border-[#5888E5] bg-[#245AC5] px-[10px] py-[5px] text-sm font-medium text-white outline-none transition-colors hover:bg-[#1f4fb0] focus:outline-none focus-visible:outline-none',
-        disabled ? 'cursor-not-allowed' : ''
+        disabled ? 'cursor-not-allowed' : 'cursor-pointer'
       ].join(' ')}
     >
       {children}
@@ -38,7 +38,7 @@ export function SecondaryBtn({ children, onClick }: ButtonProps): React.JSX.Elem
       type="button"
       onClick={onClick}
       // Spec: 74×34, 4px radius, 1px border, 5/10 padding, 4px gap.
-      className="inline-flex h-[34px] w-[74px] items-center justify-center gap-1 rounded-[4px] border border-neutral-300 bg-white px-[10px] py-[5px] text-sm font-medium text-neutral-900 outline-none transition-colors hover:bg-neutral-200 focus:outline-none focus-visible:outline-none"
+      className="inline-flex h-[34px] w-[74px] cursor-pointer items-center justify-center gap-1 rounded-[4px] border border-neutral-300 bg-white px-[10px] py-[5px] text-sm font-medium text-neutral-900 outline-none transition-colors hover:bg-neutral-200 focus:outline-none focus-visible:outline-none"
     >
       {children}
     </button>
@@ -54,7 +54,7 @@ export function GhostBtn({ children, onClick, leftIcon }: GhostBtnProps): React.
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium text-neutral-200 transition-colors hover:bg-white/5"
+      className="inline-flex cursor-pointer items-center gap-1 rounded-md px-3 py-2 text-sm font-medium text-neutral-200 transition-colors hover:bg-white/5"
     >
       {leftIcon}
       {children}

@@ -245,7 +245,7 @@ export function HomePage(): React.JSX.Element {
     {
       label: 'Open project',
       icon: openProjectIcon,
-      onAction: () => dispatch(navigate('project'))
+      onAction: () => {}
     }
   ]
   // useDeferredValue keeps the input responsive while the filter re-runs.
