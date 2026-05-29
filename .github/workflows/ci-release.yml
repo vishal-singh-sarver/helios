@@ -111,19 +111,19 @@ jobs:
           node-version: 22
 
       # ── Windows signing ──────────────────────────────────────────────────
-      - name: Import Windows signing cert
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $base64String = "${{ secrets.WIN_CERT_BASE64 }}".Trim()
-          $certBytes = [Convert]::FromBase64String($base64String)
-          $certPath = "$env:RUNNER_TEMP\codesign.pfx"
-          [IO.File]::WriteAllBytes($certPath, $certBytes)
+      #- name: Import Windows signing cert
+        # if: runner.os == 'Windows'
+        # shell: pwsh
+        # run: |
+        #   $base64String = "${{ secrets.WIN_CERT_BASE64 }}".Trim()
+        #   $certBytes = [Convert]::FromBase64String($base64String)
+        #   $certPath = "$env:RUNNER_TEMP\codesign.pfx"
+        #   [IO.File]::WriteAllBytes($certPath, $certBytes)
 
-          echo "CSC_LINK=$certPath"                                    >> $env:GITHUB_ENV
-          echo "CSC_KEY_PASSWORD=${{ secrets.WIN_CERT_PASSWORD }}"     >> $env:GITHUB_ENV
-          echo "WIN_CSC_LINK=$certPath"                                >> $env:GITHUB_ENV
-          echo "WIN_CSC_KEY_PASSWORD=${{ secrets.WIN_CERT_PASSWORD }}" >> $env:GITHUB_ENV
+        #   echo "CSC_LINK=$certPath"                                    >> $env:GITHUB_ENV
+        #   echo "CSC_KEY_PASSWORD=${{ secrets.WIN_CERT_PASSWORD }}"     >> $env:GITHUB_ENV
+        #   echo "WIN_CSC_LINK=$certPath"                                >> $env:GITHUB_ENV
+        #   echo "WIN_CSC_KEY_PASSWORD=${{ secrets.WIN_CERT_PASSWORD }}" >> $env:GITHUB_ENV
 
       # ── macOS signing & notarization ─────────────────────────────────────
       # - name: Import macOS signing cert
