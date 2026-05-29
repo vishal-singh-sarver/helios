@@ -2,8 +2,8 @@ name: Build Installers
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - develop
   workflow_dispatch:
 
 permissions:
@@ -260,10 +260,9 @@ jobs:
           if-no-files-found: warn
 
   release:
-    name: Create GitHub Release
+    name: Create QA Release
     needs: [build-windows, build-macos, build-linux]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
@@ -275,10 +274,17 @@ jobs:
         run: |
           set -e
 
-          TAG="${GITHUB_REF#refs/tags/}"
           REPO="${{ github.repository }}"
+          SHA="${{ github.sha }}"
+          SHORT_SHA="${SHA:0:7}"
+          DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
 
-          echo "## Helios ${TAG} Assets" > notes.md
+          echo "## Helios QA Release" > notes.md
+          echo "" >> notes.md
+          echo "Latest build from \`develop\` branch." >> notes.md
+          echo "" >> notes.md
+          echo "- **Commit:** \`${SHORT_SHA}\`" >> notes.md
+          echo "- **Built:** ${DATE}" >> notes.md
           echo "" >> notes.md
           echo "| OS | File | Size | SHA256 |" >> notes.md
           echo "|----|------|------|--------|" >> notes.md
@@ -287,7 +293,7 @@ jobs:
             name=$(basename "$file")
             size=$(du -h "$file" | cut -f1)
             checksum=$(sha256sum "$file" | awk '{print $1}')
-            url="https://github.com/$REPO/releases/download/$TAG/$name"
+            url="https://github.com/$REPO/releases/download/QA-Release/$name"
 
             os="Unknown"
             [[ "$name" == *.exe ]] && os="Windows"
@@ -301,11 +307,25 @@ jobs:
 
           cat notes.md
 
-      - name: Create GitHub Release
+      # Pichli QA-Release ko mita do (release + tag dono) taaki nayi build
+      # usi naam ke saath fresh upload ho sake. Pehli baar koi release nahi
+      # hogi - is liye "|| true" se error ignore karte hain.
+      - name: Delete previous QA-Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete QA-Release \
+            --yes \
+            --cleanup-tag \
+            --repo "${{ github.repository }}" || true
+
+      - name: Create QA Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          files: artifacts/**/*
+          tag_name: QA-Release
+          name: "Helios QA Release (latest develop)"
           body_path: notes.md
+          files: artifacts/**/*
           draft: false
-          prerelease: false
+          prerelease: true
+          make_latest: false
