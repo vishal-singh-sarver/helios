@@ -33,6 +33,12 @@ const INITIAL_VALUES: AddRowsValues = {
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/
 
+// Bounds for the native date input's year spinner. Must match the 1900–3000
+// range enforced in the formik validator so the widget can't even produce a
+// value the validator would reject.
+const MIN_DATE = '1900-01-01'
+const MAX_DATE = '3000-12-31'
+
 const MAX_ROWS = 10_000
 const MAX_DELTA_HOURS = 24
 const WHOLE_NUMBER_PATTERN = /^\d+$/
@@ -207,12 +213,19 @@ function AddRowsDialog({ isOpen, onClose }: AddRowsDialogProps): React.JSX.Eleme
         }}
       />
       <div className="relative">
+        {/* key flips with isOpen to force a fresh DOM input on each open. A
+            native date input keeps partially-typed segments (e.g. just a
+            month) in the widget while reporting value="" — so resetForm can't
+            clear them and they'd reappear on reopen. Remounting does. */}
         <FormField
+          key={isOpen ? 'start-date-open' : 'start-date-closed'}
           labelProps={{ label: 'Start Date' }}
           inputProps={{
             ...formik.getFieldProps('startDate'),
             type: 'date',
             placeholder: 'Start Date',
+            min: MIN_DATE,
+            max: MAX_DATE,
             iconLeft: CalendarIcon,
             inputRef: startDateRef,
             onIconLeftClick: () => openPicker(startDateRef.current),

@@ -29,6 +29,8 @@ export interface FormFieldInputProps {
   onIconLeftClick?: () => void
   inputRef?: React.Ref<HTMLInputElement>
   lang?: string
+  min?: string
+  max?: string
 }
 
 interface FormFieldProps {
