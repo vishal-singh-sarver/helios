@@ -3,7 +3,7 @@
 #
 # This file configures cross-platform packaging for:
 # - Windows (NSIS assisted installer)        -> x64 (Windows 10 + 11)
-# - macOS (DMG + PKG installers)             -> SEPARATE Intel (x64) + Apple Silicon (arm64)
+# - macOS (DMG + PKG installers)             -> SEPARATE Intel + Apple Silicon
 # - Linux (AppImage + DEB packages)
 ################################################################################
 
@@ -54,18 +54,16 @@ nsis:
   installerHeaderIcon: build/icon.ico
 
 ################################################################################
-# macOS - SEPARATE Intel (x64) + Apple Silicon (arm64) files
+# macOS - SEPARATE Intel + Apple Silicon files
 #
-# Changes:
-#  1. minimumSystemVersion: "12.0"  -> macOS 12 (Monterey) se 26 (Tahoe) tak chalega
-#  2. har target ke andar arch [x64, arm64] -> dono chips ki ALAG files
-#  3. artifactName mein ${arch} -> files aapas mein overwrite na ho
+# File names workflow ke rename step se aate hain - jaise ubuntu wala:
+#   helios-1.0.0-setup-mac-intel.dmg     (x64 build -> rename to mac-intel)
+#   helios-1.0.0-setup-mac-intel.pkg
+#   helios-1.0.0-setup-mac-silicon.dmg   (arm64 build -> rename to mac-silicon)
+#   helios-1.0.0-setup-mac-silicon.pkg
 #
-# Banegi (4 alag files):
-#   helios-1.0.0-x64-setup.dmg     (Intel Mac)
-#   helios-1.0.0-arm64-setup.dmg   (Apple Silicon - M1/M2/M3/M4)
-#   helios-1.0.0-x64-setup.pkg
-#   helios-1.0.0-arm64-setup.pkg
+# Yahan artifactName mein ${arch} HATA diya hai - kyunki workflow rename
+# step intel/silicon naam laga dega (jaise ubuntu version laga deta hai).
 ################################################################################
 mac:
   identity: null
@@ -78,10 +76,10 @@ mac:
   - pkg
 
 dmg:
-  artifactName: ${name}-${version}-${arch}-setup.${ext}
+  artifactName: ${name}-${version}-setup.${ext}
 
 pkg:
-  artifactName: ${name}-${version}-${arch}-setup.${ext}
+  artifactName: ${name}-${version}-setup.${ext}
   license: build/license.txt
   installLocation: /Applications
   allowAnywhere: true
