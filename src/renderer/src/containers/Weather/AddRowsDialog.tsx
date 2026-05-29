@@ -120,6 +120,19 @@ function AddRowsDialog({ isOpen, onClose }: AddRowsDialogProps): React.JSX.Eleme
 
       if (!values.startDate) {
         errors.startDate = 'Start date is required.'
+      } else {
+        // Match the backend: YYYY-MM-DD with a 4-digit year in 1900–3000.
+        // The 4-digit guard also rejects the native picker's overflow values
+        // (e.g. "275760-03-04") that otherwise reach the saga as bad rows.
+        const dateMatch = /^(\d{4})-\d{2}-\d{2}$/.exec(values.startDate)
+        if (!dateMatch) {
+          errors.startDate = 'Start date must be in YYYY-MM-DD format with a 4-digit year.'
+        } else {
+          const year = Number.parseInt(dateMatch[1], 10)
+          if (year < 1900 || year > 3000) {
+            errors.startDate = 'Start date year must be between 1900 and 3000.'
+          }
+        }
       }
 
       if (!values.startTime) {
