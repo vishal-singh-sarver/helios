@@ -191,7 +191,7 @@ function ProjectsTable({
                     role="button"
                     tabIndex={0}
                     aria-label={`Open project ${project.name}`}
-                    onClick={() => handleOpenProject(project)}
+                    onDoubleClick={() => handleOpenProject(project)}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault()
