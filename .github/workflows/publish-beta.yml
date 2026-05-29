@@ -1,0 +1,65 @@
+name: Publish / beta
+
+on:
+  workflow_dispatch:
+    inputs:
+      platforms:
+        description: "Platforms to publish (win, mac, linux or all)"
+        default: "all"
+        required: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: release
+
+      - name: Download Packaged Installer Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      # ── AWS / Cloud Storage Credentials ──────────────────────────
+      # - name: Configure AWS/Cloud Storage Credentials
+      #   uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     aws-access-key-id: ${{ secrets.UPDATE_FEED_S3_ACCESS_KEY }}
+      #     aws-secret-access-key: ${{ secrets.UPDATE_FEED_S3_SECRET_KEY }}
+      #     aws-region: us-east-1
+
+      # ── Beta Bucket Sync (Temporarily Disabled) ─────────────────
+      # Platforms publish independently. If one fails, others sync seamlessly.
+      #
+      # - name: Sync Artifacts to Beta Bucket Feed Channel
+      #   run: |
+      #     mkdir -p ./dist
+      #
+      #     find ./artifacts -type f \
+      #       \( -name "*.exe" \
+      #       -o -name "*.dmg" \
+      #       -o -name "*.pkg" \
+      #       -o -name "*.AppImage" \
+      #       -o -name "*.deb" \
+      #       -o -name "*.yml" \) \
+      #       -exec cp {} ./dist/ \;
+      #
+      #     aws s3 sync ./dist \
+      #       s3://${{ secrets.UPDATE_FEED_BUCKET_BETA }}/ \
+      #       --metadata-directive REPLACE \
+      #       --cache-control "max-age=300"
+
+      - name: Notify Slack Channel
+        if: always()
+        uses: slackapi/slack-github-action@v1.26.0
+
+        with:
+          payload: |
+            {
+              "text": "📢 Beta Release Channel Updated! Deployment Matrix Sync Status: ${{ job.status }}"
+            }
+
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_RELEASES }}

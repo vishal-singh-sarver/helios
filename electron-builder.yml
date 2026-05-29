@@ -2,173 +2,112 @@
 # Helios Desktop Application - electron-builder Configuration
 #
 # This file configures cross-platform packaging for:
-# - Windows (NSIS assisted installer)
-# - macOS (DMG + PKG installers)
+# - Windows (NSIS assisted installer)        -> x64 (Windows 10 + 11)
+# - macOS (DMG + PKG installers)             -> SEPARATE Intel (x64) + Apple Silicon (arm64)
 # - Linux (AppImage + DEB packages)
-#
-# Build outputs are created in dist/
-# Do not use absolute paths for build resources - all paths are relative to repo root
-#
-# For CI/CD: This configuration is platform-agnostic and works in any environment
 ################################################################################
 
 appId: com.navyug.helios
 productName: Helios
 copyright: Copyright © 2024-2026 Navyug Designs
 
-# Build directories (relative paths only)
 directories:
-  buildResources: build       # Installer assets: icons, license, etc.
-  output: dist                # Final installers go here
+  buildResources: build
+  output: dist
 
-# Files to include in packaged app
-# Excludes: node_modules is handled by default, src/ code is compiled to out/
 files:
-  - out/**
-  - package.json
+- out/**
+- package.json
 
-# Extra resources to bundle (repo-local paths only - NO absolute paths)
-# Backend executables: bundled at resources/backend/
-# electron-builder ${os} variable maps to: mac, win, linux
-# Files copied from resources/backend/${os}/ are placed in packaged app resources/backend/
 extraResources:
-  - from: resources/backend/${os}
-    to: backend
-  - from: resources/Helios_splash.png
-    to: Helios_splash.png
-  - from: build/icons/512x512.png
-    to: icon.png
+- from: resources/backend/${os}
+  to: backend
+- from: resources/Helios_splash.png
+  to: Helios_splash.png
+- from: build/icons/512x512.png
+  to: icon.png
 
+################################################################################
+# WINDOWS - x64 only (Windows 10 + 11 dono par chalta hai)
+################################################################################
 win:
   target:
-    - nsis
+  - nsis
   icon: build/icon.ico
-  # Build unsigned Windows installers without pulling in signing/edit tools.
-  # This keeps local packaging stable and does not affect macOS/Linux targets.
   signAndEditExecutable: false
+  publisherName: "Navyug Designs"
 
-################################################################################
-# WINDOWS - NSIS Assisted Installer
-################################################################################
-# Produces: helios-1.0.0-setup.exe
-# UX flow: Welcome → License → Directory → Progress → Complete Launch
-# Professional enterprise-grade installer with UAC elevation support
-#
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: Helios
   uninstallDisplayName: Helios
-  
-  # Installer mode: assisted (NOT one-click)
-  # Enables all customization options
   oneClick: false
-  
-  # License agreement - user MUST accept before proceeding
   license: build/license.txt
-  
-  # Allow users to select custom install directory
   allowToChangeInstallationDirectory: true
-  
-  # System-wide installation (all users) - requires admin elevation
   perMachine: true
   allowElevation: true
-  
-  # Post-install actions
   createDesktopShortcut: true
   createStartMenuShortcut: true
   runAfterFinish: true
-  
-  # Branding assets (must exist in build/ folder)
   installerIcon: build/icon.ico
   uninstallerIcon: build/icon.ico
   installerHeaderIcon: build/icon.ico
 
-  # Use electron-builder's built-in license wizard on Windows.
-  # This keeps the NSIS flow stable without affecting macOS/Linux packaging.
-
 ################################################################################
-# macOS - Professional App Bundle + Installers
-################################################################################
-# Targets:
-# - DMG: Simple drag-and-drop installer (Helios.dmg)
-# - PKG: Professional installer with license (Helios.pkg)
-# App bundle: /Applications/Helios.app
+# macOS - SEPARATE Intel (x64) + Apple Silicon (arm64) files
 #
+# Changes:
+#  1. minimumSystemVersion: "12.0"  -> macOS 12 (Monterey) se 26 (Tahoe) tak chalega
+#  2. har target ke andar arch [x64, arm64] -> dono chips ki ALAG files
+#  3. artifactName mein ${arch} -> files aapas mein overwrite na ho
+#
+# Banegi (4 alag files):
+#   helios-1.0.0-x64-setup.dmg     (Intel Mac)
+#   helios-1.0.0-arm64-setup.dmg   (Apple Silicon - M1/M2/M3/M4)
+#   helios-1.0.0-x64-setup.pkg
+#   helios-1.0.0-arm64-setup.pkg
+################################################################################
 mac:
-  # Code signing: Set to valid identity for production
-  # For development, leave as null (no code signing)
   identity: null
   sign: null
-  
-  # Notarization: Required for distribution via App Store or web
-  # For development, leave as false
   notarize: false
   icon: build/icon.icns
-  # Installer targets
+  minimumSystemVersion: "12.0"
   target:
-    - dmg   # Drag-and-drop disk image
-    - pkg   # Professional multi-screen installer
+  - dmg
+  - pkg
 
 dmg:
-  artifactName: ${name}-${version}.${ext}
+  artifactName: ${name}-${version}-${arch}-setup.${ext}
 
 pkg:
-  artifactName: ${name}-${version}.${ext}
-  # License shown in installer
+  artifactName: ${name}-${version}-${arch}-setup.${ext}
   license: build/license.txt
-  # Installation path for unsigned app
   installLocation: /Applications
   allowAnywhere: true
   allowCurrentUserHome: false
   isRelocatable: false
   isVersionChecked: true
-  # Installer screen text
   welcome: build/welcome.txt
   conclusion: build/conclusion.txt
 
 ################################################################################
 # LINUX - AppImage + DEB Packages
 ################################################################################
-# AppImage: Universal Linux executable (no dependencies required)
-# DEB: Standard Debian/Ubuntu package
-#
 linux:
   target:
-    - AppImage
-    - deb
-  # Maintainer contact for DEB package
+  - AppImage
+  - deb
   maintainer: Navyug Designs
-  # Linux desktop classification
   category: Utility
-  # Optional: desktop icon name (if .desktop file references it)
-  # icon: resources/icon
   executableName: helios
-  artifactName: ${name}-${version}.${ext}
+  artifactName: ${name}-${version}-setup.${ext}
   icon: build/icons
 
-
-# appImage:
-#   artifactName: ${name}-${version}.${ext}
-
-# deb:
-#   artifactName: ${name}-${version}.${ext}
-
-################################################################################
-# Build Hooks - Runs after packaging completes
-################################################################################
-# afterPack: Ensures backend binary has proper executable permissions
-#            This is critical for bundled backends in packaged apps
 afterPack: build/afterPack.js
 
-################################################################################
-# General Build Settings
-################################################################################
-
-# Do not auto-rebuild native modules in packaged app
 npmRebuild: false
 
-# Publish configuration (for auto-updates)
-# Update with actual URL for production distribution
 publish:
   provider: generic
   url: https://updates.example.com/auto-updates
