@@ -1,0 +1,331 @@
+name: Build Installers
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # ============================================================================
+  # WINDOWS - ek hi .exe banta hai jo Windows 10 AUR 11 dono par chalta hai.
+  # ============================================================================
+  build-windows:
+    runs-on: windows-2022
+    name: Build Windows Installer (10 + 11)
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          npm ci || npm install
+
+      - name: Create .env file
+        shell: bash
+        run: |
+          echo "VITE_BACKEND_URL=http://localhost:8000" > .env
+
+      - name: Build application
+        run: npm run build
+
+      - name: Package Windows Installer
+        run: npm run package:win
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: |
+            dist/*.exe
+            release/*.exe
+          compression-level: 0
+          retention-days: 5
+          if-no-files-found: warn
+
+  # ============================================================================
+  # macOS - HAR CHIP ki ALAG file (Intel x64 + Apple Silicon arm64).
+  # Har arch apne ALAG run mein banti hai - isse pkg ka multi-arch ENOENT
+  # bug (com.navyug.helios.pkg temp file collision) nahi aata.
+  # Dono build macOS 12 (Monterey) se 26 (Tahoe) tak chalti hain.
+  # ============================================================================
+  build-macos:
+    runs-on: macos-latest
+    name: Build macOS (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, arm64]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: |
+          npm ci || npm install
+
+      - name: Create .env file
+        run: |
+          echo "VITE_BACKEND_URL=http://localhost:8000" > .env
+
+      - name: Build application
+        run: npm run build
+
+      # Sirf is run wali arch build karo (--x64 ya --arm64). Isse ek run mein
+      # ek hi pkg banta hai, collision nahi hoti.
+      - name: Package macOS Installer
+        run: npm run package:mac -- --${{ matrix.arch }}
+
+      - name: Upload macOS installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-installers-${{ matrix.arch }}
+          path: |
+            dist/*.dmg
+            dist/*.pkg
+            release/*.dmg
+            release/*.pkg
+          compression-level: 0
+          retention-days: 5
+          if-no-files-found: warn
+
+  # ============================================================================
+  # LINUX - HAR VERSION KI ALAG BUILD (3 alag files).
+  #
+  # Har version apne container ke andar banti hai:
+  #   20.04 -> python:3.10-bullseye  (glibc 2.31 = ubuntu 20.04 jaisa, +Python 3.10
+  #            pehle se. KOI deadsnakes/PPA nahi - isliye reliable. Ye file
+  #            20.04, 22.04, 24.04 SAB par chalti hai.)
+  #   22.04 -> ubuntu:22.04          (Python 3.10 by default) -> 22.04 + 24.04
+  #   24.04 -> ubuntu:24.04          (Python 3.12 by default) -> 24.04
+  # ============================================================================
+  build-linux:
+    runs-on: ubuntu-22.04
+    name: Build Linux (${{ matrix.label }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: '20.04'
+            image: 'python:3.10-bullseye'
+          - label: '22.04'
+            image: 'ubuntu:22.04'
+          - label: '24.04'
+            image: 'ubuntu:24.04'
+    container:
+      image: ${{ matrix.image }}
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      TZ: Etc/UTC
+    steps:
+      # Container bare ho sakta hai - git/curl/python/build tools install karo.
+      # git checkout se PEHLE chahiye warna submodules recursive fail hoga.
+      # (bullseye image mein inme se kai pehle se hote hain - to install no-op rahega.)
+      - name: Install base tools
+        run: |
+          apt-get update
+          apt-get install -y \
+            curl \
+            git \
+            ca-certificates \
+            gnupg \
+            python3 \
+            python3-venv \
+            python3-pip \
+            build-essential
+
+      # Saare 3 images mein Python 3.10+ pehle se hota hai. Yahan sirf verify
+      # karte hain - agar kisi wajah se purana mila to saaf error de.
+      - name: Verify Python 3.10+
+        run: |
+          set -e
+          echo "python3 path:"; which python3
+          python3 --version
+          OK=$(python3 -c 'import sys; print(1 if sys.version_info >= (3,10) else 0)')
+          if [ "$OK" != "1" ]; then
+            echo "ERROR: Python 3.10+ chahiye par purana mila. Container image galat hai."
+            exit 1
+          fi
+
+      - name: Setup Node.js 22
+        run: |
+          curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+          apt-get install -y nodejs
+          node --version
+          npm --version
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # Electron + Linux packaging + native C++ backend ke liye system libraries.
+      # 24.04 mein kuch packages ke naam badle hain (t64 suffix), isliye un par
+      # fallback install lagaya hai taaki sab images mein chale.
+      - name: Install Linux build dependencies
+        run: |
+          install_one() {
+            apt-get install -y "$1" 2>/dev/null || apt-get install -y "$2" 2>/dev/null || true
+          }
+
+          apt-get install -y \
+            cmake \
+            pkg-config \
+            git \
+            libgtk-3-dev \
+            libnss3 \
+            libxss1 \
+            libxtst6 \
+            libxrandr2 \
+            libdrm2 \
+            libgbm1 \
+            libxkbcommon0 \
+            libfuse2 \
+            fonts-liberation \
+            xdg-utils \
+            libglu1-mesa-dev \
+            freeglut3-dev \
+            mesa-common-dev \
+            libx11-dev \
+            libxext-dev \
+            libxrender-dev \
+            libglew-dev \
+            libglfw3-dev \
+            zlib1g-dev \
+            libpng-dev \
+            libjpeg-dev \
+            fakeroot \
+            dpkg \
+            rpm
+
+          # ye packages 24.04 mein t64 ban gaye - dono naam try karo
+          install_one libasound2 libasound2t64
+          install_one libatk1.0-0 libatk1.0-0t64
+          install_one libatk-bridge2.0-0 libatk-bridge2.0-0t64
+
+      - name: Install dependencies
+        run: |
+          npm ci || npm install
+
+      - name: Create .env file
+        run: |
+          echo "VITE_BACKEND_URL=http://localhost:8000" > .env
+
+      - name: Build application
+        run: npm run build
+
+      - name: Package Linux Installer
+        run: npm run package:linux
+
+      # Har version ki file ka naam alag karo, warna release mein ek doosre ko
+      # overwrite kar denge (sabka naam helios-x.y.z-setup.deb hota hai).
+      - name: Tag outputs with ubuntu version
+        run: |
+          cd dist
+          for f in *.deb *.AppImage; do
+            [ -e "$f" ] || continue
+            base="${f%.*}"
+            ext="${f##*.}"
+            mv "$f" "${base}-ubuntu${{ matrix.label }}.${ext}"
+          done
+          ls -la
+
+      - name: Upload Linux packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-packages-${{ matrix.label }}
+          path: |
+            dist/*.AppImage
+            dist/*.deb
+          compression-level: 0
+          retention-days: 5
+          if-no-files-found: warn
+
+  release:
+    name: Create QA Release
+    needs: [build-windows, build-macos, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Generate Release Notes
+        shell: bash
+        run: |
+          set -e
+
+          REPO="${{ github.repository }}"
+          SHA="${{ github.sha }}"
+          SHORT_SHA="${SHA:0:7}"
+          DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
+
+          echo "## Helios QA Release" > notes.md
+          echo "" >> notes.md
+          echo "Latest build from \`develop\` branch." >> notes.md
+          echo "" >> notes.md
+          echo "- **Commit:** \`${SHORT_SHA}\`" >> notes.md
+          echo "- **Built:** ${DATE}" >> notes.md
+          echo "" >> notes.md
+          echo "| OS | File | Size | SHA256 |" >> notes.md
+          echo "|----|------|------|--------|" >> notes.md
+
+          find artifacts -type f | while read file; do
+            name=$(basename "$file")
+            size=$(du -h "$file" | cut -f1)
+            checksum=$(sha256sum "$file" | awk '{print $1}')
+            url="https://github.com/$REPO/releases/download/QA-Release/$name"
+
+            os="Unknown"
+            [[ "$name" == *.exe ]] && os="Windows"
+            [[ "$name" == *.dmg ]] && os="macOS"
+            [[ "$name" == *.pkg ]] && os="macOS"
+            [[ "$name" == *.AppImage ]] && os="Linux"
+            [[ "$name" == *.deb ]] && os="Linux"
+
+            echo "| $os | [$name]($url) | $size | \`$checksum\` |" >> notes.md
+          done
+
+          cat notes.md
+
+      # Pichli QA-Release ko mita do (release + tag dono) taaki nayi build
+      # usi naam ke saath fresh upload ho sake. Pehli baar koi release nahi
+      # hogi - is liye "|| true" se error ignore karte hain.
+      - name: Delete previous QA-Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete QA-Release \
+            --yes \
+            --cleanup-tag \
+            --repo "${{ github.repository }}" || true
+
+      - name: Create QA Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: QA-Release
+          name: "Helios QA Release (latest develop)"
+          body_path: notes.md
+          files: artifacts/**/*
+          draft: false
+          prerelease: true
+          make_latest: false

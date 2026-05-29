@@ -12,6 +12,24 @@
   !insertmacro MUI_UNPAGE_WELCOME
 !macroend
 
+!macro customInit
+  ; Kill any leftover Helios app/backend before writing files. If a previous
+  ; run crashed or force-closed, the bundled backend can still be alive and
+  ; holding handles on the install dir — Windows then refuses to overwrite it.
+  nsExec::Exec 'taskkill /F /T /IM heliosgui_backend.exe'
+  nsExec::Exec 'taskkill /F /T /IM Helios.exe'
+  Sleep 1000
+!macroend
+
+!macro customUnInstall
+  ; Kill the app/backend before removing files, otherwise Windows refuses to
+  ; delete the executable/DLLs that an orphaned backend still has open — which
+  ; is what leaves the install half-removed and blocks a clean reinstall.
+  nsExec::Exec 'taskkill /F /T /IM heliosgui_backend.exe'
+  nsExec::Exec 'taskkill /F /T /IM Helios.exe'
+  Sleep 1000
+!macroend
+
 !macro customInstall
   ; Ship a stable .ico file with the installation and point shortcuts at it.
   ; This avoids the default Electron icon when executable resource editing is disabled.
