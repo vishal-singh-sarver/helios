@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - develop
+      - devops_test_pipline
   workflow_dispatch:
 
 permissions:
