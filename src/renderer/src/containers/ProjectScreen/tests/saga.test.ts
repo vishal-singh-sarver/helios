@@ -409,6 +409,7 @@ describe('addRowWorker', () => {
     rows: {},
     rowOrder: [],
     validationErrors: {},
+    columnNameErrors: {},
     cellSync: {},
     rowSelection: {}
   }
@@ -481,6 +482,7 @@ describe('addColumnWorker', () => {
       },
       rowOrder: ['row_0', 'row_1', 'row_2'],
       validationErrors: {},
+      columnNameErrors: {},
       cellSync: {},
       rowSelection: {}
     }
@@ -714,6 +716,7 @@ describe('updateAllCheckboxesWorker', () => {
       },
       rowOrder: ['row_0', 'row_1', 'row_2'],
       validationErrors: {},
+      columnNameErrors: {},
       cellSync: {},
       rowSelection: {}
     }
@@ -827,6 +830,7 @@ describe('updateCellWorker (short-circuits)', () => {
       rows: { row_0: { '5': '0' } },
       rowOrder: ['row_0'],
       validationErrors: {},
+      columnNameErrors: {},
       cellSync: {},
       rowSelection: {}
     }
@@ -862,6 +866,7 @@ describe('updateCellWorker (short-circuits)', () => {
       rows: { row_0: { date: '2026-04-27', time: '10:00:00', '7': '293' } },
       rowOrder: ['row_0'],
       validationErrors: {},
+      columnNameErrors: {},
       cellSync: {},
       rowSelection: {}
     }

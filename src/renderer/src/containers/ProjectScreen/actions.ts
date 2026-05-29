@@ -30,6 +30,7 @@ import {
   SET_ACTIVE_SCENARIO,
   SET_ALL_ROWS_SELECTION,
   SET_CELL_VALIDATION_ERROR,
+  SET_COLUMN_NAME_ERROR,
   SET_COLUMN_VALIDATION_ERRORS,
   SET_ROW_SELECTION,
   UPDATE_PROJECT_FAILED,
@@ -61,6 +62,7 @@ import type {
   ProjectMetadata,
   RowId,
   Scenario,
+  SetColumnNameErrorPayload,
   UpdateProjectPatch,
   UpdateCellLocalPayload,
   UpdateColumnFailedPayload,
@@ -312,6 +314,12 @@ export interface SetCellValidationErrorAction extends Idx {
     validationError: string | null
   }
 }
+// Per-column name error setter. `error === null` clears. Reducer touches only
+// columnNameErrors — leaves the column's name and everything else alone.
+export interface SetColumnNameErrorAction extends Idx {
+  type: typeof SET_COLUMN_NAME_ERROR
+  payload: SetColumnNameErrorPayload
+}
 export interface UpdateAllCheckboxesRequestedAction extends Idx {
   type: typeof UPDATE_ALL_CHECKBOXES_REQUESTED
   payload: { projectId: string; scenarioId: string; checkColId: ColId; value: string }
@@ -373,6 +381,7 @@ export type ProjectScreenAction =
   | UpdateAllCheckboxesRequestedAction
   | SetColumnValidationErrorsAction
   | SetCellValidationErrorAction
+  | SetColumnNameErrorAction
   | SetRowSelectionAction
   | SetAllRowsSelectionAction
 
@@ -710,6 +719,15 @@ export const setCellValidationError = (
 ): SetCellValidationErrorAction => ({
   type: SET_CELL_VALIDATION_ERROR,
   payload: { scenarioId, rowId, colId, validationError }
+})
+
+export const setColumnNameError = (
+  scenarioId: string,
+  colId: ColId,
+  error: string | null
+): SetColumnNameErrorAction => ({
+  type: SET_COLUMN_NAME_ERROR,
+  payload: { scenarioId, colId, error }
 })
 
 export const setRowSelection = (

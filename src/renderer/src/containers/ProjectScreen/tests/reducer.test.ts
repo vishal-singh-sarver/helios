@@ -400,31 +400,82 @@ describe('projectScreenReducer', () => {
       expect(col.unitId).toBe(99)
     })
 
-    it('UPDATE_COLUMN_FAILED rolls back to the previous values', () => {
+    it('UPDATE_COLUMN_FAILED rolls back data type / unit changes', () => {
       const optimistic = projectScreenReducer(
         loaded(),
         actions.updateColumnRequested(
           PROJ,
           SCN,
           '7',
-          { name: 'temperature', dataTypeId: 9, unitId: 99 },
-          { name: 'temp', dataTypeId: 1, unitId: 2 }
+          { dataTypeId: 9, unitId: 99 },
+          { dataTypeId: 1, unitId: 2 }
         )
       )
       const result = projectScreenReducer(
         optimistic,
-        actions.updateColumnFailed(
-          PROJ,
-          SCN,
-          '7',
-          { name: 'temp', dataTypeId: 1, unitId: 2 },
-          'rejected'
-        )
+        actions.updateColumnFailed(PROJ, SCN, '7', { dataTypeId: 1, unitId: 2 }, 'rejected')
       )
       const col = result.byScenario[SCN].columns['7']
-      expect(col.name).toBe('temp')
       expect(col.dataTypeId).toBe(1)
       expect(col.unitId).toBe(2)
+    })
+
+    it('UPDATE_COLUMN_FAILED keeps the typed name and records the backend error', () => {
+      const optimistic = projectScreenReducer(
+        loaded(),
+        actions.updateColumnRequested(PROJ, SCN, '7', { name: 'humidity' }, { name: 'temp' })
+      )
+      const result = projectScreenReducer(
+        optimistic,
+        actions.updateColumnFailed(PROJ, SCN, '7', { name: 'temp' }, 'Name already exists')
+      )
+      const table = result.byScenario[SCN]
+      // Name is NOT reverted — the user's typed value stays on screen…
+      expect(table.columns['7'].name).toBe('humidity')
+      // …and the backend message is surfaced inline via the column error map.
+      expect(table.columnNameErrors['7']).toBe('Name already exists')
+    })
+
+    it('clears the name error on a fresh name UPDATE_COLUMN_REQUESTED (retry)', () => {
+      const failed = [
+        actions.updateColumnRequested(PROJ, SCN, '7', { name: 'humidity' }, { name: 'temp' }),
+        actions.updateColumnFailed(PROJ, SCN, '7', { name: 'temp' }, 'Name already exists')
+      ].reduce(projectScreenReducer, loaded())
+      expect(failed.byScenario[SCN].columnNameErrors['7']).toBe('Name already exists')
+
+      // Retrying with a new name clears the stale rejection optimistically.
+      const retried = projectScreenReducer(
+        failed,
+        actions.updateColumnRequested(PROJ, SCN, '7', { name: 'rh' }, { name: 'humidity' })
+      )
+      expect(retried.byScenario[SCN].columnNameErrors['7']).toBeUndefined()
+    })
+
+    it('keeps the name error when an unrelated unit change succeeds on the same column', () => {
+      const failed = [
+        actions.updateColumnRequested(PROJ, SCN, '7', { name: 'humidity' }, { name: 'temp' }),
+        actions.updateColumnFailed(PROJ, SCN, '7', { name: 'temp' }, 'Name already exists')
+      ].reduce(projectScreenReducer, loaded())
+
+      // A data-type / unit change carries no `name`, so neither its optimistic
+      // REQUESTED nor its SUCCEEDED may touch the column's name rejection.
+      const afterUnitChange = [
+        actions.updateColumnRequested(PROJ, SCN, '7', { unitId: 3 }, { unitId: 2 }),
+        actions.updateColumnSucceeded(PROJ, SCN, '7')
+      ].reduce(projectScreenReducer, failed)
+
+      expect(afterUnitChange.byScenario[SCN].columnNameErrors['7']).toBe('Name already exists')
+    })
+
+    it('SET_COLUMN_NAME_ERROR sets and clears the per-column name error', () => {
+      const withError = projectScreenReducer(
+        loaded(),
+        actions.setColumnNameError(SCN, '7', 'Name already exists')
+      )
+      expect(withError.byScenario[SCN].columnNameErrors['7']).toBe('Name already exists')
+
+      const cleared = projectScreenReducer(withError, actions.setColumnNameError(SCN, '7', null))
+      expect(cleared.byScenario[SCN].columnNameErrors['7']).toBeUndefined()
     })
 
     it('UPDATE_COLUMN_REQUESTED on a missing scenario / column is a no-op', () => {

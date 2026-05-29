@@ -95,6 +95,10 @@ export const SET_COLUMN_VALIDATION_ERRORS =
 // value (UPDATE_CELL_LOCAL would mark the cell pending sync on every keystroke).
 export const SET_CELL_VALIDATION_ERROR =
   'app/ProjectScreen/SET_CELL_VALIDATION_ERROR' as const
+// Per-column name error. Set when a header name PATCH is rejected by the
+// backend (e.g. duplicate name) so the header can show the message inline
+// while keeping the user's typed name; cleared on edit / retry / success.
+export const SET_COLUMN_NAME_ERROR = 'app/ProjectScreen/SET_COLUMN_NAME_ERROR' as const
 
 // Selection
 export const SET_ROW_SELECTION = 'app/ProjectScreen/SET_ROW_SELECTION' as const

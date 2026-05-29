@@ -67,6 +67,7 @@ export { selectWeatherDomain as selectWeatherDomain }
 
 export {
   makeSelectCellError,
+  makeSelectColumnNameError,
   makeSelectCellSync,
   makeSelectCellValue,
   makeSelectDataType,
