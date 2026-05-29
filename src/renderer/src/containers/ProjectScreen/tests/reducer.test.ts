@@ -606,6 +606,25 @@ describe('projectScreenReducer', () => {
       expect(state.byScenario[SCN].cellSync[cellKey('row_0', '7')]).toBeUndefined()
     })
 
+    it('UPDATE_CELL_LOCAL keeps pending for a numeric out-of-range value (still synced)', () => {
+      const state = projectScreenReducer(
+        loaded(),
+        actions.updateCellLocal({
+          projectId: PROJ,
+          scenarioId: SCN,
+          rowId: 'row_0',
+          colId: '7',
+          value: '999999',
+          validationError: 'too high'
+        })
+      )
+      const table = state.byScenario[SCN]
+      // The error is recorded for display…
+      expect(table.validationErrors.row_0['7']).toBe('too high')
+      // …but because the value is a number, the edit is still sent (pending).
+      expect(table.cellSync[cellKey('row_0', '7')]).toBe('pending')
+    })
+
     it('UPDATE_CELL_LOCAL with empty value writes null (cleared cell)', () => {
       const result = projectScreenReducer(
         loaded(),

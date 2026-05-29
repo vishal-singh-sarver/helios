@@ -761,7 +761,7 @@ describe('updateCellWorker (short-circuits)', () => {
   // (3) column is the merged date-time display column
 
   const buildAction = (
-    overrides: Partial<{ colId: string; validationError: string | null }>
+    overrides: Partial<{ colId: string; value: string; validationError: string | null }>
   ): ReturnType<typeof actions.updateCellLocal> =>
     actions.updateCellLocal({
       projectId: PROJ,
@@ -779,15 +779,60 @@ describe('updateCellWorker (short-circuits)', () => {
     value: '300'
   })
 
-  it('skips network call when validationError is non-null', () => {
+  it('skips network call for non-numeric input even when flagged', () => {
     function* worker(action: ReturnType<typeof actions.updateCellLocal>): Generator {
-      const { validationError } = action.payload
-      if (validationError != null) return
+      const { value, validationError } = action.payload
+      if (validationError != null && !Number.isFinite(Number(value.trim()))) return
       yield noopCellCall
     }
-    const gen = worker(buildAction({ validationError: 'too high' }))
+    const gen = worker(buildAction({ value: 'abc', validationError: 'must be a number' }))
     // First step — early return, no effect yielded.
     expect(gen.next().done).toBe(true)
+  })
+
+  it('still persists a numeric out-of-range value (error shown, edit saved)', () => {
+    function* worker(action: ReturnType<typeof actions.updateCellLocal>): Generator {
+      const { colId, value, validationError } = action.payload
+      if (validationError != null && !Number.isFinite(Number(value.trim()))) return
+      if (colId === 'date' || colId === 'time') return
+      const table = (yield select(selectActiveWeatherTable)) as WeatherTable | null
+      if (!table) return
+      if (table.columns[colId]?.name === DATE_TIME_COL_NAME) return
+      yield put(actions.updateCellRequested(PROJ, SCN, 'row_0', colId))
+      const row = table.rows['row_0']
+      if (!row) return
+      const date = row['date']
+      const time = row['time']
+      if (date == null || time == null) return
+      yield call(updateCellRequest, PROJ, SCN, { col: colId, row: { date, time }, value })
+      yield put(actions.updateCellSucceeded(PROJ, SCN, 'row_0', colId))
+    }
+    // '300' is numeric but flagged out-of-range — it must still reach the API.
+    const gen = worker(buildAction({ colId: '7', value: '300', validationError: 'too high' }))
+    gen.next() // select
+    const table: WeatherTable = {
+      columns: {
+        date: { id: 'date', name: 'date', dataTypeId: null, unitId: null },
+        time: { id: 'time', name: 'time', dataTypeId: null, unitId: null },
+        '7': { id: '7', name: 'temp', dataTypeId: 1, unitId: 2 }
+      },
+      columnOrder: ['date', 'time', '7'],
+      rows: { row_0: { date: '2026-04-27', time: '10:00:00', '7': '293' } },
+      rowOrder: ['row_0'],
+      validationErrors: {},
+      columnNameErrors: {},
+      cellSync: {},
+      rowSelection: {}
+    }
+    expect(gen.next(table).value).toEqual(put(actions.updateCellRequested(PROJ, SCN, 'row_0', '7')))
+    expect(gen.next().value).toEqual(
+      call(updateCellRequest, PROJ, SCN, {
+        col: '7',
+        row: { date: '2026-04-27', time: '10:00:00' },
+        value: '300'
+      })
+    )
+    expect(gen.next().value).toEqual(put(actions.updateCellSucceeded(PROJ, SCN, 'row_0', '7')))
   })
 
   it('skips network call for the DATE pseudo-column', () => {

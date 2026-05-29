@@ -569,8 +569,14 @@ const projectScreenReducer = (
         if (validationError != null) {
           if (!table.validationErrors[rowId]) table.validationErrors[rowId] = {}
           table.validationErrors[rowId][colId] = validationError
-          // No network call will be made — clear any stale pending sync state.
-          delete table.cellSync[key]
+          // A numeric value that's only out of range is still sent (the saga
+          // persists it while the error stays visible), so keep it pending.
+          // Non-numeric input makes no network call — drop any stale pending.
+          if (Number.isFinite(Number(value.trim()))) {
+            table.cellSync[key] = 'pending'
+          } else {
+            delete table.cellSync[key]
+          }
         } else {
           if (table.validationErrors[rowId]) {
             delete table.validationErrors[rowId][colId]
