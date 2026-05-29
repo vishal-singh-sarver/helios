@@ -81,6 +81,32 @@ describe('<ImportWizard />', () => {
     expect(screen.getByText('Weather Data File')).toBeInTheDocument()
   })
 
+  it('over-skipping all rows on step 2 does not trap navigation: Back to step 1 keeps Next enabled', () => {
+    render(<ImportWizard {...baseProps} pickedFile={goodGroup1File} />)
+
+    // Step 1 → 2 (Data Preview)
+    fireEvent.click(screen.getByText('Next'))
+    expect(screen.getByText('Header Lines to Skip')).toBeInTheDocument()
+
+    // Skip more lines than the file has → parseDelimited throws, error banner
+    // shows, and Next on the Data-Preview step is (correctly) disabled.
+    const skipInput = screen.getByRole('spinbutton') as HTMLInputElement
+    fireEvent.change(skipInput, { target: { value: '999' } })
+    expect(screen.getByText(/No data rows after skipping header lines/)).toBeInTheDocument()
+    expect(screen.getByText('Next')).toBeDisabled()
+
+    // Go Back to the File step — the transient error must NOT trap the user
+    // there. The file parsed fine, so Next is enabled again.
+    fireEvent.click(screen.getByText('Back'))
+    expect(screen.getByText('Weather Data File')).toBeInTheDocument()
+    expect(screen.getByText('Next')).not.toBeDisabled()
+
+    // And going forward again lands on a clean Data-Preview (error cleared).
+    fireEvent.click(screen.getByText('Next'))
+    expect(screen.getByText('Header Lines to Skip')).toBeInTheDocument()
+    expect(screen.queryByText(/No data rows after skipping header lines/)).not.toBeInTheDocument()
+  })
+
   it('walks all four steps and Import dispatches a dataset with the check column', () => {
     const onSubmit = vi.fn()
     render(<ImportWizard {...baseProps} pickedFile={goodGroup1File} onSubmit={onSubmit} />)
