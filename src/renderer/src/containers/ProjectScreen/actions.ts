@@ -1,12 +1,14 @@
 import {
   ADD_COLUMN_FAILED,
   ADD_COLUMN_REQUESTED,
+  ADD_COLUMN_RESET,
   ADD_COLUMN_SUCCEEDED,
   DELETE_COLUMN_FAILED,
   DELETE_COLUMN_REQUESTED,
   DELETE_COLUMN_SUCCEEDED,
   ADD_ROW_FAILED,
   ADD_ROW_REQUESTED,
+  ADD_ROW_RESET,
   ADD_ROW_SUCCEEDED,
   LIST_SCENARIOS_FAILED,
   LIST_SCENARIOS_REQUESTED,
@@ -186,6 +188,11 @@ export interface AddRowFailedAction extends Idx {
   type: typeof ADD_ROW_FAILED
   payload: { projectId: string; scenarioId: string; error: string }
 }
+// Clears the add-row request status (loading/error) — dispatched when the
+// dialog closes so a prior failure doesn't persist into the next open.
+export interface AddRowResetAction extends Idx {
+  type: typeof ADD_ROW_RESET
+}
 
 // Add column
 export interface AddColumnRequestedAction extends Idx {
@@ -199,6 +206,11 @@ export interface AddColumnSucceededAction extends Idx {
 export interface AddColumnFailedAction extends Idx {
   type: typeof ADD_COLUMN_FAILED
   payload: { projectId: string; scenarioId: string; error: string }
+}
+// Clears the add-column request status (loading/error) — dispatched when the
+// dialog closes so a prior failure doesn't persist into the next open.
+export interface AddColumnResetAction extends Idx {
+  type: typeof ADD_COLUMN_RESET
 }
 
 // Seed default columns (date-time + check) on an empty scenario. Internal
@@ -339,9 +351,11 @@ export type ProjectScreenAction =
   | AddRowRequestedAction
   | AddRowSucceededAction
   | AddRowFailedAction
+  | AddRowResetAction
   | AddColumnRequestedAction
   | AddColumnSucceededAction
   | AddColumnFailedAction
+  | AddColumnResetAction
   | SeedDefaultColumnsRequestedAction
   | SeedDefaultColumnsSucceededAction
   | SeedDefaultColumnsFailedAction
@@ -512,6 +526,9 @@ export const addRowFailed = (
   type: ADD_ROW_FAILED,
   payload: { projectId, scenarioId, error }
 })
+export const addRowReset = (): AddRowResetAction => ({
+  type: ADD_ROW_RESET
+})
 
 export const addColumnRequested = (
   projectId: string,
@@ -540,6 +557,9 @@ export const addColumnFailed = (
 ): AddColumnFailedAction => ({
   type: ADD_COLUMN_FAILED,
   payload: { projectId, scenarioId, error }
+})
+export const addColumnReset = (): AddColumnResetAction => ({
+  type: ADD_COLUMN_RESET
 })
 
 export const seedDefaultColumnsRequested = (

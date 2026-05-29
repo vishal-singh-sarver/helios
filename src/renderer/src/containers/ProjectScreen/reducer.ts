@@ -3,12 +3,14 @@ import type { ProjectScreenAction } from './actions'
 import {
   ADD_COLUMN_FAILED,
   ADD_COLUMN_REQUESTED,
+  ADD_COLUMN_RESET,
   ADD_COLUMN_SUCCEEDED,
   DELETE_COLUMN_FAILED,
   DELETE_COLUMN_REQUESTED,
   DELETE_COLUMN_SUCCEEDED,
   ADD_ROW_FAILED,
   ADD_ROW_REQUESTED,
+  ADD_ROW_RESET,
   ADD_ROW_SUCCEEDED,
   LIST_SCENARIOS_FAILED,
   LIST_SCENARIOS_REQUESTED,
@@ -398,6 +400,10 @@ const projectScreenReducer = (
         draft.addRow.error = action.payload.error
         break
 
+      case ADD_ROW_RESET:
+        draft.addRow = idleStatus()
+        break
+
       // ── Add column ─────────────────────────────────────────────────────────
 
       case ADD_COLUMN_REQUESTED:
@@ -427,6 +433,10 @@ const projectScreenReducer = (
       case ADD_COLUMN_FAILED:
         draft.addColumn.loading = false
         draft.addColumn.error = action.payload.error
+        break
+
+      case ADD_COLUMN_RESET:
+        draft.addColumn = idleStatus()
         break
 
       // ── Update column header (PATCH) ───────────────────────────────────────

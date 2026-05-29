@@ -4,7 +4,7 @@ import Dialog from '@renderer/components/Dialog'
 import FormField from '@renderer/components/FormField'
 import { Spinner } from '@renderer/components/LoadingScreen/Spinner'
 import TimePicker24 from '@renderer/components/TimePicker24'
-import { addRowRequested } from 'containers/ProjectScreen/actions'
+import { addRowRequested, addRowReset } from 'containers/ProjectScreen/actions'
 import { useFormik } from 'formik'
 import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
@@ -176,9 +176,13 @@ function AddRowsDialog({ isOpen, onClose }: AddRowsDialogProps): React.JSX.Eleme
   })
 
   // Reset the form whenever the dialog closes — covers both user Cancel and
-  // success-driven close from the toolbar.
+  // success-driven close from the toolbar. Also clear the saga request status
+  // so a prior failure's error banner doesn't persist into the next open.
   React.useEffect(() => {
-    if (!isOpen) formik.resetForm()
+    if (!isOpen) {
+      formik.resetForm()
+      dispatch(addRowReset())
+    }
     // formik is intentionally omitted; we only want isOpen edge transitions.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen])
@@ -269,7 +273,7 @@ function AddRowsDialog({ isOpen, onClose }: AddRowsDialogProps): React.JSX.Eleme
       />
 
       {error && (
-        <p role="alert" className="pt-2 text-sm text-red-600">
+        <p role="alert" className="form-error-text pt-2">
           {error}
         </p>
       )}

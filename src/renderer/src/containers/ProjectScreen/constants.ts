@@ -45,11 +45,13 @@ export const UPLOAD_FILE_FAILED = 'app/ProjectScreen/UPLOAD_FILE_FAILED' as cons
 export const ADD_ROW_REQUESTED = 'app/ProjectScreen/ADD_ROW_REQUESTED' as const
 export const ADD_ROW_SUCCEEDED = 'app/ProjectScreen/ADD_ROW_SUCCEEDED' as const
 export const ADD_ROW_FAILED = 'app/ProjectScreen/ADD_ROW_FAILED' as const
+export const ADD_ROW_RESET = 'app/ProjectScreen/ADD_ROW_RESET' as const
 
 // Add column
 export const ADD_COLUMN_REQUESTED = 'app/ProjectScreen/ADD_COLUMN_REQUESTED' as const
 export const ADD_COLUMN_SUCCEEDED = 'app/ProjectScreen/ADD_COLUMN_SUCCEEDED' as const
 export const ADD_COLUMN_FAILED = 'app/ProjectScreen/ADD_COLUMN_FAILED' as const
+export const ADD_COLUMN_RESET = 'app/ProjectScreen/ADD_COLUMN_RESET' as const
 
 // Seed default columns (date-time + check) for a freshly created scenario
 // that has no headers and no rows. Fired from inside loadScenarioWorker; on
