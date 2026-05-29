@@ -141,6 +141,7 @@ describe('unitConversion', () => {
       },
       rowOrder: ['row_0', 'row_1', 'row_2'],
       validationErrors: {},
+      columnNameErrors: {},
       cellSync: {},
       rowSelection: {}
     }

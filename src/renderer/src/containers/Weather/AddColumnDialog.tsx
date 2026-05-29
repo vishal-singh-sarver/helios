@@ -2,7 +2,7 @@ import Dialog from '@renderer/components/Dialog'
 import type { FormFieldOption } from '@renderer/components/FormField'
 import FormField from '@renderer/components/FormField'
 import { Spinner } from '@renderer/components/LoadingScreen/Spinner'
-import { addColumnRequested } from 'containers/ProjectScreen/actions'
+import { addColumnRequested, addColumnReset } from 'containers/ProjectScreen/actions'
 import type { ColumnDef, DataTypeDef } from 'containers/ProjectScreen/types'
 import { useFormik } from 'formik'
 import React from 'react'
@@ -117,9 +117,13 @@ function AddColumnDialog({ isOpen, onClose }: AddColumnDialogProps): React.JSX.E
   })
 
   // Reset the form whenever the dialog closes — covers both user Cancel and
-  // success-driven close from the toolbar.
+  // success-driven close from the toolbar. Also clear the saga request status
+  // so a prior failure's error banner doesn't persist into the next open.
   React.useEffect(() => {
-    if (!isOpen) formik.resetForm()
+    if (!isOpen) {
+      formik.resetForm()
+      dispatch(addColumnReset())
+    }
     // formik is intentionally omitted: we only want this on isOpen edges,
     // and including formik would re-fire on every keystroke.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -226,7 +230,7 @@ function AddColumnDialog({ isOpen, onClose }: AddColumnDialogProps): React.JSX.E
       />
 
       {error && (
-        <p role="alert" className="pt-2 text-sm text-red-600">
+        <p role="alert" className="form-error-text pt-2">
           {error}
         </p>
       )}

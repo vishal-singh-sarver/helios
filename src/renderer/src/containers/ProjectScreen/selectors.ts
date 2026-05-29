@@ -295,6 +295,13 @@ export const makeSelectCellError = (
     (table) => table?.validationErrors[rowId]?.[colId] ?? null
   )
 
+// Backend-rejected header name for a column (e.g. duplicate). null when the
+// column's current name is accepted. The header editor shows it inline.
+export const makeSelectColumnNameError = (
+  colId: ColId
+): ((state: RootState) => string | null) =>
+  createSelector(selectActiveWeatherTable, (table) => table?.columnNameErrors[colId] ?? null)
+
 // ── Selection ────────────────────────────────────────────────────────────────
 
 export const selectRowSelection = createSelector(

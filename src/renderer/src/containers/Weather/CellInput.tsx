@@ -71,10 +71,18 @@ function CellInput({
   // made it into `draft`.
   const displayError = globalBoundError || decimalValidationError || error
 
-  // Error visual is the cell <td>'s red border (rendered by WeatherTable);
-  // here we only reserve right-side room for the info icon when in error
-  // and keep the blue focus ring for the editing state.
-  const inputCls = `h-full w-full bg-transparent px-4 ${displayError ? 'pr-8' : ''} outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500/60`
+  // Both visuals live on the cell <td> (rendered by WeatherTable): the red
+  // validation outline, and the blue focus-within selection outline (identical
+  // 1px inset dimensions, different color). Keeping them on the <td> guarantees
+  // identical geometry/clipping — an outline on the <input> would lose its top
+  // edge against the header/row boundary.
+  //
+  // `outline-none!` (important) suppresses the global `:focus-visible` 2px ring
+  // (index.css) on the cell input. That rule is unlayered, so it would beat a
+  // plain layered `outline-none` and stack a thicker outer outline on top of
+  // the <td>'s 1px one. We only reserve right-side room for the info icon when
+  // in error.
+  const inputCls = `h-full w-full bg-transparent px-4 ${displayError ? 'pr-8' : ''} outline-none!`
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const newValue = e.target.value

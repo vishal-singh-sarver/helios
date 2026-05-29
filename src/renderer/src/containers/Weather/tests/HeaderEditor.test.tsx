@@ -1,7 +1,25 @@
 import React from 'react'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import HeaderEditor from '../HeaderEditor'
+import { setColumnNameError } from 'containers/ProjectScreen/actions'
 import type { ColumnDef, DataTypeDef } from 'containers/ProjectScreen/types'
+
+// HeaderEditor reads the active scenario id and the per-column backend name
+// error via useSelector, and dispatches a clear on edit. Mock react-redux +
+// the selectors module so the test stays hermetic (mirrors CellInput.test).
+let mockBackendNameError: string | null = null
+const mockDispatch = vi.fn()
+
+vi.mock('react-redux', () => ({
+  useSelector: (selector: (state: unknown) => unknown) =>
+    typeof selector === 'function' ? selector({}) : selector,
+  useDispatch: () => mockDispatch
+}))
+
+vi.mock('../selectors', () => ({
+  makeSelectColumnNameError: () => () => mockBackendNameError,
+  selectActiveScenarioId: () => 'scen-1'
+}))
 
 // DataTypeUnitPicker is exercised by its own test — here we replace it with a
 // stub that exposes the props HeaderEditor wires through, so the assertions
@@ -42,6 +60,11 @@ const dataTypes: DataTypeDef[] = [
 const baseCol: ColumnDef = { id: '1', name: 'Air Temp', dataTypeId: 1, unitId: 10 }
 
 describe('<HeaderEditor />', () => {
+  beforeEach(() => {
+    mockBackendNameError = null
+    mockDispatch.mockClear()
+  })
+
   afterEach(() => {
     cleanup()
   })
@@ -107,14 +130,33 @@ describe('<HeaderEditor />', () => {
     expect(onPatch).not.toHaveBeenCalled()
   })
 
-  it('does not commit and reverts the draft when blurred while empty', () => {
+  it('keeps the empty draft and shows the required error on blur (no silent revert)', () => {
     const onPatch = vi.fn()
     renderEditor({ onPatch })
     const input = screen.getByRole('textbox', { name: 'Column 1 name' })
     fireEvent.change(input, { target: { value: '   ' } })
     fireEvent.blur(input)
     expect(onPatch).not.toHaveBeenCalled()
-    expect(input).toHaveValue('Air Temp')
+    // The value is NOT reverted to the previous name…
+    expect(input).toHaveValue('   ')
+    // …and the validation error stays visible.
+    expect(screen.getByText('Column name is required.')).toBeInTheDocument()
+  })
+
+  it('shows the backend name error inline while keeping the typed name', () => {
+    mockBackendNameError = 'Name already exists'
+    renderEditor({ col: { ...baseCol, name: 'humidity' } })
+    expect(screen.getByRole('textbox', { name: 'Column 1 name' })).toHaveValue('humidity')
+    expect(screen.getByText('Name already exists')).toBeInTheDocument()
+  })
+
+  it('clears the backend name error on a fresh edit', () => {
+    mockBackendNameError = 'Name already exists'
+    renderEditor()
+    fireEvent.change(screen.getByRole('textbox', { name: 'Column 1 name' }), {
+      target: { value: 'Renamed' }
+    })
+    expect(mockDispatch).toHaveBeenCalledWith(setColumnNameError('scen-1', '1', null))
   })
 
   it('re-syncs the draft when col.name changes externally (rollback)', () => {

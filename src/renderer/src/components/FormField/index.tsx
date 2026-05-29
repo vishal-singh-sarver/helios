@@ -29,6 +29,8 @@ export interface FormFieldInputProps {
   onIconLeftClick?: () => void
   inputRef?: React.Ref<HTMLInputElement>
   lang?: string
+  min?: string
+  max?: string
 }
 
 interface FormFieldProps {
@@ -128,7 +130,7 @@ function FormField({ labelProps, inputProps }: FormFieldProps): React.JSX.Elemen
       )}
 
       {error && (
-        <p id={errorId} className="mt-1 text-xs text-red-400" role="alert">
+        <p id={errorId} className="form-error-text mt-1" role="alert">
           {error}
         </p>
       )}

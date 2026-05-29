@@ -3,12 +3,14 @@ import type { ProjectScreenAction } from './actions'
 import {
   ADD_COLUMN_FAILED,
   ADD_COLUMN_REQUESTED,
+  ADD_COLUMN_RESET,
   ADD_COLUMN_SUCCEEDED,
   DELETE_COLUMN_FAILED,
   DELETE_COLUMN_REQUESTED,
   DELETE_COLUMN_SUCCEEDED,
   ADD_ROW_FAILED,
   ADD_ROW_REQUESTED,
+  ADD_ROW_RESET,
   ADD_ROW_SUCCEEDED,
   LIST_SCENARIOS_FAILED,
   LIST_SCENARIOS_REQUESTED,
@@ -27,6 +29,7 @@ import {
   SET_ACTIVE_SCENARIO,
   SET_ALL_ROWS_SELECTION,
   SET_CELL_VALIDATION_ERROR,
+  SET_COLUMN_NAME_ERROR,
   SET_COLUMN_VALIDATION_ERRORS,
   SET_ROW_SELECTION,
   UPDATE_ALL_CHECKBOXES_REQUESTED,
@@ -398,6 +401,10 @@ const projectScreenReducer = (
         draft.addRow.error = action.payload.error
         break
 
+      case ADD_ROW_RESET:
+        draft.addRow = idleStatus()
+        break
+
       // ── Add column ─────────────────────────────────────────────────────────
 
       case ADD_COLUMN_REQUESTED:
@@ -429,6 +436,10 @@ const projectScreenReducer = (
         draft.addColumn.error = action.payload.error
         break
 
+      case ADD_COLUMN_RESET:
+        draft.addColumn = idleStatus()
+        break
+
       // ── Update column header (PATCH) ───────────────────────────────────────
       //
       // Optimistic: write the patch into the local ColumnDef on _REQUESTED, no-op
@@ -439,22 +450,38 @@ const projectScreenReducer = (
         const { scenarioId, colId, patch } = action.payload
         const table = draft.byScenario[scenarioId]
         const col = table?.columns[colId]
-        if (!col) break
-        if (patch.name !== undefined) col.name = patch.name
+        if (!table || !col) break
+        if (patch.name !== undefined) {
+          col.name = patch.name
+          // Optimistically clear any prior rejection — a new attempt is in
+          // flight. _FAILED re-sets it if this attempt is also rejected.
+          delete table.columnNameErrors[colId]
+        }
         if (patch.dataTypeId !== undefined) col.dataTypeId = patch.dataTypeId
         if (patch.unitId !== undefined) col.unitId = patch.unitId
         break
       }
 
       case UPDATE_COLUMN_SUCCEEDED:
+        // Intentionally a no-op for columnNameErrors. A successful *name*
+        // change already had its error cleared by the REQUESTED that started
+        // it; clearing here unconditionally would also wipe a still-valid name
+        // rejection when an unrelated data-type / unit change on the same
+        // column succeeds (and triggers cell revalidation).
         break
 
       case UPDATE_COLUMN_FAILED: {
-        const { scenarioId, colId, previous } = action.payload
+        const { scenarioId, colId, previous, error } = action.payload
         const table = draft.byScenario[scenarioId]
         const col = table?.columns[colId]
-        if (!col) break
-        if (previous.name !== undefined) col.name = previous.name
+        if (!table || !col) break
+        // Name change rejected: keep the user's typed name on screen and
+        // surface the backend message inline (mirrors the client-side
+        // required/30-char errors) rather than silently reverting.
+        if (previous.name !== undefined) {
+          table.columnNameErrors[colId] = error
+        }
+        // Data type / unit changes still roll back to the snapshot.
         if (previous.dataTypeId !== undefined) col.dataTypeId = previous.dataTypeId
         if (previous.unitId !== undefined) col.unitId = previous.unitId
         break
@@ -542,8 +569,14 @@ const projectScreenReducer = (
         if (validationError != null) {
           if (!table.validationErrors[rowId]) table.validationErrors[rowId] = {}
           table.validationErrors[rowId][colId] = validationError
-          // No network call will be made — clear any stale pending sync state.
-          delete table.cellSync[key]
+          // A numeric value that's only out of range is still sent (the saga
+          // persists it while the error stays visible), so keep it pending.
+          // Non-numeric input makes no network call — drop any stale pending.
+          if (Number.isFinite(Number(value.trim()))) {
+            table.cellSync[key] = 'pending'
+          } else {
+            delete table.cellSync[key]
+          }
         } else {
           if (table.validationErrors[rowId]) {
             delete table.validationErrors[rowId][colId]
@@ -629,6 +662,17 @@ const projectScreenReducer = (
           if (!table.validationErrors[rowId]) table.validationErrors[rowId] = {}
           table.validationErrors[rowId][colId] = validationError
         }
+        break
+      }
+
+      // Per-column header name error: set the backend rejection message or
+      // clear it (on a fresh edit). Touches only columnNameErrors.
+      case SET_COLUMN_NAME_ERROR: {
+        const { scenarioId, colId, error } = action.payload
+        const table = draft.byScenario[scenarioId]
+        if (!table) break
+        if (error == null) delete table.columnNameErrors[colId]
+        else table.columnNameErrors[colId] = error
         break
       }
 

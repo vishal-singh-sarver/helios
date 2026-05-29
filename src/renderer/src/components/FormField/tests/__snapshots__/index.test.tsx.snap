@@ -75,7 +75,7 @@ exports[`<FormField /> > should match the snapshot with error 1`] = `
     />
   </div>
   <p
-    class="mt-1 text-xs text-red-400"
+    class="form-error-text mt-1"
     id="_r_o_"
     role="alert"
   >
