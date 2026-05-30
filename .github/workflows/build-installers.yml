@@ -110,7 +110,7 @@ jobs:
       - name: Tag outputs with arch
         run: |
           cd dist
-          for f in *.dmg *.pkg; do
+          for f in *.pkg; do
             [ -e "$f" ] || continue
             base="${f%.*}"
             ext="${f##*.}"
@@ -123,7 +123,6 @@ jobs:
         with:
           name: macos-installers-${{ matrix.label }}
           path: |
-            dist/*.dmg
             dist/*.pkg
           compression-level: 0
           retention-days: 5
