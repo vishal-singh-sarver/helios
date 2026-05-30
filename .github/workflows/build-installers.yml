@@ -56,22 +56,14 @@ jobs:
           if-no-files-found: warn
 
   # ============================================================================
-  # macOS - HAR CHIP ki ALAG file (Intel + Apple Silicon).
-  # Files naam ubuntu jaisa: -mac-intel / -mac-silicon (technical x64/arm64
-  # ki jagah user-friendly naam).
-  # Dono build macOS 12 (Monterey) se 26 (Tahoe) tak chalti hain.
+  # macOS - INTEL build (x86_64) runs on macos-13 runner (Intel hardware).
+  # macos-latest is now Apple Silicon - chalane se backend bhi arm64 ban jata
+  # hai jo Intel Mac par "error -86 / EBADARCH" deta hai.
+  # macos-13 = last Intel-based GitHub runner.
   # ============================================================================
-  build-macos:
-    runs-on: macos-latest
-    name: Build macOS (${{ matrix.label }})
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - arch: x64
-            label: intel
-          - arch: arm64
-            label: silicon
+  build-macos-intel:
+    runs-on: macos-13
+    name: Build macOS (intel)
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -83,6 +75,16 @@ jobs:
         with:
           node-version: 22
 
+      # Verify ki actually Intel machine pe chal rahe hain
+      - name: Verify Intel architecture
+        run: |
+          uname -m
+          # x86_64 hona chahiye
+          if [ "$(uname -m)" != "x86_64" ]; then
+            echo "ERROR: macos-13 par bhi arm64 mil raha hai. GitHub config check karo."
+            exit 1
+          fi
+
       - name: Install dependencies
         run: |
           npm ci || npm install
@@ -91,37 +93,120 @@ jobs:
         run: |
           echo "VITE_BACKEND_URL=http://localhost:8000" > .env
 
-      - name: Build application
+      # Yahan PyInstaller (jo bhi npm run build trigger karta hai) Intel runner
+      # par chalega - to backend bhi x86_64 banega. Yahi pichli problem ki jad.
+      - name: Build application (Intel backend)
         run: npm run build
 
-      # Sirf is run wali arch build karo (--x64 ya --arm64). Isse ek run mein
-      # ek hi pkg banta hai, collision nahi hoti.
-      - name: Package macOS Installer
-        run: npm run package:mac -- --${{ matrix.arch }}
+      - name: Package macOS Installer (x64)
+        run: npm run package:mac -- --x64
 
-      # Ubuntu wali style rename - "x64" / "arm64" hata ke "mac-intel" /
-      # "mac-silicon" laga do. Final naam:
-      #   helios-1.0.0-setup-mac-intel.dmg / .pkg
-      #   helios-1.0.0-setup-mac-silicon.dmg / .pkg
-      - name: Tag outputs with mac label
+      - name: Tag outputs with mac-intel label
         run: |
           cd dist
           for f in *.dmg *.pkg; do
             [ -e "$f" ] || continue
             base="${f%.*}"
             ext="${f##*.}"
-            # Agar build ne arch suffix laga diya hai use hata do
             cleaned=$(echo "$base" | sed -E 's/-(x64|arm64)//')
-            new_name="${cleaned}-mac-${{ matrix.label }}.${ext}"
+            new_name="${cleaned}-mac-intel.${ext}"
             mv "$f" "$new_name"
             echo "Renamed: $f -> $new_name"
           done
           ls -la
 
-      - name: Upload macOS installers
+      # Diagnostic - verify ki actually backend x86_64 ban hai
+      - name: Verify backend architecture
+        run: |
+          find dist -type d -name "heliosgui_backend" | head -1 | while read dir; do
+            executable=$(find "$dir" -maxdepth 1 -type f -name "heliosgui_backend" | head -1)
+            if [ -n "$executable" ]; then
+              echo "Backend executable: $executable"
+              file "$executable"
+            fi
+          done
+
+      - name: Upload macOS Intel installers
         uses: actions/upload-artifact@v4
         with:
-          name: macos-installers-${{ matrix.label }}
+          name: macos-installers-intel
+          path: |
+            dist/*.dmg
+            dist/*.pkg
+            release/*.dmg
+            release/*.pkg
+          compression-level: 0
+          retention-days: 5
+          if-no-files-found: warn
+
+  # ============================================================================
+  # macOS - SILICON build (arm64) runs on macos-latest (Apple Silicon hardware).
+  # Yahan PyInstaller native arm64 backend banayega.
+  # ============================================================================
+  build-macos-silicon:
+    runs-on: macos-latest
+    name: Build macOS (silicon)
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify arm64 architecture
+        run: |
+          uname -m
+          if [ "$(uname -m)" != "arm64" ]; then
+            echo "ERROR: macos-latest Intel mila. GitHub config check karo."
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: |
+          npm ci || npm install
+
+      - name: Create .env file
+        run: |
+          echo "VITE_BACKEND_URL=http://localhost:8000" > .env
+
+      - name: Build application (arm64 backend)
+        run: npm run build
+
+      - name: Package macOS Installer (arm64)
+        run: npm run package:mac -- --arm64
+
+      - name: Tag outputs with mac-silicon label
+        run: |
+          cd dist
+          for f in *.dmg *.pkg; do
+            [ -e "$f" ] || continue
+            base="${f%.*}"
+            ext="${f##*.}"
+            cleaned=$(echo "$base" | sed -E 's/-(x64|arm64)//')
+            new_name="${cleaned}-mac-silicon.${ext}"
+            mv "$f" "$new_name"
+            echo "Renamed: $f -> $new_name"
+          done
+          ls -la
+
+      - name: Verify backend architecture
+        run: |
+          find dist -type d -name "heliosgui_backend" | head -1 | while read dir; do
+            executable=$(find "$dir" -maxdepth 1 -type f -name "heliosgui_backend" | head -1)
+            if [ -n "$executable" ]; then
+              echo "Backend executable: $executable"
+              file "$executable"
+            fi
+          done
+
+      - name: Upload macOS Silicon installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-installers-silicon
           path: |
             dist/*.dmg
             dist/*.pkg
@@ -133,13 +218,6 @@ jobs:
 
   # ============================================================================
   # LINUX - HAR VERSION KI ALAG BUILD (3 alag files).
-  #
-  # Har version apne container ke andar banti hai:
-  #   20.04 -> python:3.10-bullseye  (glibc 2.31 = ubuntu 20.04 jaisa, +Python 3.10
-  #            pehle se. KOI deadsnakes/PPA nahi - isliye reliable. Ye file
-  #            20.04, 22.04, 24.04 SAB par chalti hai.)
-  #   22.04 -> ubuntu:22.04          (Python 3.10 by default) -> 22.04 + 24.04
-  #   24.04 -> ubuntu:24.04          (Python 3.12 by default) -> 24.04
   # ============================================================================
   build-linux:
     runs-on: ubuntu-22.04
@@ -274,7 +352,11 @@ jobs:
 
   release:
     name: Create QA Release
-    needs: [build-windows, build-macos, build-linux]
+    needs:
+      - build-windows
+      - build-macos-intel
+      - build-macos-silicon
+      - build-linux
     runs-on: ubuntu-latest
     steps:
       - name: Download artifacts
