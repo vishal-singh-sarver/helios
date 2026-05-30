@@ -4,7 +4,7 @@ import Dialog from '@renderer/components/Dialog'
 import FormField from '@renderer/components/FormField'
 import { Spinner } from '@renderer/components/LoadingScreen/Spinner'
 import TimePicker24 from '@renderer/components/TimePicker24'
-import { addRowRequested } from 'containers/ProjectScreen/actions'
+import { addRowRequested, addRowReset } from 'containers/ProjectScreen/actions'
 import { useFormik } from 'formik'
 import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
@@ -32,6 +32,12 @@ const INITIAL_VALUES: AddRowsValues = {
 }
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/
+
+// Bounds for the native date input's year spinner. Must match the 1900–3000
+// range enforced in the formik validator so the widget can't even produce a
+// value the validator would reject.
+const MIN_DATE = '1900-01-01'
+const MAX_DATE = '3000-12-31'
 
 const MAX_ROWS = 10_000
 const MAX_DELTA_HOURS = 24
@@ -120,6 +126,19 @@ function AddRowsDialog({ isOpen, onClose }: AddRowsDialogProps): React.JSX.Eleme
 
       if (!values.startDate) {
         errors.startDate = 'Start date is required.'
+      } else {
+        // Match the backend: YYYY-MM-DD with a 4-digit year in 1900–3000.
+        // The 4-digit guard also rejects the native picker's overflow values
+        // (e.g. "275760-03-04") that otherwise reach the saga as bad rows.
+        const dateMatch = /^(\d{4})-\d{2}-\d{2}$/.exec(values.startDate)
+        if (!dateMatch) {
+          errors.startDate = 'Start date must be in YYYY-MM-DD format with a 4-digit year.'
+        } else {
+          const year = Number.parseInt(dateMatch[1], 10)
+          if (year < 1900 || year > 3000) {
+            errors.startDate = 'Start date year must be between 1900 and 3000.'
+          }
+        }
       }
 
       if (!values.startTime) {
@@ -163,9 +182,13 @@ function AddRowsDialog({ isOpen, onClose }: AddRowsDialogProps): React.JSX.Eleme
   })
 
   // Reset the form whenever the dialog closes — covers both user Cancel and
-  // success-driven close from the toolbar.
+  // success-driven close from the toolbar. Also clear the saga request status
+  // so a prior failure's error banner doesn't persist into the next open.
   React.useEffect(() => {
-    if (!isOpen) formik.resetForm()
+    if (!isOpen) {
+      formik.resetForm()
+      dispatch(addRowReset())
+    }
     // formik is intentionally omitted; we only want isOpen edge transitions.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen])
@@ -190,12 +213,19 @@ function AddRowsDialog({ isOpen, onClose }: AddRowsDialogProps): React.JSX.Eleme
         }}
       />
       <div className="relative">
+        {/* key flips with isOpen to force a fresh DOM input on each open. A
+            native date input keeps partially-typed segments (e.g. just a
+            month) in the widget while reporting value="" — so resetForm can't
+            clear them and they'd reappear on reopen. Remounting does. */}
         <FormField
+          key={isOpen ? 'start-date-open' : 'start-date-closed'}
           labelProps={{ label: 'Start Date' }}
           inputProps={{
             ...formik.getFieldProps('startDate'),
             type: 'date',
             placeholder: 'Start Date',
+            min: MIN_DATE,
+            max: MAX_DATE,
             iconLeft: CalendarIcon,
             inputRef: startDateRef,
             onIconLeftClick: () => openPicker(startDateRef.current),
@@ -256,7 +286,7 @@ function AddRowsDialog({ isOpen, onClose }: AddRowsDialogProps): React.JSX.Eleme
       />
 
       {error && (
-        <p role="alert" className="pt-2 text-sm text-red-600">
+        <p role="alert" className="form-error-text pt-2">
           {error}
         </p>
       )}

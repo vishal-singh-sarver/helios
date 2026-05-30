@@ -1,11 +1,14 @@
 import deleteIcon from '@renderer/assets/delete.svg'
+import { setColumnNameError } from 'containers/ProjectScreen/actions'
 import {
   type ColumnDef,
   type DataTypeDef,
   type UpdateColumnPatch
 } from 'containers/ProjectScreen/types'
 import React from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import DataTypeUnitPicker from './DataTypeUnitPicker'
+import { makeSelectColumnNameError, selectActiveScenarioId } from './selectors'
 
 // Three controls per backend-managed column header: name (text input,
 // commits on blur), data type (select, commits on change), unit (select,
@@ -22,6 +25,13 @@ interface HeaderEditorProps {
 }
 
 function HeaderEditor({ col, dataTypes, onPatch, onDelete }: HeaderEditorProps): React.JSX.Element {
+  const dispatch = useDispatch()
+  const scenarioId = useSelector(selectActiveScenarioId)
+  const selectNameError = React.useMemo(() => makeSelectColumnNameError(col.id), [col.id])
+  // Backend rejection (e.g. duplicate name). Persists in Redux alongside the
+  // user's typed name so the message survives the failed PATCH round-trip.
+  const backendNameError = useSelector(selectNameError)
+
   const [nameDraft, setNameDraft] = React.useState(col.name)
   const [nameError, setNameError] = React.useState<string | null>(null)
   // Re-sync when the canonical column name changes (rollback, external update).
@@ -29,6 +39,9 @@ function HeaderEditor({ col, dataTypes, onPatch, onDelete }: HeaderEditorProps):
     setNameDraft(col.name)
     setNameError(null)
   }, [col.name])
+
+  // Client-side error takes precedence over the (now-stale) backend rejection.
+  const displayError = nameError ?? backendNameError
 
   const currentDataType = React.useMemo(
     () => (col.dataTypeId == null ? undefined : dataTypes.find((dt) => dt.id === col.dataTypeId)),
@@ -53,6 +66,10 @@ function HeaderEditor({ col, dataTypes, onPatch, onDelete }: HeaderEditorProps):
     setNameDraft(value)
     const error = validateColumnName(value)
     setNameError(error)
+    // A fresh edit supersedes a prior backend rejection for this column.
+    if (backendNameError && scenarioId) {
+      dispatch(setColumnNameError(scenarioId, col.id, null))
+    }
   }
 
   const handleNameBlur = (): void => {
@@ -60,7 +77,10 @@ function HeaderEditor({ col, dataTypes, onPatch, onDelete }: HeaderEditorProps):
     const error = validateColumnName(trimmed)
     setNameError(error)
 
-    if (error || trimmed === col.name) {
+    // Keep the user's text visible with the error shown rather than silently
+    // reverting — consistent with how a backend rejection is surfaced.
+    if (error) return
+    if (trimmed === col.name) {
       setNameDraft(col.name)
       return
     }
@@ -77,12 +97,12 @@ function HeaderEditor({ col, dataTypes, onPatch, onDelete }: HeaderEditorProps):
           onChange={handleNameChange}
           onBlur={handleNameBlur}
           className={`w-full rounded border bg-dark px-2 py-1 text-sm text-neutral-200 outline-none ${
-            nameError
+            displayError
               ? 'border-red-500 focus:border-red-600'
               : 'border-app-border focus:border-neutral-500'
           }`}
         />
-        {nameError && <p className="pt-1 text-xs text-red-500">{nameError}</p>}
+        {displayError && <p className="pt-1 text-xs text-red-500">{displayError}</p>}
       </div>
       <div className="flex items-center gap-1">
         <DataTypeUnitPicker

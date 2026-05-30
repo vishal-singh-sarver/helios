@@ -349,6 +349,11 @@ function ImportWizard({
   }, [parsed, stepIdx, dateMode, timeMode, mapping, dateFormat, datetimeFormat])
 
   const handleBack = useCallback((): void => {
+    // A delimiter / header-skip parse error belongs to the Data-Preview step's
+    // current input. It must not follow the user back to earlier steps and gate
+    // navigation there — `parsed` still holds the last successful parse, so the
+    // wizard stays in a valid state. Clear the transient error on Back.
+    setParseError(null)
     setStepIdx((i) => Math.max(i - 1, 0))
   }, [])
 
@@ -458,7 +463,10 @@ function ImportWizard({
 
   const canGoNext = ((): boolean => {
     if (!parsed) return false
-    if (stepIdx === 0) return parseError === null
+    // Step 0 (File Preview) only needs a file that parsed successfully — which
+    // is exactly `parsed !== null` (already guarded above). A transient
+    // delimiter/skip error from the Data-Preview step must not block it.
+    if (stepIdx === 0) return true
     if (stepIdx === 1) return parseError === null
     if (stepIdx === 2) return canProceedDateTime
     return true
@@ -469,7 +477,7 @@ function ImportWizard({
   return (
     <div className="fixed inset-0 z-50">
       <div
-        className="absolute inset-0 bg-black/55 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/50"
         onClick={importing ? undefined : onClose}
       />
 
@@ -491,7 +499,7 @@ function ImportWizard({
               onClick={onClose}
               disabled={importing}
               aria-label="Close"
-              className="text-neutral-500 hover:text-neutral-900 disabled:opacity-50"
+              className="cursor-pointer text-neutral-500 hover:text-neutral-900 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <CloseIcon className="h-3 w-3" />
             </button>

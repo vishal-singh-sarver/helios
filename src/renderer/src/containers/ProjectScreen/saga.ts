@@ -714,7 +714,11 @@ function* revalidateColumn(scenarioId: string, colId: ColId): Generator {
 
 function* updateCellWorker(action: UpdateCellLocalAction): Generator {
   const { projectId, scenarioId, rowId, colId, value, validationError } = action.payload
-  if (validationError != null) return
+  // A validation error no longer blocks the write outright. A numeric value
+  // that's merely outside the unit's range is still persisted — the range
+  // error stays visible, but the edit is saved. Only genuinely non-numeric
+  // input is skipped, since the backend stores floats and can't take it.
+  if (validationError != null && !Number.isFinite(Number(value.trim()))) return
   if (colId === DATE_COL_ID || colId === TIME_COL_ID) return
 
   const table = (yield select(selectActiveWeatherTable)) as WeatherTable | null

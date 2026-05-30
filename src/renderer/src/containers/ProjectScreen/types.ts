@@ -165,6 +165,11 @@ export interface WeatherTable {
   validationErrors: Record<RowId, Record<ColId, string>>
   cellSync: Record<string, CellSyncStatus>
   rowSelection: Record<RowId, boolean>
+
+  // Backend-rejected header name per column (e.g. duplicate name). Keyed by
+  // ColId; absent when the column's name is accepted. Surfaced inline by the
+  // header editor without rolling back the user's typed name.
+  columnNameErrors: Record<ColId, string>
 }
 
 export const emptyWeatherTable = (): WeatherTable => ({
@@ -174,7 +179,8 @@ export const emptyWeatherTable = (): WeatherTable => ({
   rowOrder: [],
   validationErrors: {},
   cellSync: {},
-  rowSelection: {}
+  rowSelection: {},
+  columnNameErrors: {}
 })
 
 // ── Action payload shapes ────────────────────────────────────────────────────
@@ -282,4 +288,12 @@ export interface UpdateColumnValuesLocalPayload {
   scenarioId: string
   colId: ColId
   valuesByRowId: Record<RowId, CellValue>
+}
+
+// SET_COLUMN_NAME_ERROR — `error === null` clears the stored name error for
+// the column. Reducer touches only columnNameErrors.
+export interface SetColumnNameErrorPayload {
+  scenarioId: string
+  colId: ColId
+  error: string | null
 }

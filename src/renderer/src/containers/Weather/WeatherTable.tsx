@@ -190,7 +190,7 @@ const WeatherRow = React.memo(function WeatherRow({
         const cellError = readOnly ? null : (rowValidationErrors?.[colId] ?? null)
         const borderCls = cellError
           ? 'border-r border-app-border outline outline-1 -outline-offset-1 outline-[#F04438]'
-          : 'border-r border-app-border'
+          : 'border-r border-app-border focus-within:outline focus-within:outline-1 focus-within:-outline-offset-1 focus-within:outline-blue-500/60'
         return (
           <td key={colId} className={`${widthCls} h-9 ${borderCls}`}>
             {readOnly ? (

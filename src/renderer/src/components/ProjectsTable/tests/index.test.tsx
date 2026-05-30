@@ -52,19 +52,27 @@ describe('<ProjectsTable />', () => {
 
   // ── onRowClick ──
 
-  // Verifies clicking a row button fires onRowClick with that project's id
-  it('fires onRowClick with the project id when a row is clicked', () => {
+  // Verifies double-clicking a row fires onRowClick with that project's id
+  it('fires onRowClick with the project id when a row is double-clicked', () => {
     const onRowClick = vi.fn()
     render(<ProjectsTable {...defaultProps} onRowClick={onRowClick} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Open project Alpha Project' }))
+    fireEvent.doubleClick(screen.getByRole('button', { name: 'Open project Alpha Project' }))
     expect(onRowClick).toHaveBeenCalledWith('p-alpha')
   })
 
+  // Verifies a single click does not open the project
+  it('does not fire onRowClick on a single click', () => {
+    const onRowClick = vi.fn()
+    render(<ProjectsTable {...defaultProps} onRowClick={onRowClick} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Open project Alpha Project' }))
+    expect(onRowClick).not.toHaveBeenCalled()
+  })
+
   // Verifies the component does not throw when no onRowClick is provided
-  it('does not throw when clicking a row with no onRowClick prop', () => {
+  it('does not throw when double-clicking a row with no onRowClick prop', () => {
     render(<ProjectsTable {...defaultProps} />)
     expect(() =>
-      fireEvent.click(screen.getByRole('button', { name: 'Open project Alpha Project' }))
+      fireEvent.doubleClick(screen.getByRole('button', { name: 'Open project Alpha Project' }))
     ).not.toThrow()
   })
 

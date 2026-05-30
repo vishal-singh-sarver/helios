@@ -147,6 +147,17 @@ export function HomePage(): React.JSX.Element {
     dispatch(resetRenameProject())
   }
 
+  // The "already exists" error is server-side state that only reflects the
+  // last submitted name. Once the user edits the field it's stale, so clear it
+  // on change — otherwise it lingers and stacks on top of the live client-side
+  // validation error (e.g. the >30-char message).
+  const handleRenameFieldChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ): void => {
+    if (renameError) dispatch(resetRenameProject())
+    renameFormik.handleChange(e)
+  }
+
   const prevRenameLoadingRef = React.useRef(false)
   React.useEffect(() => {
     if (prevRenameLoadingRef.current && !renameLoading && renameSuccess) {
@@ -245,7 +256,7 @@ export function HomePage(): React.JSX.Element {
     {
       label: 'Open project',
       icon: openProjectIcon,
-      onAction: () => dispatch(navigate('project'))
+      onAction: () => {}
     }
   ]
   // useDeferredValue keeps the input responsive while the filter re-runs.
@@ -439,27 +450,34 @@ export function HomePage(): React.JSX.Element {
         isOpen={pendingRename !== null}
         title={messages.renameProject.dialogTitle}
         onClose={handleCancelRename}
-        className="h-[224px] w-[352px] rounded-[3px] border-[#424242] bg-[#202020] shadow-[0px_4px_6px_-2px_rgba(0,0,0,0.18),0px_12px_16px_-4px_rgba(0,0,0,0.32)]"
+        className="min-h-[224px] w-[352px] rounded-[3px] border-[#424242] bg-[#202020] shadow-[0px_4px_6px_-2px_rgba(0,0,0,0.18),0px_12px_16px_-4px_rgba(0,0,0,0.32)]"
         headerClassName="h-[56px] bg-neutral-100 px-4"
         bodyClassName="space-y-5 p-4"
       >
-        <FormField
-          key="renameProjectName"
-          labelProps={{ label: messages.renameProject.fields.name }}
-          inputProps={{
-            ...renameFormik.getFieldProps('projectName'),
-            error:
-              renameFormik.touched.projectName || renameFormik.values.projectName !== ''
-                ? (renameFormik.errors.projectName as string | undefined)
-                : undefined
-          }}
-        />
+        {/* FormField + server error share one wrapper so the server error sits
+            directly under the input (mt-1), identical to the client-side
+            validation error FormField renders internally — rather than picking
+            up the body's larger space-y-5 gap. */}
+        <div>
+          <FormField
+            key="renameProjectName"
+            labelProps={{ label: messages.renameProject.fields.name }}
+            inputProps={{
+              ...renameFormik.getFieldProps('projectName'),
+              onChange: handleRenameFieldChange,
+              error:
+                renameFormik.touched.projectName || renameFormik.values.projectName !== ''
+                  ? (renameFormik.errors.projectName as string | undefined)
+                  : undefined
+            }}
+          />
 
-        {renameError && (
-          <p role="alert" className="pt-2 text-sm text-red-600">
-            {renameError.message}
-          </p>
-        )}
+          {renameError && (
+            <p role="alert" className="form-error-text mt-1">
+              {renameError.message}
+            </p>
+          )}
+        </div>
 
         <div className="flex justify-end gap-2 pt-2">
           <button
