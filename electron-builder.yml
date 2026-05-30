@@ -2,9 +2,14 @@
 # Helios Desktop Application - electron-builder Configuration
 #
 # This file configures cross-platform packaging for:
-# - Windows (NSIS assisted installer)        -> x64 (Windows 10 + 11)
-# - macOS (DMG + PKG installers)             -> SEPARATE Intel + Apple Silicon
+# - Windows (NSIS assisted installer)
+# - macOS (DMG + PKG installers)
 # - Linux (AppImage + DEB packages)
+#
+# Build outputs are created in dist/
+# Do not use absolute paths for build resources - all paths are relative to repo root
+#
+# For CI/CD: This configuration is platform-agnostic and works in any environment
 ################################################################################
 
 appId: com.navyug.helios
@@ -52,19 +57,14 @@ nsis:
   installerIcon: build/icon.ico
   uninstallerIcon: build/icon.ico
   installerHeaderIcon: build/icon.ico
-
-################################################################################
-# macOS - SEPARATE Intel + Apple Silicon files
-#
-# File names workflow ke rename step se aate hain - jaise ubuntu wala:
-#   helios-1.0.0-setup-mac-intel.dmg     (x64 build -> rename to mac-intel)
-#   helios-1.0.0-setup-mac-intel.pkg
-#   helios-1.0.0-setup-mac-silicon.dmg   (arm64 build -> rename to mac-silicon)
-#   helios-1.0.0-setup-mac-silicon.pkg
-#
-# Yahan artifactName mein ${arch} HATA diya hai - kyunki workflow rename
-# step intel/silicon naam laga dega (jaise ubuntu version laga deta hai).
-################################################################################
+  ################################################################################
+  # macOS - Professional App Bundle + Installers
+  ################################################################################
+  # Targets:
+  # - DMG: Simple drag-and-drop installer (Helios.dmg)
+  # - PKG: Professional installer with license (Helios.pkg)
+  # App bundle: /Applications/Helios.app
+  #
 mac:
   identity: null
   sign: null
