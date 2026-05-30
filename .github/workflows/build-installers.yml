@@ -55,14 +55,30 @@ jobs:
           retention-days: 5
           if-no-files-found: warn
 
- # ============================================================================
-  # macOS - ek hi build jo macOS 15 se 26 (Tahoe) tak chalti hai.
-  # NOTE: macOS 15 + Intel support ke liye package.json ke "mac" block mein
-  #       "minimumSystemVersion": "15.0" aur arch ["x64","arm64"] zaroori hai.
+  # ============================================================================
+  # macOS - 2 ALAG FILES: Intel (x86_64) + Apple Silicon (arm64).
+  #
+  # Per-OS-version (12 vs 13 vs 14...) alag build banti hi nahi - Apple ka
+  # design hai. minimumSystemVersion "12.0" set hai (package.json mein), to
+  # YE DONO files macOS 12 (Monterey) se 26 (Tahoe) tak SAB par chalti hain:
+  #
+  #   intel file        -> sab Intel Macs (macOS 12-15)
+  #   apple-silicon     -> sab M1/M2/M3/M4 Macs (macOS 12-26)
+  #
+  # NOTE: package.json ke "mac" block mein zaroori hai:
+  #   "mac": { "minimumSystemVersion": "12.0", "target": ["dmg","pkg"] }
   # ============================================================================
   build-macos:
-    runs-on: macos-latest
-    name: Build macOS Installer (15 + 26)
+    name: Build macOS (${{ matrix.label }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: 'intel'
+            runner: 'macos-15-intel'
+          - label: 'apple-silicon'
+            runner: 'macos-15'
+    runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -88,15 +104,27 @@ jobs:
       - name: Package macOS Installer
         run: npm run package:mac
 
+      # Dono builds ka file name same hota hai (helios-x.y.z-setup.dmg) -
+      # rename karke arch label dalo, warna release mein ek doosre ko overwrite
+      # kar denge.
+      - name: Tag outputs with arch
+        run: |
+          cd dist
+          for f in *.dmg *.pkg; do
+            [ -e "$f" ] || continue
+            base="${f%.*}"
+            ext="${f##*.}"
+            mv "$f" "${base}-${{ matrix.label }}.${ext}"
+          done
+          ls -la
+
       - name: Upload macOS installers
         uses: actions/upload-artifact@v4
         with:
-          name: macos-installers
+          name: macos-installers-${{ matrix.label }}
           path: |
             dist/*.dmg
             dist/*.pkg
-            release/*.dmg
-            release/*.pkg
           compression-level: 0
           retention-days: 5
           if-no-files-found: warn
@@ -104,12 +132,11 @@ jobs:
   # ============================================================================
   # LINUX - HAR VERSION KI ALAG BUILD (3 alag files).
   #
-  # Har version apne container ke andar banti hai:
-  #   20.04 -> python:3.10-bullseye  (glibc 2.31 = ubuntu 20.04 jaisa, +Python 3.10
-  #            pehle se. KOI deadsnakes/PPA nahi - isliye reliable. Ye file
-  #            20.04, 22.04, 24.04 SAB par chalti hai.)
-  #   22.04 -> ubuntu:22.04          (Python 3.10 by default) -> 22.04 + 24.04
-  #   24.04 -> ubuntu:24.04          (Python 3.12 by default) -> 24.04
+  #   20.04 -> python:3.10-bullseye  (glibc 2.31 = ubuntu 20.04 jaisa, +Python
+  #            3.10 pehle se. KOI deadsnakes/PPA nahi. Ye file 20.04, 22.04,
+  #            24.04 SAB par chalti hai.)
+  #   22.04 -> ubuntu:22.04          (Python 3.10 default) -> 22.04 + 24.04
+  #   24.04 -> ubuntu:24.04          (Python 3.12 default) -> 24.04
   # ============================================================================
   build-linux:
     runs-on: ubuntu-22.04
