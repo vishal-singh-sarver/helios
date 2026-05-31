@@ -187,8 +187,8 @@ jobs:
             dist/*.pkg
             dist/*.AppImage
             dist/*.deb
-            dist/*.blockmap
-            dist/*.yml
+          #dist/*.blockmap
+          #dist/*.yml
           retention-days: 30
           if-no-files-found: error
 
