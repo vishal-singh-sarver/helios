@@ -210,7 +210,7 @@ jobs:
           make_latest: true
 
       - name: Notify Slack
-        if: always()
+        if: always() && env.SLACK_WEBHOOK_URL != ''
         uses: slackapi/slack-github-action@v1.26.0
         with:
           payload: |
