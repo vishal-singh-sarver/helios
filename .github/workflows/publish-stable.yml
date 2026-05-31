@@ -63,23 +63,37 @@ jobs:
         run: |
           set -e
           TAG_SHA=$(git rev-list -n 1 "${GITHUB_REF#refs/tags/}")
-          echo "Looking for ci-main.yml run on commit $TAG_SHA..."
-
-          # gh CLI se latest ci-main run dhoondo is commit ke liye
-          RUN_ID=$(gh run list \
-            --workflow=ci-main.yml \
-            --commit="$TAG_SHA" \
-            --status=completed \
-            --json databaseId,conclusion \
-            --jq '[.[] | select(.conclusion == "success")] | .[0].databaseId' \
-            || true)
+          echo "Looking for ci-main run on commit $TAG_SHA..."
+          echo ""
+          echo "--- All available workflows: ---"
+          gh workflow list --all || true
+          echo ""
+          echo "--- All runs for this commit (sab states): ---"
+          gh run list --commit="$TAG_SHA" --limit 20 \
+            --json databaseId,name,workflowName,conclusion,status,event \
+            | jq '.' || true
+          echo ""
+          echo "--- Filtering ci-main runs ---"
+          # Try multiple ways to identify ci-main:
+          # 1) workflow file name (.github/workflows/ci-main.yml)
+          # 2) workflow display name ("CI / main")
+          RUN_ID=$(gh run list --commit="$TAG_SHA" --limit 50 \
+            --json databaseId,name,workflowName,conclusion,status \
+            --jq '[
+              .[] | select(
+                (.workflowName == "CI / main")
+                or (.name == "CI / main")
+              ) | select(.conclusion == "success" or .status == "completed")
+            ] | .[0].databaseId' || true)
 
           if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
+            echo ""
             echo "ERROR: Is commit ke liye koi successful ci-main run nahi mila."
-            echo "Pehle main par push karo, ci-main pass hone do, fir tag karo."
+            echo "Upar ki listing dekho - dikh raha hai run hua tha ya nahi."
             exit 1
           fi
-          echo "Found ci-main run: $RUN_ID"
+          echo ""
+          echo "OK: Found ci-main run: $RUN_ID"
           echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
 
   # --------------------------------------------------------------------------
