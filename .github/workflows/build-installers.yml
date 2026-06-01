@@ -104,9 +104,6 @@ jobs:
       - name: Package macOS Installer
         run: npm run package:mac
 
-      # Dono builds ka file name same hota hai (helios-x.y.z-setup.dmg) -
-      # rename karke arch label dalo, warna release mein ek doosre ko overwrite
-      # kar denge.
       - name: Tag outputs with arch
         run: |
           cd dist
