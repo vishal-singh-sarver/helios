@@ -5,7 +5,7 @@ exports[`<Header /> > should match the snapshot 1`] = `
   class="border-b border-app-border"
 >
   <div
-    class="app-drag flex h-[45px] items-center gap-3 border-b border-app-border px-4 "
+    class="app-drag relative flex h-[45px] items-center gap-3 border-b border-app-border px-4 "
   >
     <img
       alt="Helios logo"
