@@ -105,7 +105,7 @@ jobs:
         run: npm run e2e
 
   package:
-    name: Package & Sign (${{ matrix.os }})
+    name: Package & Sign ${{ matrix.label }}
     needs:
       - lint
       - test-unit
@@ -113,15 +113,76 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - windows-latest
-          - macos-latest
-          - ubuntu-latest
+        include:
+          # Windows - single build
+          - label: windows
+            os: windows-2022
+
+          # macOS Intel (x86_64)
+          - label: macos-intel
+            os: macos-15-intel
+            arch_suffix: "-intel"
+
+          # macOS Apple Silicon (arm64)
+          - label: macos-apple-silicon
+            os: macos-15
+            arch_suffix: "-apple-silicon"
+
+          # Ubuntu 20.04 - via python:3.10-bullseye container
+          # (glibc 2.31, Python 3.10 prebuilt - deadsnakes flaky tha)
+          - label: ubuntu20.04
+            os: ubuntu-latest
+            container: python:3.10-bullseye
+            ubuntu_suffix: "-ubuntu20.04"
+
+          # Ubuntu 22.04
+          - label: ubuntu22.04
+            os: ubuntu-latest
+            container: ubuntu:22.04
+            ubuntu_suffix: "-ubuntu22.04"
+
+          # Ubuntu 24.04 - has t64-suffixed packages, fallback below handle karta hai
+          - label: ubuntu24.04
+            os: ubuntu-latest
+            container: ubuntu:24.04
+            ubuntu_suffix: "-ubuntu24.04"
+
     runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+
+      - name: Setup container base tools (Linux)
+        if: matrix.container
+        run: |
+          set -e
+          apt-get update
+          apt-get install -y \
+            curl git gnupg \
+            python3-venv python3-pip \
+            build-essential cmake pkg-config \
+            libgtk-3-dev libnss3 libxss1 libfuse2 \
+            libglu1-mesa-dev freeglut3-dev mesa-common-dev \
+            libx11-dev libxext-dev libxrender-dev \
+            libglew-dev libglfw3-dev \
+            zlib1g-dev libpng-dev libjpeg-dev
+
+          # Ubuntu 24.04 ke t64-suffix packages ke liye fallback function
+          install_one() {
+            apt-get install -y "$1" 2>/dev/null \
+              || apt-get install -y "${1}t64" 2>/dev/null \
+              || echo "Skipped: $1 (neither variant available)"
+          }
+          install_one libasound2
+          install_one libatk1.0-0
+          install_one libatk-bridge2.0-0
+          install_one libxtst6
+          install_one libxrandr2
+          install_one libdrm2
+          install_one libgbm1
+          install_one libxkbcommon0
 
       - uses: actions/setup-node@v4
         with:
@@ -131,7 +192,7 @@ jobs:
       # Doc section 7 dekho. Jab certs setup ho jaayein, ye uncomment karna:
       #
       # - name: Import Windows signing cert
-      #   if: runner.os == 'Windows'
+      #   if: matrix.label == 'windows'
       #   shell: pwsh
       #   run: |
       #     $base64String = "${{ secrets.WIN_CERT_BASE64 }}".Trim()
@@ -142,20 +203,10 @@ jobs:
       #     echo "CSC_KEY_PASSWORD=${{ secrets.WIN_CERT_PASSWORD }}" >> $env:GITHUB_ENV
       #
       # - name: Import macOS signing cert
-      #   if: runner.os == 'macOS'
+      #  if: startsWith(matrix.label, 'macos')
       #   run: |
       #     # See ci-release.yml or doc section 7 for full keychain setup
       #     echo "TODO: import .p12 and setup keychain"
-
-      - name: Install Linux system dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential libgtk-3-dev libnss3 libxss1 libasound2t64 \
-            libxtst6 libxrandr2 libatk1.0-0 libatk-bridge2.0-0 libdrm2 \
-            libgbm1 libxkbcommon0 fonts-liberation xdg-utils \
-            libglu1-mesa-dev freeglut3-dev mesa-common-dev libgl1-mesa-dev
 
       - run: npm install
 
@@ -173,10 +224,46 @@ jobs:
         run: npm run package
         timeout-minutes: 60
 
+      - name: Rename macOS output with arch suffix
+        if: matrix.arch_suffix
+        shell: bash
+        run: |
+          set -e
+          cd dist
+          for file in *.pkg *.dmg; do
+            [ -f "$file" ] || continue
+            ext="${file##*.}"
+            base="${file%.*}"
+            new_name="${base}${{ matrix.arch_suffix }}.${ext}"
+            mv "$file" "$new_name"
+            echo "Renamed: $file -> $new_name"
+          done
+
+      # ── Linux ubuntu version suffix add karo ─────────────────────────────
+      - name: Rename Linux output with ubuntu version
+        if: matrix.ubuntu_suffix
+        shell: bash
+        run: |
+          set -e
+          cd dist
+          for file in *.deb *.AppImage; do
+            [ -f "$file" ] || continue
+            if [[ "$file" == *.AppImage ]]; then
+              base="${file%.AppImage}"
+              new_name="${base}${{ matrix.ubuntu_suffix }}.AppImage"
+            else
+              ext="${file##*.}"
+              base="${file%.*}"
+              new_name="${base}${{ matrix.ubuntu_suffix }}.${ext}"
+            fi
+            mv "$file" "$new_name"
+            echo "Renamed: $file -> $new_name"
+          done
+
       - name: Upload artifacts (for publish-stable to download later)
         uses: actions/upload-artifact@v4
         with:
-          name: stable-installer-${{ matrix.os }}
+          name: stable-installer-${{ matrix.label }}
           # SIRF installer files upload karo, poora dist/ NAHI.
           # Poora dist/ mein timezone data (GMT0, Nicosia, Pacific...),
           # Windows build logs (.tlog, .vcxproj), aur baaki junk hota hai
@@ -205,5 +292,5 @@ jobs:
 
       # ── macOS cleanup (notarization keychain ke liye) ────────────────────
       - name: Remove temporary keychain
-        if: runner.os == 'macOS' && always()
+        if: startsWith(matrix.label, 'macos') && always()
         run: security delete-keychain "$RUNNER_TEMP/app-signing.keychain-db" || true
