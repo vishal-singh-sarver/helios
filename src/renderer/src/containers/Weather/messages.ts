@@ -15,7 +15,7 @@ const messages = {
     },
     placeholders: {
       dataType: 'Select data type',
-      unit: 'Choose a unit',
+      unit: 'Select a unit',
       unitDisabled: 'Select a data type first'
     },
     errors: {
