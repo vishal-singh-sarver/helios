@@ -303,6 +303,15 @@ describe('finalizeImportWorker', () => {
       ]
     }
 
+    // The saga keys backend rows by fmtDate/fmtTime, which render the instant
+    // in LOCAL time. Derive the refreshed row's date/time the same way so the
+    // lookup matches under any timezone — hardcoding the IST rendering made
+    // this pass locally but miss the row (and the precision diff) on UTC CI.
+    const instant = new Date('2026-01-01T10:00:00.000Z')
+    const pad2 = (n: number): string => String(n).padStart(2, '0')
+    const localDate = `${instant.getFullYear()}-${pad2(instant.getMonth() + 1)}-${pad2(instant.getDate())}`
+    const localTime = `${pad2(instant.getHours())}:${pad2(instant.getMinutes())}:00`
+
     const gen = finalizeImportWorker(
       actions.importFinalizeRequested('proj-1', 'sce-1', backendAdjustedDataset, false)
     )
@@ -327,8 +336,8 @@ describe('finalizeImportWorker', () => {
             ],
             rows: [
               {
-                date: '2026-01-01',
-                time: '15:30:00',
+                date: localDate,
+                time: localTime,
                 '7': '12.1234567'
               }
             ],
