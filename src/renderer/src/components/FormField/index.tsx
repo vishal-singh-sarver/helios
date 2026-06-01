@@ -75,7 +75,7 @@ function FormField({ labelProps, inputProps }: FormFieldProps): React.JSX.Elemen
           disabled={disabled}
           aria-describedby={error ? errorId : undefined}
           aria-invalid={!!error}
-          className={`${baseClassName} px-3`}
+          className={`${baseClassName} px-3 disabled:cursor-not-allowed disabled:opacity-50`}
         >
           {/* Inline style on each <option> because Chromium's native
               dropdown popup ignores most CSS but DOES honor an option's

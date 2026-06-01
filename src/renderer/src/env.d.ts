@@ -15,6 +15,7 @@ declare global {
       stopBackend: () => Promise<{ ok: boolean }>
       windowMinimize: () => Promise<void>
       windowToggleMaximize: () => Promise<boolean>
+      windowTitleBarDoubleClick: () => Promise<void>
       windowClose: () => Promise<void>
       windowIsMaximized: () => Promise<boolean>
       windowIsFullScreen: () => Promise<boolean>
