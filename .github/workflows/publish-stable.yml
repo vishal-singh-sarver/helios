@@ -92,7 +92,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [windows-latest, macos-latest, ubuntu-latest]
+        platform:
+          - windows
+          - macos-intel
+          - macos-apple-silicon
+          - ubuntu20.04
+          - ubuntu22.04
+          - ubuntu24.04
     runs-on: ubuntu-latest
     steps:
       - name: Download ci-main artifacts (this platform only)
