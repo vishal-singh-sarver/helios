@@ -4,7 +4,11 @@ import { setCellValidationError } from 'containers/ProjectScreen/actions'
 import type { ColumnDef, DataTypeDef } from 'containers/ProjectScreen/types'
 import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { exceedsMaxDecimals, VALIDATION_MESSAGES } from 'utils/decimalValidation'
+import {
+  exceedsMaxDecimals,
+  isPartialNumericInput,
+  VALIDATION_MESSAGES
+} from 'utils/decimalValidation'
 import { makeSelectCellError } from './selectors'
 import {
   GLOBAL_CELL_MAX,
@@ -54,10 +58,15 @@ function CellInput({
   // redux validationError map — using local state keeps it isolated from the
   // committed value's validation lifecycle.
   const [globalBoundError, setGlobalBoundError] = React.useState<string | null>(null)
+  // Local-only error for the numeric-format keystroke block. Like the global
+  // bound, the offending keystroke never reaches `draft`, so it stays out of
+  // the redux validationError map.
+  const [formatError, setFormatError] = React.useState<string | null>(null)
   React.useEffect(() => {
     setDraft(value)
     setDecimalValidationError(null)
     setGlobalBoundError(null)
+    setFormatError(null)
   }, [value])
 
   // Per-cell validation error pushed by handleCellBlur (manual edits), by
@@ -69,7 +78,7 @@ function CellInput({
   // Combine backend / redux validation error with local guards. The global
   // bound takes precedence because the keystroke that triggered it never
   // made it into `draft`.
-  const displayError = globalBoundError || decimalValidationError || error
+  const displayError = formatError || globalBoundError || decimalValidationError || error
 
   // Both visuals live on the cell <td> (rendered by WeatherTable): the red
   // validation outline, and the blue focus-within selection outline (identical
@@ -86,6 +95,16 @@ function CellInput({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const newValue = e.target.value
+
+    // Block #0 — numeric format. Refuse any keystroke (or paste) that isn't a
+    // number-in-progress, so non-numeric input never reaches the draft.
+    if (!isPartialNumericInput(newValue)) {
+      setFormatError(VALIDATION_MESSAGES.NUMERIC_ONLY)
+      return
+    }
+    if (formatError) {
+      setFormatError(null)
+    }
 
     // Block #1 — too many decimal places (existing behavior).
     if (exceedsMaxDecimals(newValue)) {
@@ -124,6 +143,7 @@ function CellInput({
     // source of truth for displayError.
     setDecimalValidationError(null)
     setGlobalBoundError(null)
+    setFormatError(null)
     onCommit(draft)
   }
 

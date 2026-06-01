@@ -23,6 +23,16 @@ function normalizeNumericInput(value: string): string | null {
   return NUMERIC_PATTERN.test(normalized) ? normalized : null
 }
 
+// Accepts complete numbers AND in-progress states ("", "-", "1.", "1e", "1e-",
+// ".5") so a keystroke gate can reject non-numeric input without blocking a
+// user mid-number. Scientific notation is permitted. Final NaN leftovers like
+// "-" or "1e" are caught on commit by validateCellValue, not here.
+const PARTIAL_NUMERIC_PATTERN = /^[+-]?(\d+(\.\d*)?|\.\d*)?([eE][+-]?\d*)?$/
+
+export function isPartialNumericInput(value: string): boolean {
+  return PARTIAL_NUMERIC_PATTERN.test(value.trim())
+}
+
 function expandScientificNotation(value: string): string | null {
   const match = /^([+-]?)(?:(\d+)(?:\.(\d*))?|\.(\d+))[eE]([+-]?\d+)$/.exec(value)
   if (!match) return null
@@ -168,5 +178,6 @@ export function isValidNumber(value: string): boolean {
 export const VALIDATION_MESSAGES = {
   MANUAL_INPUT: 'Only 7 decimal places supported as input.',
   IMPORT_WARNING:
-    'Only 7 decimal places have been taken for decimal values as more are not supported.'
+    'Only 7 decimal places have been taken for decimal values as more are not supported.',
+  NUMERIC_ONLY: 'Only numeric values are allowed.'
 }

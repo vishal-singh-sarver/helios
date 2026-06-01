@@ -1,22 +1,16 @@
-import { call, put, select, take, takeLatest, takeLeading } from 'redux-saga/effects'
-import weatherSaga, {
-  clearImportedDataWorker,
-  fetchStatusWorker,
-  finalizeImportWorker,
-  pickFileWorker
-} from '../saga'
-import { api } from 'utils/api'
 import { loadScenarioRequested } from 'containers/ProjectScreen/actions'
+import {
+  LOAD_DATA_TYPES_FAILED,
+  LOAD_DATA_TYPES_SUCCEEDED
+} from 'containers/ProjectScreen/constants'
 import {
   selectCheckDataTypeId,
   selectDataTypesLoadStatus,
   selectDateTimeBaseUnitId,
   selectDateTimeDataTypeId
 } from 'containers/ProjectScreen/selectors'
-import {
-  LOAD_DATA_TYPES_FAILED,
-  LOAD_DATA_TYPES_SUCCEEDED
-} from 'containers/ProjectScreen/constants'
+import { call, put, select, take, takeLatest, takeLeading } from 'redux-saga/effects'
+import { api } from 'utils/api'
 import * as actions from '../actions'
 import {
   FETCH_STATUS,
@@ -25,6 +19,12 @@ import {
   IMPORT_PICK_FILE_REQUESTED,
   SSE_CONNECT
 } from '../constants'
+import weatherSaga, {
+  clearImportedDataWorker,
+  fetchStatusWorker,
+  finalizeImportWorker,
+  pickFileWorker
+} from '../saga'
 import type { ImportedDataset } from '../types'
 
 describe('fetchStatusWorker', () => {
@@ -112,15 +112,11 @@ describe('finalizeImportWorker', () => {
   }
 
   it('DELETEs /clear_data, resolves catalog, POSTs /addCol with seeded check + date-time + filtered CSV columns, then puts succeeded after refresh race', () => {
-    const gen = finalizeImportWorker(
-      actions.importFinalizeRequested('proj-1', 'sce-1', dataset)
-    )
+    const gen = finalizeImportWorker(actions.importFinalizeRequested('proj-1', 'sce-1', dataset))
 
     // Step 0 — clear any prior weather data for this scenario.
     const clearCall = gen.next().value as ReturnType<typeof call>
-    expect(clearCall.payload.args[0]).toBe(
-      '/api/weather/project/proj-1/scenario/sce-1/clear_data'
-    )
+    expect(clearCall.payload.args[0]).toBe('/api/weather/project/proj-1/scenario/sce-1/clear_data')
 
     // Step 1 — saga reads catalog load status. When already 'loaded', no
     // take() is yielded; saga proceeds straight to selecting the check id.
@@ -134,9 +130,7 @@ describe('finalizeImportWorker', () => {
     // doesn't collide with a reserved name. The CSV's "check" column is
     // dropped — the seeded version owns that name.
     const addColCall = gen.next(3).value as ReturnType<typeof call>
-    expect(addColCall.payload.args[0]).toBe(
-      '/api/weather/project/proj-1/scenario/sce-1/addCol'
-    )
+    expect(addColCall.payload.args[0]).toBe('/api/weather/project/proj-1/scenario/sce-1/addCol')
     const dateMatcher = expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)
     const timeMatcher = expect.stringMatching(/^\d{2}:\d{2}:\d{2}$/)
     expect(addColCall.payload.args[1]).toEqual({
@@ -195,9 +189,7 @@ describe('finalizeImportWorker', () => {
   })
 
   it('blocks on the catalog when load status is loading', () => {
-    const gen = finalizeImportWorker(
-      actions.importFinalizeRequested('proj-1', 'sce-1', dataset)
-    )
+    const gen = finalizeImportWorker(actions.importFinalizeRequested('proj-1', 'sce-1', dataset))
     gen.next() // clear_data
     expect(gen.next().value).toEqual(select(selectDataTypesLoadStatus))
 
@@ -211,9 +203,7 @@ describe('finalizeImportWorker', () => {
   })
 
   it('puts importFinalizeFailed when scenario refresh fails', () => {
-    const gen = finalizeImportWorker(
-      actions.importFinalizeRequested('proj-1', 'sce-1', dataset)
-    )
+    const gen = finalizeImportWorker(actions.importFinalizeRequested('proj-1', 'sce-1', dataset))
     gen.next() // clear_data
     gen.next() // select selectDataTypesLoadStatus
     gen.next('loaded') // select selectCheckDataTypeId
@@ -232,18 +222,14 @@ describe('finalizeImportWorker', () => {
   })
 
   it('puts importFinalizeFailed when /clear_data throws', () => {
-    const gen = finalizeImportWorker(
-      actions.importFinalizeRequested('proj-1', 'sce-1', dataset)
-    )
+    const gen = finalizeImportWorker(actions.importFinalizeRequested('proj-1', 'sce-1', dataset))
     gen.next() // clear_data
     const err = new Error('cannot clear')
     expect(gen.throw(err).value).toEqual(put(actions.importFinalizeFailed('cannot clear')))
   })
 
   it('puts importFinalizeFailed when /addCol throws', () => {
-    const gen = finalizeImportWorker(
-      actions.importFinalizeRequested('proj-1', 'sce-1', dataset)
-    )
+    const gen = finalizeImportWorker(actions.importFinalizeRequested('proj-1', 'sce-1', dataset))
     gen.next() // clear_data
     gen.next() // select selectDataTypesLoadStatus
     gen.next('loaded') // select selectCheckDataTypeId
@@ -317,6 +303,15 @@ describe('finalizeImportWorker', () => {
       ]
     }
 
+    // The saga keys backend rows by fmtDate/fmtTime, which render the instant
+    // in LOCAL time. Derive the refreshed row's date/time the same way so the
+    // lookup matches under any timezone — hardcoding the IST rendering made
+    // this pass locally but miss the row (and the precision diff) on UTC CI.
+    const instant = new Date('2026-01-01T10:00:00.000Z')
+    const pad2 = (n: number): string => String(n).padStart(2, '0')
+    const localDate = `${instant.getFullYear()}-${pad2(instant.getMonth() + 1)}-${pad2(instant.getDate())}`
+    const localTime = `${pad2(instant.getHours())}:${pad2(instant.getMinutes())}:00`
+
     const gen = finalizeImportWorker(
       actions.importFinalizeRequested('proj-1', 'sce-1', backendAdjustedDataset, false)
     )
@@ -341,8 +336,8 @@ describe('finalizeImportWorker', () => {
             ],
             rows: [
               {
-                date: '2026-01-01',
-                time: '15:30:00',
+                date: localDate,
+                time: localTime,
                 '7': '12.1234567'
               }
             ],
@@ -364,7 +359,7 @@ describe('finalizeImportWorker', () => {
               }
             ]
           },
-          false
+          true
         )
       )
     )
@@ -378,9 +373,9 @@ describe('clearImportedDataWorker', () => {
     expect(clearCall.payload.args[0]).toBe('/api/weather/project/proj-1/scenario/sce-1/clear_data')
     expect(gen.next().value).toEqual(put(loadScenarioRequested('proj-1', 'sce-1')))
     gen.next() // race(...)
-    expect(
-      gen.next({ succeeded: { payload: { scenarioId: 'sce-1' } } }).value
-    ).toEqual(put(actions.importClearSucceeded('proj-1', 'sce-1')))
+    expect(gen.next({ succeeded: { payload: { scenarioId: 'sce-1' } } }).value).toEqual(
+      put(actions.importClearSucceeded('proj-1', 'sce-1'))
+    )
   })
 })
 
