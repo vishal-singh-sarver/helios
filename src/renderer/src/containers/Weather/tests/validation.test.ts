@@ -98,6 +98,27 @@ describe('validateCellValue', () => {
     expect(validateCellValue('999', { col, dataTypes: makeDataTypes() })).toBeNull()
   })
 
+  // ── No-unit branch: still rejects non-numeric / out-of-bound input ────────
+
+  it('flags non-numeric input even when the column has no unit', () => {
+    const col = { ...baseCol, unitId: null }
+    expect(validateCellValue('2.2.2.2.222', { col, dataTypes: makeDataTypes() })).toBe(
+      'Value must be a number'
+    )
+  })
+
+  it('flags a dangling sign (NaN) when the column has no unit', () => {
+    const col = { ...baseCol, dataTypeId: null }
+    expect(validateCellValue('-', { col, dataTypes: makeDataTypes() })).toBe('Value must be a number')
+  })
+
+  it('flags a number beyond ±1e6 when the column has no unit', () => {
+    const col = { ...baseCol, unitId: null }
+    expect(validateCellValue('2000000', { col, dataTypes: makeDataTypes() })).toBe(
+      'Value should be between -1000000 and 1000000.'
+    )
+  })
+
   it('returns null when dataType id does not exist in catalog', () => {
     const col = { ...baseCol, dataTypeId: 999 }
     expect(validateCellValue('5', { col, dataTypes: makeDataTypes() })).toBeNull()
@@ -142,13 +163,13 @@ describe('validateCellValue', () => {
 
   it('flags value below min with the two-sided range message', () => {
     expect(validateCellValue('-100', { col: baseCol, dataTypes: makeDataTypes() })).toBe(
-      'Values should be between -50–50'
+      'Value should be between -50 and 50'
     )
   })
 
   it('flags value above max with the two-sided range message', () => {
     expect(validateCellValue('100', { col: baseCol, dataTypes: makeDataTypes() })).toBe(
-      'Values should be between -50–50'
+      'Value should be between -50 and 50'
     )
   })
 
