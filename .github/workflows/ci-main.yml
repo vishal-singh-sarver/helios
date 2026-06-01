@@ -150,6 +150,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     steps:
+      - name: Install git in container (pre-checkout)
+        if: matrix.container
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            git ca-certificates
+
       - uses: actions/checkout@v4
         with:
           submodules: recursive
@@ -289,6 +296,7 @@ jobs:
       #     aws s3 sync ./dist \
       #       s3://${{ secrets.UPDATE_FEED_BUCKET_STAGING }}/${{ matrix.os }}/${{ github.sha }}/ \
       #       --metadata-directive REPLACE
+      #       s3://${{ secrets.UPDATE_FEED_BUCKET_STAGING }}/${{ matrix.label }}/${{ github.sha }}/
 
       # ── macOS cleanup (notarization keychain ke liye) ────────────────────
       - name: Remove temporary keychain

@@ -40,6 +40,7 @@ const api = {
   // Window controls — the renderer paints its own title bar (frameless window).
   windowMinimize: (): Promise<void> => ipcRenderer.invoke('window:minimize'),
   windowToggleMaximize: (): Promise<boolean> => ipcRenderer.invoke('window:toggleMaximize'),
+  windowTitleBarDoubleClick: (): Promise<void> => ipcRenderer.invoke('window:titleBarDoubleClick'),
   windowClose: (): Promise<void> => ipcRenderer.invoke('window:close'),
   windowIsMaximized: (): Promise<boolean> => ipcRenderer.invoke('window:isMaximized'),
   windowIsFullScreen: (): Promise<boolean> => ipcRenderer.invoke('window:isFullScreen'),

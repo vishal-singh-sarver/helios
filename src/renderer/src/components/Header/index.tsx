@@ -67,10 +67,23 @@ function Header({ children, onLogoClick, title }: HeaderProps): React.JSX.Elemen
     <header className="border-b border-app-border">
       {showTitleBar && (
       <div
-        className={`app-drag flex h-[45px] items-center gap-3 border-b border-app-border px-4 ${
+        className={`app-drag relative flex h-[45px] items-center gap-3 border-b border-app-border px-4 ${
           isMac ? 'pl-[80px]' : ''
         }`}
       >
+        {/* macOS handles double-click-to-zoom natively, but only inside the
+            standard ~28px title bar height — the lower part of this 45px row
+            sits below it. A drag region swallows DOM events, so we can't catch
+            the double-click on the row itself; this .app-no-drag strip across
+            the bottom does receive it and toggles maximize to match. It starts
+            below the native zone so the two never both fire. */}
+        {isMac && (
+          <div
+            aria-hidden="true"
+            onDoubleClick={() => window.api.windowTitleBarDoubleClick()}
+            className="app-no-drag absolute inset-x-0 bottom-0 h-[17px]"
+          />
+        )}
         {logoButton}
         {title && (
           <div className="flex items-center gap-3">

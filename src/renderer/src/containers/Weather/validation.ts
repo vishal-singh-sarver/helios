@@ -14,7 +14,8 @@ import type { ColumnDef, DataTypeDef, DataUnitDef } from 'containers/ProjectScre
 // same values.
 export const GLOBAL_CELL_MIN = -1_000_000
 export const GLOBAL_CELL_MAX = 1_000_000
-export const GLOBAL_RANGE_MESSAGE = 'Value must be in -1,000,000–1,000,000'
+export const GLOBAL_RANGE_MESSAGE = 'Value should be between -1000000 and 1000000.'
+export const NON_NUMERIC_MESSAGE = 'Value must be a number'
 
 export interface CellValidationContext {
   col: ColumnDef
@@ -41,8 +42,8 @@ function unitLabel(unit: DataUnitDef): string {
 // Verbose, unit-led format: "{unit} must be in {min}–{max}". One-sided
 // variants use ≥ / ≤. Cell uses break-words as a safety net.
 function formatRangeMessage(unit: DataUnitDef, min: number | null, max: number | null): string {
-  const label = unitLabel(unit)
-  if (min != null && max != null) return `Values should be between ${min}–${max}`
+  
+  if (min != null && max != null) return `Value should be between ${min} and ${max}`
   if (min != null) return `Values should be ≥ ${min}`
   return `Values should be ≤ ${max}`
 }
@@ -54,13 +55,12 @@ export function validateCellValue(rawValue: string, ctx: CellValidationContext):
   const unit = findUnit(ctx.dataTypes, ctx.col.dataTypeId, ctx.col.unitId)
   const num = Number(trimmed)
 
-  // No unit configured: only the global bound applies. Anything else
-  // (including non-numeric input) is accepted because we can't be sure the
-  // column is even numeric yet.
+  // No unit configured yet, but weather cells are always numeric (the backend
+  // stores floats), so non-numeric input is rejected here too — this backstops
+  // the partial states the CellInput keystroke gate lets through ("-", "1e").
   if (!unit) {
-    if (Number.isFinite(num) && (num < GLOBAL_CELL_MIN || num > GLOBAL_CELL_MAX)) {
-      return GLOBAL_RANGE_MESSAGE
-    }
+    if (!Number.isFinite(num)) return NON_NUMERIC_MESSAGE
+    if (num < GLOBAL_CELL_MIN || num > GLOBAL_CELL_MAX) return GLOBAL_RANGE_MESSAGE
     return null
   }
 

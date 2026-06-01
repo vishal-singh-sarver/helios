@@ -14,9 +14,9 @@ const messages = {
       value: 'Enter Value'
     },
     placeholders: {
-      dataType: 'Select a data type',
+      dataType: 'Select data type',
       unit: 'Select a unit',
-      unitDisabled: 'Pick a data type first'
+      unitDisabled: 'Select a data type first'
     },
     errors: {
       duplicateName: 'A column with this name already exists',
