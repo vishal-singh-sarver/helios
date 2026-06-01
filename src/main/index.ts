@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, shell, systemPreferences } from 'electron'
 import { promises as fs, mkdirSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join, resolve } from 'path'
@@ -361,6 +361,26 @@ ipcMain.handle('window:toggleMaximize', (event) => {
   }
   win.maximize()
   return true
+})
+
+// macOS only: the native title bar handles double-click-to-zoom, but only
+// within its standard ~28px height — our custom title bar row is taller, so a
+// double-click on the lower part never reaches the OS gesture. The renderer
+// catches those and calls this, which mirrors the native behavior by honoring
+// the user's "double-click a window's title bar to" System Settings choice.
+ipcMain.handle('window:titleBarDoubleClick', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender)
+  if (!win) return
+  const action = systemPreferences.getUserDefault('AppleActionOnDoubleClick', 'string')
+  if (action === 'Minimize') {
+    win.minimize()
+  } else if (action === 'None') {
+    // User disabled the double-click gesture — do nothing, matching the OS.
+  } else {
+    // Default ('Maximize') — zoom toggles the maximized state.
+    if (win.isMaximized()) win.unmaximize()
+    else win.maximize()
+  }
 })
 
 ipcMain.handle('window:close', (event) => {
