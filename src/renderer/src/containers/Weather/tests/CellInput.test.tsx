@@ -1,5 +1,6 @@
 import React from 'react'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { VALIDATION_MESSAGES } from 'utils/decimalValidation'
 import CellInput from '../CellInput'
 
 // CellInput reads its per-cell error through useSelector(makeSelectCellError…).
@@ -58,9 +59,24 @@ describe('<CellInput />', () => {
     const onCommit = vi.fn()
     render(<CellInput {...defaultProps} rowId="r1" colId="c1" value="" onCommit={onCommit} />)
     const input = screen.getByRole('textbox')
-    fireEvent.change(input, { target: { value: 'hello' } })
-    expect(input).toHaveValue('hello')
+    fireEvent.change(input, { target: { value: '12.5' } })
+    expect(input).toHaveValue('12.5')
     expect(onCommit).not.toHaveBeenCalled()
+  })
+
+  it('rejects a non-numeric keystroke and surfaces the numeric-only error', () => {
+    const onCommit = vi.fn()
+    render(<CellInput {...defaultProps} rowId="r1" colId="c1" value="" onCommit={onCommit} />)
+    const input = screen.getByRole('textbox')
+    fireEvent.change(input, { target: { value: '2.2.2.2' } })
+    // The keystroke never reaches the draft, and the format error shows.
+    expect(input).toHaveValue('')
+    expect(onCommit).not.toHaveBeenCalled()
+    expect(screen.getByTestId('tooltip')).toHaveAttribute(
+      'data-text',
+      VALIDATION_MESSAGES.NUMERIC_ONLY
+    )
+    expect(input).toHaveAttribute('aria-invalid', 'true')
   })
 
   it('commits the draft on blur', () => {

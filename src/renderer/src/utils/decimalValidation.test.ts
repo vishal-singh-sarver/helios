@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   exceedsMaxDecimals,
   getDecimalCount,
+  isPartialNumericInput,
   truncateToMaxDecimals,
   wouldTruncateAny
 } from './decimalValidation'
@@ -114,6 +115,46 @@ describe('decimalValidation utilities', () => {
 
     it('should detect truncation for quoted numeric strings', () => {
       expect(wouldTruncateAny(['"1.123456789"', '5'])).toBe(true)
+    })
+  })
+
+  describe('isPartialNumericInput', () => {
+    it('accepts complete numbers (positive, negative, float)', () => {
+      for (const v of ['0', '1', '12', '-1', '+1', '1.5', '-12.34', '.5', '100000']) {
+        expect(isPartialNumericInput(v)).toBe(true)
+      }
+    })
+
+    it('accepts in-progress states so typing is not blocked', () => {
+      for (const v of ['', '-', '+', '1.', '.', '-1.']) {
+        expect(isPartialNumericInput(v)).toBe(true)
+      }
+    })
+
+    it('accepts scientific notation and its intermediate states', () => {
+      for (const v of ['1e', '1e-', '1e+', '1e5', '1.5e6', '-2e-3', '.5e2']) {
+        expect(isPartialNumericInput(v)).toBe(true)
+      }
+    })
+
+    it('tolerates surrounding whitespace', () => {
+      expect(isPartialNumericInput('  12.5  ')).toBe(true)
+    })
+
+    it('rejects non-numeric input', () => {
+      for (const v of [
+        'abc',
+        '1a',
+        '2.2.2.2.222',
+        '1.2.3',
+        '--1',
+        '1ee5',
+        '1e5.5',
+        '1 2',
+        '$5'
+      ]) {
+        expect(isPartialNumericInput(v)).toBe(false)
+      }
     })
   })
 })
