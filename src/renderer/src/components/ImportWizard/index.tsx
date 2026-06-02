@@ -575,7 +575,11 @@ function ImportWizard({
             )}
           </div>
 
-          {importError && (
+          {/* The finalize error is raised on the Review & Import step (the only
+              step with an Import button). Scope the banner to that step so it
+              stays tied to where it happened — hidden when the user navigates
+              back to adjust input, and shown again on returning to Review. */}
+          {importError && stepIdx === STEPS.length - 1 && (
             <div className="mx-6 mb-2 flex items-start gap-2 rounded border border-red-900/40 bg-red-900/20 px-3 py-2 text-sm text-red-300">
               <AlertTriangleIcon className="mt-0.5 h-4 w-4 shrink-0" />
               <div>

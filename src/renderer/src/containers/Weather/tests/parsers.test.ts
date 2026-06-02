@@ -582,6 +582,71 @@ describe('parseRowDateTime', () => {
   })
 })
 
+// ── DST spring-forward boundary (regression) ──────────────────────────────────
+//
+// NSRDB-style files list local wall-clock hours (…, 01:00, 02:00, 03:00, …).
+// On a host whose system timezone observes DST, a spring-forward day is missing
+// a wall-clock hour (e.g. 02:00 on 2024-03-10 in US Pacific). Building the
+// timestamp in local time collapsed that row onto 03:00, so two distinct rows
+// produced an identical (date, time) key and the backend rejected the upload as
+// "duplicate date-time" — but only on machines set to a DST zone (hence "fails
+// on one machine, works on another"). Anchoring to UTC (matching the Add-Row
+// path) makes the round trip exact on every host.
+describe('parseRowDateTime — DST spring-forward boundary', () => {
+  const headers = ['year', 'month', 'day', 'hour', 'minute']
+  const mapping: DateTimeMapping = {
+    ...INITIAL_MAPPING,
+    year: 'year',
+    month: 'month',
+    day: 'day',
+    hour: 'hour',
+    minute: 'minute'
+  }
+
+  // Mirrors Weather/saga.ts fmtDate/fmtTime, which derive the dedupe key from
+  // dtIso using UTC getters.
+  const pad2 = (n: number): string => String(n).padStart(2, '0')
+  const keyOf = (iso: string): string => {
+    const d = new Date(iso)
+    return (
+      `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())} ` +
+      `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}:00`
+    )
+  }
+
+  // The suite pins TZ=UTC (vitest.config), where no spring-forward gap exists
+  // and the bug cannot reproduce. Force a DST-observing zone for this block.
+  const originalTZ = process.env.TZ
+  beforeAll(() => {
+    process.env.TZ = 'America/Los_Angeles'
+  })
+  afterAll(() => {
+    process.env.TZ = originalTZ
+  })
+
+  const parse = (h: string) =>
+    parseRowDateTime(['2024', '3', '10', h, '0'], headers, 'group1', mapping, 'YYYY-MM-DD')
+
+  it('parses 02:00 and 03:00 as distinct instants with exact wall-clock', () => {
+    const at2 = parse('2')
+    const at3 = parse('3')
+    expect(at2.kind).toBe('ok')
+    expect(at3.kind).toBe('ok')
+    if (at2.kind !== 'ok' || at3.kind !== 'ok') return
+
+    // Wall-clock preserved exactly, independent of the host timezone.
+    expect(at2.date.toISOString()).toBe('2024-03-10T02:00:00.000Z')
+    expect(at3.date.toISOString()).toBe('2024-03-10T03:00:00.000Z')
+
+    // The two rows must not collapse to the same dedupe key.
+    const k2 = keyOf(at2.date.toISOString())
+    const k3 = keyOf(at3.date.toISOString())
+    expect(k2).toBe('2024-03-10 02:00:00')
+    expect(k3).toBe('2024-03-10 03:00:00')
+    expect(k2).not.toBe(k3)
+  })
+})
+
 // ── toCsv ─────────────────────────────────────────────────────────────────────
 
 describe('toCsv', () => {

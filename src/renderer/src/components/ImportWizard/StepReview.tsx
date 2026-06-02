@@ -4,7 +4,11 @@ import type { StepReviewProps } from './types'
 
 function fmtBritish(d: Date | null): string {
   if (!d) return 'Invalid'
+  // Parsed dates are anchored in UTC (see buildDate in parsers.ts), so format
+  // in UTC to show the file's wall-clock values exactly, not shifted by the
+  // host timezone.
   return d.toLocaleString('en-GB', {
+    timeZone: 'UTC',
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
