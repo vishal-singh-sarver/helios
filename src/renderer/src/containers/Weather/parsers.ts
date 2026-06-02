@@ -520,22 +520,34 @@ function isLeapYear(year: number): boolean {
 function validateDateParts(parts: DateParts): DateParts | null {
   const { Y, M, D } = parts
   if (M < 1 || M > 12 || D < 1 || D > 31) return null
-  const date = new Date(Y, M - 1, D)
-  if (date.getFullYear() !== Y || date.getMonth() !== M - 1 || date.getDate() !== D) return null
+  // Build/read in UTC (see buildDate) so validation never depends on the host
+  // timezone or its DST gaps.
+  const date = new Date(Date.UTC(Y, M - 1, D))
+  if (date.getUTCFullYear() !== Y || date.getUTCMonth() !== M - 1 || date.getUTCDate() !== D)
+    return null
   return parts
 }
 
 function dateFromDayOfYear(Y: number, doy: number): DateParts | null {
   const maxDay = isLeapYear(Y) ? 366 : 365
   if (doy < 1 || doy > maxDay) return null
-  const date = new Date(Y, 0, doy)
-  return { Y: date.getFullYear(), M: date.getMonth() + 1, D: date.getDate() }
+  const date = new Date(Date.UTC(Y, 0, doy))
+  return { Y: date.getUTCFullYear(), M: date.getUTCMonth() + 1, D: date.getUTCDate() }
 }
 
+// The imported Year/Month/Day/Hour/Minute are timezone-agnostic wall-clock
+// labels. We anchor them in UTC — the same neutral-ruler approach the Add-Row
+// path uses (see buildRowsForAdd in ProjectScreen/saga.ts: `Date.UTC(...)`) —
+// so the parse → toISOString() → read-back round trip preserves the wall clock
+// exactly on every machine. Building in local time made a DST spring-forward
+// hour (e.g. 02:00 on 2024-03-10 in US Pacific) collapse onto the next hour,
+// which the backend then rejected as a "duplicate date-time".
 function buildDate(parts: DateParts, time: TimeParts | null): Date {
-  const base = new Date(parts.Y, parts.M - 1, parts.D, time?.H ?? 0, time?.M ?? 0, time?.S ?? 0)
+  const base = new Date(
+    Date.UTC(parts.Y, parts.M - 1, parts.D, time?.H ?? 0, time?.M ?? 0, time?.S ?? 0)
+  )
   if (time?.rollover) {
-    base.setDate(base.getDate() + 1)
+    base.setUTCDate(base.getUTCDate() + 1)
   }
   return base
 }

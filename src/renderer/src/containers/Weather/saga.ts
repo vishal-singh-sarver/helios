@@ -128,15 +128,20 @@ export function* pickFileWorker(): Generator {
 
 const pad2 = (n: number): string => String(n).padStart(2, '0')
 
+// dtIso is anchored in UTC from the imported wall-clock components (see
+// buildDate in parsers.ts), so we read it back with UTC getters — exactly like
+// the Add-Row path (buildRowsForAdd in ProjectScreen/saga.ts uses getUTC*).
+// Local getters here would re-shift the value and resurrect the DST-day
+// duplicate bug.
 function fmtDate(iso: string): string {
   const d = new Date(iso)
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
+  return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`
 }
 
 function fmtTime(iso: string): string {
   const d = new Date(iso)
   // Backend expects HH:MM:SS — we don't have second-level precision, so 00.
-  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:00`
+  return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}:00`
 }
 
 // Predicate factory for `take` that matches actions whose payload is scoped

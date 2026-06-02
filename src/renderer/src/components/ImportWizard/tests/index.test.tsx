@@ -149,10 +149,42 @@ describe('<ImportWizard />', () => {
     expect(dataset.records[0].dtIso).not.toBeNull()
   })
 
-  it('renders the importError banner when prop is set', () => {
-    render(<ImportWizard {...baseProps} importError="Save cancelled" />)
+  // The finalize error is scoped to the Review & Import step (where it is
+  // raised). It must stay tied to that step: hidden on earlier steps, and
+  // shown again whenever the user returns to Review.
+  it('shows the importError banner only on the Review & Import step', () => {
+    render(
+      <ImportWizard {...baseProps} pickedFile={goodGroup1File} importError="duplicate date-time" />
+    )
+
+    // Step 1 (File Preview): banner hidden even though importError is set.
+    expect(screen.queryByText(/Import failed/)).not.toBeInTheDocument()
+
+    // Walk to the Review & Import step (1 → 2 → 3 → 4).
+    fireEvent.click(screen.getByText('Next'))
+    fireEvent.click(screen.getByText('Next'))
+    fireEvent.click(screen.getByText('Next'))
     expect(screen.getByText(/Import failed/)).toBeInTheDocument()
-    expect(screen.getByText(/Save cancelled/)).toBeInTheDocument()
+    expect(screen.getByText(/duplicate date-time/)).toBeInTheDocument()
+  })
+
+  it('hides the importError banner on Back and shows it again on returning to Review', () => {
+    render(
+      <ImportWizard {...baseProps} pickedFile={goodGroup1File} importError="duplicate date-time" />
+    )
+    // Navigate to Review (step 4) — banner visible.
+    fireEvent.click(screen.getByText('Next'))
+    fireEvent.click(screen.getByText('Next'))
+    fireEvent.click(screen.getByText('Next'))
+    expect(screen.getByText(/Import failed/)).toBeInTheDocument()
+
+    // Back to Date/Time step — banner hidden (error is not lost, just scoped).
+    fireEvent.click(screen.getByText('Back'))
+    expect(screen.queryByText(/Import failed/)).not.toBeInTheDocument()
+
+    // Forward to Review again — banner reappears.
+    fireEvent.click(screen.getByText('Next'))
+    expect(screen.getByText(/Import failed/)).toBeInTheDocument()
   })
 
   it('disables Cancel + close while importing is true', () => {

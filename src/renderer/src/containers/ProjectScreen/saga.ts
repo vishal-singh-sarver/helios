@@ -9,9 +9,9 @@ import {
   loadHeadersRequest,
   normalizeWireCellValue,
   patchHeaderRequest,
-  updateProjectRequest,
   updateCellRequest,
   updateColumnRequest,
+  updateProjectRequest,
   type AddColumnResponse,
   type AddRowsResponse,
   type DataPage,
@@ -279,9 +279,7 @@ function* loadScenarioWorker(action: LoadScenarioRequestedAction): Generator {
     if (dateTimeDataTypeId != null) {
       const dateTimeBaseUnitId = (yield select(selectDateTimeBaseUnitId)) as number | null
       const staleDateTimeHeader = sortedHeaders.find(
-        (h) =>
-          h.name === DATE_TIME_COL_NAME &&
-          (h.helios_data_type_id == null || h.unit_id == null)
+        (h) => h.name === DATE_TIME_COL_NAME && (h.helios_data_type_id == null || h.unit_id == null)
       )
       if (staleDateTimeHeader) {
         const patch: { dataTypeId?: number | null; unitId?: number | null } = {}

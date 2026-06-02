@@ -55,7 +55,11 @@ interface FieldRowProps {
 }
 
 function fmtPreviewDateTime(d: Date): string {
+  // Parsed dates are anchored in UTC (see buildDate in parsers.ts), so the
+  // preview must format in UTC to echo the file's wall-clock values exactly —
+  // otherwise the host timezone would shift the displayed time.
   return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'UTC',
     year: 'numeric',
     month: 'numeric',
     day: 'numeric',
